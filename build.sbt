@@ -1,13 +1,15 @@
+import Dependencies.*
+import play.core.PlayVersion.pekkoVersion
 scalaVersion := "3.3.4"
 name := "ytchatinteraction"
 version := "1.0-SNAPSHOT"
-import play.core.PlayVersion.pekkoVersion
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 libraryDependencies ++= Seq(
   guice,
-  "org.playframework" %% "play-slick" % "6.1.1",
-  "org.playframework" %% "play-slick-evolutions" % "6.1.1",
+  "org.scalatestplus.play" %% "scalatestplus-play" % scalaTestPlusPlayVersion % Test,
+  "org.playframework" %% "play-slick" % slickVersion,
+  "org.playframework" %% "play-slick-evolutions" % slickVersion,
   "com.h2database" % "h2" % "2.3.232",
   "org.webjars" %% "webjars-play" % "3.0.2",
   "org.webjars" % "flot" % "0.8.3-1",
@@ -21,6 +23,15 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
   specs2 % Test,
 )
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-cas" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-crypto-jca" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-password-argon2" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-password-bcrypt" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-persistence" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-totp" % silhouetteVersion
+libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-testkit" % silhouetteVersion % Test
+
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds"
 Test / javaOptions ++= Seq("-Dconfig.file=conf/test.conf")
