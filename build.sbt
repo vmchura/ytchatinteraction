@@ -23,14 +23,6 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
   specs2 % Test,
 )
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-cas" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-crypto-jca" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-password-argon2" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-password-bcrypt" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-persistence" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-totp" % silhouetteVersion
-libraryDependencies += "org.playframework.silhouette" %% "play-silhouette-testkit" % silhouetteVersion % Test
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds"
