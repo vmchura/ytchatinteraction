@@ -1,8 +1,9 @@
 package services
 
-import org.apache.pekko.actor.typed.{ActorRef, ActorSystem, Behavior}
-import org.apache.pekko.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import javax.inject.{Inject, Singleton}
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.apache.pekko.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import org.apache.pekko.actor.typed.scaladsl.adapter._
 import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.Configuration
@@ -22,8 +23,12 @@ class YoutubeLiveChatService @Inject()(
   ws: WSClient,
   config: Configuration,
   ytStreamerRepository: YtStreamerRepository,
-  userStreamerStateRepository: UserStreamerStateRepository
-)(implicit ec: ExecutionContext, system: ActorSystem[_]) {
+  userStreamerStateRepository: UserStreamerStateRepository,
+  actorSystem: org.apache.pekko.actor.ActorSystem
+)(implicit ec: ExecutionContext) {
+  
+  // Convert untyped ActorSystem to typed
+  private val system = actorSystem.toTyped
   
   // Get API key from configuration
   private val apiKey = config.get[String]("youtube.api.key")
@@ -101,9 +106,9 @@ class YoutubeLiveChatService @Inject()(
 object YoutubeLiveChatPollingActor {
   // Messages the actor can receive
   sealed trait Command
-  final case class PollLiveChat(liveChatId: String, paginationToken: String, retryCount: Int = 0) extends Command
-  private case class ProcessApiResponse(response: JsValue, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
-  private case class HandleError(error: Throwable, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  case class PollLiveChat(liveChatId: String, paginationToken: String, retryCount: Int = 0) extends Command
+  case class ProcessApiResponse(response: JsValue, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  case class HandleError(error: Throwable, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
   
   // Timer key
   private case object PollingTimer
@@ -142,6 +147,7 @@ object YoutubeLiveChatPollingActor {
           val queryParams = Map(
             "liveChatId" -> liveChatId,
             "part" -> "id,snippet,authorDetails",
+            "maxResults" -> "20",
             "key" -> apiKey
           ) ++ (if (paginationToken != null) Map("pageToken" -> paginationToken) else Map.empty)
           
