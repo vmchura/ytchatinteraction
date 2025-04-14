@@ -3,6 +3,7 @@ package models
 import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
+import slick.dbio.DBIO
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -39,6 +40,17 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
     usersTable.filter(_.userId === user.userId)
       .map(u => u.userName)
       .update(user.userName)
+  }
+  
+  def existsAction(userId: Long): DBIO[Boolean] = {
+    usersTable
+      .filter(_.userId === userId)
+      .exists
+      .result
+  }
+
+  def exists(userId: Long): Future[Boolean] = db.run {
+    existsAction(userId)
   }
   
   def delete(id: Long): Future[Int] = db.run {

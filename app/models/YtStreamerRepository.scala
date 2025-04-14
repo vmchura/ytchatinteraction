@@ -3,6 +3,7 @@ package models
 import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
+import slick.dbio.DBIO
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -53,14 +54,29 @@ class YtStreamerRepository @Inject()(
       .update(newBalance)
   }
   
-  def incrementBalance(channelId: String, amount: Int = 1): Future[Int] = {
+  def incrementBalanceAction(channelId: String, amount: Int = 1): DBIO[Int] = {
     val streamerFilter = ytStreamersTable.filter(_.channelId === channelId).map(_.currentBalanceNumber)
-    val transactional = (for {
+    for {
       current_amount <- streamerFilter.result.headOption
       updated_value <- streamerFilter.update(current_amount.getOrElse(0) + amount)
-    } yield updated_value).transactionally
-    
-    db.run(transactional)
+    } yield updated_value
+  }
+  
+  def incrementBalance(channelId: String, amount: Int = 1): Future[Int] = {
+    db.run(incrementBalanceAction(channelId, amount).transactionally)
+  }
+  
+  def getBalanceAction(channelId: String): DBIO[Int] = {
+    ytStreamersTable
+      .filter(_.channelId === channelId)
+      .map(_.currentBalanceNumber)
+      .result
+      .headOption
+      .map(_.getOrElse(0))
+  }
+  
+  def getBalance(channelId: String): Future[Int] = {
+    db.run(getBalanceAction(channelId))
   }
   
   // Get table query for use by other repositories (like UserStreamerState)

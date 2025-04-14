@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio
 import slick.jdbc.JdbcProfile
+import slick.dbio.DBIO
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -21,10 +22,14 @@ class UserStreamerStateRepository @Inject()(
   
   // No need to override tables since inheritance already provides access
 
-  def create(userId: Long, streamerChannelId: String, currentBalanceNumber: Int = 0): Future[UserStreamerState] = db.run {
+  def createAction(userId: Long, streamerChannelId: String, currentBalanceNumber: Int = 0): DBIO[UserStreamerState] = {
     (userStreamerStateTable.map(s => (s.userId, s.streamerChannelId, s.currentBalanceNumber))
       += (userId, streamerChannelId, currentBalanceNumber)).map(_ => 
         UserStreamerState(userId, streamerChannelId, currentBalanceNumber))
+  }
+  
+  def create(userId: Long, streamerChannelId: String, currentBalanceNumber: Int = 0): Future[UserStreamerState] = db.run {
+    createAction(userId, streamerChannelId, currentBalanceNumber)
   }
 
   def list(): Future[Seq[UserStreamerState]] = db.run {
@@ -39,11 +44,15 @@ class UserStreamerStateRepository @Inject()(
     userStreamerStateTable.filter(_.streamerChannelId === channelId).result
   }
   
-  def exists(userId: Long, streamerChannelId: String): Future[Boolean] = db.run {
+  def existsAction(userId: Long, streamerChannelId: String): DBIO[Boolean] = {
     userStreamerStateTable
       .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
       .exists
       .result
+  }
+  
+  def exists(userId: Long, streamerChannelId: String): Future[Boolean] = db.run {
+    existsAction(userId, streamerChannelId)
   }
   
   def updateBalance(userId: Long, streamerChannelId: String, newBalance: Int): Future[Int] = db.run {
@@ -53,16 +62,31 @@ class UserStreamerStateRepository @Inject()(
       .update(newBalance)
   }
   
-  def incrementBalance(userId: Long, streamerChannelId: String, amount: Int = 1): Future[Int] = {
+  def incrementBalanceAction(userId: Long, streamerChannelId: String, amount: Int = 1): DBIO[Int] = {
     val userStreamerFilter = userStreamerStateTable
       .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
       .map(_.currentBalanceNumber)
-    val transactional = (for {
+    for {
       current_amount <- userStreamerFilter.result.headOption
       updated_value <- userStreamerFilter.update(current_amount.getOrElse(0) + amount)
-    } yield updated_value).transactionally
-    
-    db.run(transactional)
+    } yield updated_value
+  }
+  
+  def incrementBalance(userId: Long, streamerChannelId: String, amount: Int = 1): Future[Int] = {
+    db.run(incrementBalanceAction(userId, streamerChannelId, amount).transactionally)
+  }
+  
+  def getBalanceAction(userId: Long, streamerChannelId: String): DBIO[Int] = {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .map(_.currentBalanceNumber)
+      .result
+      .headOption
+      .map(_.getOrElse(0))
+  }
+  
+  def getBalance(userId: Long, streamerChannelId: String): Future[Int] = {
+    db.run(getBalanceAction(userId, streamerChannelId))
   }
   
   def delete(userId: Long, streamerChannelId: String): Future[Int] = db.run {
