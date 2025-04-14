@@ -1,0 +1,22 @@
+package models
+
+import slick.jdbc.JdbcProfile
+import slick.lifted.TableQuery
+
+trait YtStreamerComponent {
+  self: UserComponent =>
+  
+  protected val profile: JdbcProfile
+  import profile.api._
+
+  class YtStreamersTable(tag: Tag) extends Table[YtStreamer](tag, "yt_streamer") {
+    def channelId = column[String]("channel_id", O.PrimaryKey)
+    def ownerUserId = column[Long]("onwer_user_id")
+    
+    def userFk = foreignKey("fk_yt_streamer_with_users", ownerUserId, usersTable)(_.userId)
+    
+    def * = (channelId, ownerUserId) <> ((YtStreamer.apply _).tupled, YtStreamer.unapply)
+  }
+
+  val ytStreamersTable = TableQuery[YtStreamersTable]
+}
