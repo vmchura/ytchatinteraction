@@ -4,21 +4,24 @@ import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 import play.silhouette.api.LoginInfo
-import java.time.Instant
+import play.silhouette.persistence.daos.DelegableAuthInfoDAO
 
+import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
+import scala.reflect.ClassTag
 
 @Singleton
-class OAuth2InfoRepository @Inject()(
-  dbConfigProvider: DatabaseConfigProvider,
-  ytUserRepository: YtUserRepository
-)(implicit ec: ExecutionContext) extends OAuth2InfoComponent with YtUserComponent with UserComponent {
-  
+class OAuth2InfoRepository @Inject()(dbConfigProvider: DatabaseConfigProvider,
+                                     ytUserRepository: YtUserRepository)(implicit ec: ExecutionContext, val classTag: ClassTag[play.silhouette.impl.providers.OAuth2Info]) extends OAuth2InfoComponent
+with YtUserComponent
+with UserComponent
+with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
+
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
   import dbConfig._
   import profile.api._
-  
+
   /**
    * Finds the OAuth2 info for the specified login info.
    *
@@ -29,11 +32,11 @@ class OAuth2InfoRepository @Inject()(
     // First, get the YtUser that matches this login info (YouTube provider)
     if (loginInfo.providerID == "youtube") {
       val channelId = loginInfo.providerKey
-      
+
       val query = for {
         oAuth2Info <- oauth2InfoTable.filter(_.userChannelId === channelId).result.headOption
       } yield oAuth2Info.map(_.toSilhouetteOAuth2Info)
-      
+
       db.run(query)
     } else {
       Future.successful(None)
@@ -44,14 +47,14 @@ class OAuth2InfoRepository @Inject()(
    * Adds new OAuth2 info for the specified login info.
    *
    * @param loginInfo The login info for which the OAuth2 info should be added.
-   * @param authInfo The OAuth2 info to add.
+   * @param authInfo  The OAuth2 info to add.
    * @return The added OAuth2 info.
    */
   def add(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
     if (loginInfo.providerID == "youtube") {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
-      
+
       val dbOAuth2Info = OAuth2Info(
         userChannelId = channelId,
         accessToken = authInfo.accessToken,
@@ -61,24 +64,24 @@ class OAuth2InfoRepository @Inject()(
         createdAt = now,
         updatedAt = now
       )
-      
+
       val query = for {
         // Check if the YtUser exists
         ytUserOpt <- ytUsersTable.filter(_.userChannelId === channelId).result.headOption
-        
+
         result <- ytUserOpt match {
-          case Some(_) => 
+          case Some(_) =>
             // Insert the OAuth2 info
             (oauth2InfoTable returning oauth2InfoTable.map(_.id) into ((info, id) => info.copy(id = Some(id))))
               .+=(dbOAuth2Info)
               .map(_.toSilhouetteOAuth2Info)
-              
-          case None => 
+
+          case None =>
             // YtUser not found
             DBIO.failed(new Exception(s"YtUser with channel ID $channelId not found"))
         }
       } yield result
-      
+
       db.run(query)
     } else {
       Future.failed(new Exception(s"Provider ${loginInfo.providerID} not supported"))
@@ -89,18 +92,18 @@ class OAuth2InfoRepository @Inject()(
    * Updates the OAuth2 info for the specified login info.
    *
    * @param loginInfo The login info for which the OAuth2 info should be updated.
-   * @param authInfo The OAuth2 info to update.
+   * @param authInfo  The OAuth2 info to update.
    * @return The updated OAuth2 info.
    */
   def update(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
     if (loginInfo.providerID == "youtube") {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
-      
+
       val query = for {
         // Get the existing OAuth2 info
         existing <- oauth2InfoTable.filter(_.userChannelId === channelId).result.headOption
-        
+
         result <- existing match {
           case Some(info) =>
             // Update the existing record
@@ -111,15 +114,15 @@ class OAuth2InfoRepository @Inject()(
               refreshToken = authInfo.refreshToken.orElse(info.refreshToken), // Keep old refresh token if new one is not provided
               updatedAt = now
             )
-            
+
             oauth2InfoTable.filter(_.id === info.id).update(updated).map(_ => updated.toSilhouetteOAuth2Info)
-            
+
           case None =>
             // OAuth2 info not found
             DBIO.failed(new Exception(s"OAuth2Info for channel ID $channelId not found"))
         }
       } yield result
-      
+
       db.run(query)
     } else {
       Future.failed(new Exception(s"Provider ${loginInfo.providerID} not supported"))
@@ -131,7 +134,7 @@ class OAuth2InfoRepository @Inject()(
    * This either adds the OAuth2 info if it doesn't exist or updates it if it already exists.
    *
    * @param loginInfo The login info for which the OAuth2 info should be saved.
-   * @param authInfo The OAuth2 info to save.
+   * @param authInfo  The OAuth2 info to save.
    * @return The saved OAuth2 info.
    */
   def save(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
@@ -150,7 +153,7 @@ class OAuth2InfoRepository @Inject()(
   def remove(loginInfo: LoginInfo): Future[Unit] = {
     if (loginInfo.providerID == "youtube") {
       val channelId = loginInfo.providerKey
-      
+
       db.run(oauth2InfoTable.filter(_.userChannelId === channelId).delete).map(_ => ())
     } else {
       Future.successful(())

@@ -14,13 +14,13 @@ import play.silhouette.api.services.{AuthenticatorService, IdentityService}
 import play.silhouette.api.util.{Clock, FingerprintGenerator, HTTPLayer, IDGenerator, PasswordHasherRegistry, PlayHTTPLayer}
 import play.silhouette.crypto.{JcaCrypter, JcaCrypterSettings, JcaSigner, JcaSignerSettings}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService, CookieAuthenticatorSettings}
-import play.silhouette.impl.providers._
+import play.silhouette.impl.providers.*
 import play.silhouette.impl.providers.state.{CsrfStateItemHandler, CsrfStateSettings}
 import play.silhouette.impl.util.{DefaultFingerprintGenerator, SecureRandomIDGenerator}
+import play.silhouette.persistence.daos.DelegableAuthInfoDAO
 import play.silhouette.persistence.repositories.DelegableAuthInfoRepository
 import providers.YouTubeProvider
 import services.{UserService, UserServiceImpl}
-
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,10 +39,11 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     bind[Silhouette[DefaultEnv]].to[SilhouetteProvider[DefaultEnv]]
     bind[UserService].to[UserServiceImpl]
     bind[IDGenerator].toInstance(new SecureRandomIDGenerator())
+    bind[FingerprintGenerator].toInstance(new DefaultFingerprintGenerator(false))
     bind[Clock].toInstance(Clock())
 
     // Configure Auth Info Repository
-    bind[AuthInfoRepository].to[DelegableAuthInfoRepository]
+    bind[DelegableAuthInfoDAO[OAuth2Info]].to[OAuth2InfoRepository]
   }
 
   /**
@@ -102,6 +103,12 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     new JcaCrypter(JcaCrypterSettings(config))
   }
 
+  @Provides
+  def provideAuthInfoRepository(
+                                 oauth2InfoDAO: DelegableAuthInfoDAO[OAuth2Info]): AuthInfoRepository = {
+
+    new DelegableAuthInfoRepository(oauth2InfoDAO)
+  }
   /**
    * Provides the authenticator service.
    *
@@ -173,7 +180,7 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
    */
   @Provides
   def provideSocialStateHandler(
-                                 @Named("social-state-signer") signer: Signer,
+                                 @Named("authenticator-signer") signer: Signer,
                                  csrfStateItemHandler: CsrfStateItemHandler): SocialStateHandler = {
 
     new DefaultSocialStateHandler(Set(csrfStateItemHandler), signer)
@@ -194,13 +201,13 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     configuration: Configuration): YouTubeProvider = {
     val config = configuration.get[Configuration]("silhouette.youtube")
     val settings = OAuth2Settings(
-      authorizationURL = config.get[Option[String]]("authorizationURL"),
+      authorizationURL = Some(config.get[String]("authorizationURL")),
       accessTokenURL = config.get[String]("accessTokenURL"),
-      redirectURL = config.get[Option[String]]("redirectURL"),
+      redirectURL = Some(config.get[String]("redirectURL")),
       clientID = config.get[String]("clientID"),
       clientSecret = config.get[String]("clientSecret"),
-      scope = config.get[Option[String]]("scope"),
-      authorizationParams = Map("prompt" -> "none")
+      scope = Some(config.get[String]("scope")),
+      authorizationParams = Map("prompt" -> "consent", "access_type" -> "offline")
     )
     new YouTubeProvider(httpLayer, socialStateHandler, settings)
   }
