@@ -1,0 +1,161 @@
+@(liveChatId: String)(implicit request: MessagesRequestHeader)
+
+@main("Monitoring Status") {
+    <div class="container">
+        <h1>YouTube Live Chat Monitoring</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Monitoring Status</h2>
+            </div>
+            <div class="card-body">
+                <div class="status-container">
+                    <div class="status-icon success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <div class="status-text">
+                        <h3>Monitoring Started Successfully</h3>
+                        <p>The system is now monitoring the live chat with ID:</p>
+                        <div class="chat-id">@liveChatId</div>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <h4>What happens now?</h4>
+                    <p>The system will automatically:</p>
+                    <ul>
+                        <li>Poll the YouTube API for new chat messages</li>
+                        <li>Process messages related to donations and super chats</li>
+                        <li>Update balances for streamer and users</li>
+                        <li>Continue monitoring until explicitly stopped or until the live stream ends</li>
+                    </ul>
+                </div>
+                
+                <div class="action-buttons">
+                    <a href="@routes.YoutubeFrontendController.showStreamIdForm()" class="btn btn-secondary">
+                        Monitor Another Stream
+                    </a>
+                    <a href="@routes.YoutubeFrontendController.stopMonitoring(liveChatId)" class="btn btn-danger">
+                        Stop Monitoring
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #d32f2f;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #f1f1f1;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.4em;
+            color: #333;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .status-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .status-icon {
+            margin-right: 20px;
+        }
+        .status-icon.success {
+            color: #28a745;
+        }
+        .status-text h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #28a745;
+        }
+        .chat-id {
+            padding: 8px 12px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .info-box h4 {
+            margin-top: 0;
+            color: #17a2b8;
+        }
+        .info-box ul {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .btn {
+            display: inline-block;
+            font-weight: 400;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            user-select: none;
+            border: 1px solid transparent;
+            padding: 10px 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-secondary {
+            color: #333;
+            background-color: #e0e0e0;
+            border-color: #ccc;
+        }
+        .btn-secondary:hover {
+            background-color: #d0d0d0;
+        }
+        .btn-danger {
+            color: #fff;
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+    </style>
+}

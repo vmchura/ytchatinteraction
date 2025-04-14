@@ -9,6 +9,12 @@ GET     /persons                    controllers.PersonController.getPersons
 GET     /chat                       controllers.HomeController.chat()
 GET     /chatIndex                       controllers.HomeController.index()
 
+# YouTube Frontend routes
+GET     /youtube                    controllers.YoutubeFrontendController.showStreamIdForm()
+POST    /youtube/get-chat-id        controllers.YoutubeFrontendController.getLiveChatId()
+POST    /youtube/start-monitoring   controllers.YoutubeFrontendController.startMonitoring()
+GET     /youtube/stop-monitoring/:id controllers.YoutubeFrontendController.stopMonitoring(id: String)
+
 # YouTube Live Chat monitoring endpoints
 POST    /api/youtube/livechat/get-id          controllers.YoutubeLiveChatController.getLiveChatId
 
