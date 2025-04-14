@@ -1,0 +1,60 @@
+package models
+
+import javax.inject.{Inject, Singleton}
+import play.api.db.slick.DatabaseConfigProvider
+import slick.jdbc.JdbcProfile
+
+import scala.concurrent.{ExecutionContext, Future}
+
+@Singleton
+class UserStreamerStateRepository @Inject()(
+  dbConfigProvider: DatabaseConfigProvider,
+  userRepository: UserRepository,
+  ytStreamerRepository: YtStreamerRepository
+)(implicit ec: ExecutionContext) extends UserStreamerStateComponent with UserComponent with YtStreamerComponent {
+  
+  val dbConfig = dbConfigProvider.get[JdbcProfile]
+  override protected val profile = dbConfig.profile
+  import dbConfig._
+  import profile.api._
+  
+  // No need to override tables since inheritance already provides access
+
+  def create(userId: Long, streamerChannelId: String): Future[UserStreamerState] = db.run {
+    (userStreamerStateTable.map(s => (s.userId, s.streamerChannelId))
+      += (userId, streamerChannelId)).map(_ => UserStreamerState(userId, streamerChannelId))
+  }
+
+  def list(): Future[Seq[UserStreamerState]] = db.run {
+    userStreamerStateTable.result
+  }
+  
+  def getByUserId(userId: Long): Future[Seq[UserStreamerState]] = db.run {
+    userStreamerStateTable.filter(_.userId === userId).result
+  }
+  
+  def getByStreamerChannelId(channelId: String): Future[Seq[UserStreamerState]] = db.run {
+    userStreamerStateTable.filter(_.streamerChannelId === channelId).result
+  }
+  
+  def exists(userId: Long, streamerChannelId: String): Future[Boolean] = db.run {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .exists
+      .result
+  }
+  
+  def delete(userId: Long, streamerChannelId: String): Future[Int] = db.run {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .delete
+  }
+  
+  def deleteByUserId(userId: Long): Future[Int] = db.run {
+    userStreamerStateTable.filter(_.userId === userId).delete
+  }
+  
+  def deleteByStreamerChannelId(channelId: String): Future[Int] = db.run {
+    userStreamerStateTable.filter(_.streamerChannelId === channelId).delete
+  }
+}
