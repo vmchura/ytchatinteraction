@@ -54,20 +54,15 @@ class UserStreamerStateRepository @Inject()(
   }
   
   def incrementBalance(userId: Long, streamerChannelId: String, amount: Int = 1): Future[Int] = {
+    val userStreamerFilter = userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .map(_.currentBalanceNumber)
     val transactional = (for {
-      current_amount <- userStreamerStateTable
-        .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
-        .map(s => s.currentBalanceNumber).result.headOption
-      updated_vale <- userStreamerStateTable
-        .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
-        .map(s => s.currentBalanceNumber).update(current_amount.getOrElse(0) + amount)
-    } yield {
-      updated_vale
-    }).transactionally
-
-    db.run {
-      transactional
-    }
+      current_amount <- userStreamerFilter.result.headOption
+      updated_value <- userStreamerFilter.update(current_amount.getOrElse(0) + amount)
+    } yield updated_value).transactionally
+    
+    db.run(transactional)
   }
   
   def delete(userId: Long, streamerChannelId: String): Future[Int] = db.run {
