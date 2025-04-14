@@ -57,13 +57,7 @@ class AuthController @Inject()(
     }).flatMap {
       case Left(result) => Future.successful(result)
       case Right(authInfo) => for {
-        profileGeneral <- socialProviderRegistry.get[YouTubeProvider].get.retrieveProfile(authInfo)
-        profile <- profileGeneral match {
-          case commonProfile: CommonSocialProfile =>
-            Future.successful(commonProfile)
-          case _ =>
-            Future.failed(new IllegalStateException("Expected YoutubeProfile"))
-        }
+        profile <- socialProviderRegistry.get[YouTubeProvider].get.retrieveProfile(authInfo)
         user <- loginInfoRepository.findUser(profile.loginInfo) flatMap {
           case Some(existingUser) => Future.successful(existingUser)
           case None => userRepository.create(profile.fullName.getOrElse("Unknown Name"))
