@@ -1,0 +1,17 @@
+package models
+
+import slick.jdbc.JdbcProfile
+import slick.lifted.TableQuery
+
+trait UserComponent {
+  protected val profile: JdbcProfile
+  import profile.api._
+
+  class UsersTable(tag: Tag) extends Table[User](tag, "users") {
+    def userId = column[Long]("user_id", O.PrimaryKey, O.AutoInc)
+    def userName = column[String]("user_name")
+    def * = (userId, userName) <> ((User.apply _).tupled, User.unapply)
+  }
+
+  val usersTable = TableQuery[UsersTable]
+}
