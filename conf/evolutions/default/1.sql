@@ -21,6 +21,7 @@ CREATE TABLE "yt_users" (
 CREATE TABLE "yt_streamer" (
     "channel_id" varchar(24) NOT NULL PRIMARY KEY,
     "onwer_user_id" bigint not null,
+    "current_balance_number" bigint NOT NULL,
     CONSTRAINT fk_yt_streamer_with_users
               FOREIGN KEY ("onwer_user_id")
                   REFERENCES "users" ("user_id")

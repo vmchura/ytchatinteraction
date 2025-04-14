@@ -18,9 +18,10 @@ class YtStreamerRepository @Inject()(
   import profile.api._
   
 
-  def create(channelId: String, ownerUserId: Long): Future[YtStreamer] = db.run {
-    (ytStreamersTable.map(s => (s.channelId, s.ownerUserId))
-      += (channelId, ownerUserId)).map(_ => YtStreamer(channelId, ownerUserId))
+  def create(channelId: String, ownerUserId: Long, currentBalanceNumber: Int = 0): Future[YtStreamer] = db.run {
+    (ytStreamersTable.map(s => (s.channelId, s.ownerUserId, s.currentBalanceNumber))
+      += (channelId, ownerUserId, currentBalanceNumber)).map(_ => 
+        YtStreamer(channelId, ownerUserId, currentBalanceNumber))
   }
 
   def list(): Future[Seq[YtStreamer]] = db.run {
@@ -41,8 +42,25 @@ class YtStreamerRepository @Inject()(
   
   def update(ytStreamer: YtStreamer): Future[Int] = db.run {
     ytStreamersTable.filter(_.channelId === ytStreamer.channelId)
-      .map(_.ownerUserId)
-      .update(ytStreamer.ownerUserId)
+      .map(s => (s.ownerUserId, s.currentBalanceNumber))
+      .update((ytStreamer.ownerUserId, ytStreamer.currentBalanceNumber))
+  }
+  
+  def updateBalance(channelId: String, newBalance: Int): Future[Int] = db.run {
+    ytStreamersTable
+      .filter(_.channelId === channelId)
+      .map(_.currentBalanceNumber)
+      .update(newBalance)
+  }
+  
+  def incrementBalance(channelId: String, amount: Int = 1): Future[Int] = {
+    val streamerFilter = ytStreamersTable.filter(_.channelId === channelId).map(_.currentBalanceNumber)
+    val transactional = (for {
+      current_amount <- streamerFilter.result.headOption
+      updated_value <- streamerFilter.update(current_amount.getOrElse(0) + amount)
+    } yield updated_value).transactionally
+    
+    db.run(transactional)
   }
   
   // Get table query for use by other repositories (like UserStreamerState)
