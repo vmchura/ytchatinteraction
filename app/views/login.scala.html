@@ -1,0 +1,22 @@
+@()(implicit request: RequestHeader, messages: Messages)
+
+@main("Login") {
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">Sign In</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="@controllers.routes.AuthController.authenticate("youtube")" class="btn btn-danger">
+                                <i class="fa fa-youtube"></i> Sign in with YouTube
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
