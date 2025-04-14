@@ -16,3 +16,4 @@ server.pid
 .cache
 conf/production.conf
 .idea/
+.bsp/
