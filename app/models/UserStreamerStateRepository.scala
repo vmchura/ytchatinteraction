@@ -2,6 +2,7 @@ package models
 
 import javax.inject.{Inject, Singleton}
 import play.api.db.slick.DatabaseConfigProvider
+import slick.dbio
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,9 +21,10 @@ class UserStreamerStateRepository @Inject()(
   
   // No need to override tables since inheritance already provides access
 
-  def create(userId: Long, streamerChannelId: String): Future[UserStreamerState] = db.run {
-    (userStreamerStateTable.map(s => (s.userId, s.streamerChannelId))
-      += (userId, streamerChannelId)).map(_ => UserStreamerState(userId, streamerChannelId))
+  def create(userId: Long, streamerChannelId: String, currentBalanceNumber: Int = 0): Future[UserStreamerState] = db.run {
+    (userStreamerStateTable.map(s => (s.userId, s.streamerChannelId, s.currentBalanceNumber))
+      += (userId, streamerChannelId, currentBalanceNumber)).map(_ => 
+        UserStreamerState(userId, streamerChannelId, currentBalanceNumber))
   }
 
   def list(): Future[Seq[UserStreamerState]] = db.run {
@@ -42,6 +44,30 @@ class UserStreamerStateRepository @Inject()(
       .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
       .exists
       .result
+  }
+  
+  def updateBalance(userId: Long, streamerChannelId: String, newBalance: Int): Future[Int] = db.run {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .map(_.currentBalanceNumber)
+      .update(newBalance)
+  }
+  
+  def incrementBalance(userId: Long, streamerChannelId: String, amount: Int = 1): Future[Int] = {
+    val transactional = (for {
+      current_amount <- userStreamerStateTable
+        .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+        .map(s => s.currentBalanceNumber).result.headOption
+      updated_vale <- userStreamerStateTable
+        .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+        .map(s => s.currentBalanceNumber).update(current_amount.getOrElse(0) + amount)
+    } yield {
+      updated_vale
+    }).transactionally
+
+    db.run {
+      transactional
+    }
   }
   
   def delete(userId: Long, streamerChannelId: String): Future[Int] = db.run {
