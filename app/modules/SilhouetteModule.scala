@@ -14,10 +14,11 @@ import play.silhouette.api.services.{AuthenticatorService, IdentityService}
 import play.silhouette.api.util.{Clock, FingerprintGenerator, HTTPLayer, IDGenerator, PasswordHasherRegistry, PlayHTTPLayer}
 import play.silhouette.crypto.{JcaCrypter, JcaCrypterSettings, JcaSigner, JcaSignerSettings}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService, CookieAuthenticatorSettings}
-import play.silhouette.impl.providers.{DefaultSocialStateHandler, SocialProviderRegistry, SocialStateHandler, OAuth2Info as SilhouetteOAuth2Info}
+import play.silhouette.impl.providers.{DefaultSocialStateHandler, SocialProviderRegistry, SocialStateHandler, OAuth2Info as SilhouetteOAuth2Info, OAuth2InfoService as SilhouetteOAuth2InfoService}
 import play.silhouette.impl.providers.state.{CsrfStateItemHandler, CsrfStateSettings}
 import play.silhouette.impl.util.{DefaultFingerprintGenerator, SecureRandomIDGenerator}
 import play.silhouette.persistence.repositories.DelegableAuthInfoRepository
+import providers.{YouTubeProvider, YouTubeProviderFactory}
 import services.{UserService, UserServiceImpl}
 
 import java.util.concurrent.TimeUnit
@@ -62,10 +63,10 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
    */
   @Provides
   def provideEnvironment(
-                          userService: UserService,
-                          authenticatorService: AuthenticatorService[CookieAuthenticator],
-                          eventBus: EventBus
-                        ): Environment[DefaultEnv] = {
+    userService: UserService,
+    authenticatorService: AuthenticatorService[CookieAuthenticator],
+    eventBus: EventBus
+  ): Environment[DefaultEnv] = {
     Environment[DefaultEnv](
       userService,
       authenticatorService,
@@ -103,13 +104,13 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
   /**
    * Provides the authenticator service.
    *
-   * @param signer               The signer implementation.
-   * @param crypter              The crypter implementation.
+   * @param signer The signer implementation.
+   * @param crypter The crypter implementation.
    * @param cookieHeaderEncoding Logic for encoding and decoding `Cookie` and `Set-Cookie` headers.
    * @param fingerprintGenerator The fingerprint generator implementation.
-   * @param idGenerator          The ID generator implementation.
-   * @param configuration        The Play configuration.
-   * @param clock                The clock instance.
+   * @param idGenerator The ID generator implementation.
+   * @param configuration The Play configuration.
+   * @param clock The clock instance.
    * @return The authenticator service.
    */
   @Provides
@@ -132,25 +133,49 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
       authenticatorExpiry = FiniteDuration.apply(configuration.underlying.getDuration("silhouette.authenticator.authenticatorExpiry").toMinutes, TimeUnit.MINUTES)
     )
     val authenticatorEncoder = new CrypterAuthenticatorEncoder(crypter)
-
     new CookieAuthenticatorService(config, None, signer, cookieHeaderEncoding, authenticatorEncoder, fingerprintGenerator, idGenerator, clock)
+
+  }
+  /**
+   * Provides the OAuth2 info service.
+   *
+   * @param oauth2InfoRepository The OAuth2 info repository implementation.
+   * @return The OAuth2 info service.
+   */
+  @Provides
+  def provideOAuth2InfoService(
+    oauth2InfoRepository: OAuth2InfoRepository
+  ): SilhouetteOAuth2InfoService = {
+    new SilhouetteOAuth2InfoService(oauth2InfoRepository)
   }
 
+  /**
+   * Provides the auth info repository.
+   *
+   * @param oauth2InfoService The OAuth2 info service implementation.
+   * @return The auth info repository instance.
+   */
+  @Provides
+  def provideAuthInfoRepository(
+    oauth2InfoService: SilhouetteOAuth2InfoService
+  ): DelegableAuthInfoRepository = {
+    new DelegableAuthInfoRepository(oauth2InfoService)
+  }
 
   /**
    * Provides the CSRF state item handler.
    *
-   * @param idGenerator   The ID generator implementation.
-   * @param signer        The signer implementation.
+   * @param idGenerator The ID generator implementation.
+   * @param signer The signer implementation.
    * @param configuration The Play configuration.
    * @return The CSRF state item handler implementation.
    */
   @Provides
   def provideCsrfStateItemHandler(
-                                   idGenerator: IDGenerator,
-                                   @Named("authenticator-signer") signer: Signer,
-                                   configuration: Configuration
-                                 ): CsrfStateItemHandler = {
+    idGenerator: IDGenerator,
+    @Named("authenticator-signer") signer: Signer,
+    configuration: Configuration
+  ): CsrfStateItemHandler = {
     val settings = CsrfStateSettings(
       cookieName = configuration.get[String]("silhouette.csrfStateItemHandler.cookieName"),
       cookiePath = configuration.get[String]("silhouette.csrfStateItemHandler.cookiePath"),
@@ -175,5 +200,34 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
                                  csrfStateItemHandler: CsrfStateItemHandler): SocialStateHandler = {
 
     new DefaultSocialStateHandler(Set(csrfStateItemHandler), signer)
+  }
+  
+  /**
+   * Provides the YouTube provider.
+   *
+   * @param httpLayer The HTTP layer implementation.
+   * @param stateHandler The social state handler.
+   * @param settings The YouTube OAuth2 settings.
+   * @return The YouTube provider.
+   */
+  @Provides
+  def provideYouTubeProvider(
+    httpLayer: HTTPLayer,
+    socialStateHandler: SocialStateHandler,
+    configuration: Configuration): YouTubeProvider = {
+    new YouTubeProvider(httpLayer, stateHandler, configuration.underlying.as[OAuth2Settings]("silhouette.youtube"))
+  }
+  
+  /**
+   * Provides the social provider registry.
+   *
+   * @param youTubeProvider The YouTube provider implementation.
+   * @return The social provider registry.
+   */
+  @Provides
+  def provideSocialProviderRegistry(
+    youTubeProvider: YouTubeProvider
+  ): SocialProviderRegistry = {
+    SocialProviderRegistry(Seq(youTubeProvider))
   }
 }
