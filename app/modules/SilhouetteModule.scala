@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.duration.*
+import scala.reflect.ClassTag
 
 /**
  * The Silhouette module.
@@ -44,6 +45,9 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
 
     // Configure Auth Info Repository
     bind[DelegableAuthInfoDAO[OAuth2Info]].to[OAuth2InfoRepository]
+    
+    // Explicitly bind the ClassTag for OAuth2Info
+    bind[ClassTag[OAuth2Info]].toInstance(implicitly[ClassTag[OAuth2Info]])
   }
 
   /**
