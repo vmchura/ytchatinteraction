@@ -11,6 +11,23 @@ libraryDependencies ++= Seq(
   "org.scalatestplus.play" %% "scalatestplus-play" % scalaTestPlusPlayVersion % Test,
   "org.playframework" %% "play-slick" % slickVersion,
   "org.playframework" %% "play-slick-evolutions" % slickVersion,
+  
+  // PostgreSQL driver for production
+  "org.postgresql" % "postgresql" % postgresql,
+  
+  // Silhouette dependencies
+  "org.playframework.silhouette" %% "play-silhouette" % silhouetteVersion,
+  "org.playframework.silhouette" %% "play-silhouette-password-bcrypt" % silhouetteVersion,
+  "org.playframework.silhouette" %% "play-silhouette-persistence" % silhouetteVersion,
+  "org.playframework.silhouette" %% "play-silhouette-crypto-jca" % silhouetteVersion,
+  "org.playframework.silhouette" %% "play-silhouette-totp" % silhouetteVersion,
+  "org.playframework.silhouette" %% "play-silhouette-testkit" % silhouetteVersion % Test,
+
+  // Utilities for Silhouette
+  "com.iheart" %% "ficus" % "1.5.2",   // Typesafe config utilities
+  "net.codingwell" %% "scala-guice" % "6.0.0",  // For Dependency Injection
+  
+  // Keep existing dependencies
   "com.h2database" % "h2" % "2.3.232",
   "org.webjars" %% "webjars-play" % "3.0.2",
   "org.webjars" % "flot" % "0.8.3-1",
@@ -28,4 +45,3 @@ libraryDependencies ++= Seq(
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds"
 Test / javaOptions ++= Seq("-Dconfig.file=conf/test.conf")
-
