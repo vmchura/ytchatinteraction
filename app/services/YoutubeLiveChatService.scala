@@ -29,6 +29,42 @@ class YoutubeLiveChatService @Inject()(
   private val apiKey = config.get[String]("youtube.api.key")
   
   /**
+   * Retrieves the live chat ID for a given YouTube stream ID
+   * @param streamId The YouTube video/stream ID
+   * @return Future containing the live chat ID if found
+   */
+  def getLiveChatId(streamId: String): Future[Option[String]] = {
+    val url = "https://www.googleapis.com/youtube/v3/videos"
+    
+    val queryParams = Map(
+      "part" -> "liveStreamingDetails,snippet",
+      "id" -> streamId,
+      "key" -> apiKey
+    )
+    
+    ws.url(url)
+      .withQueryStringParameters(queryParams.toSeq: _*)
+      .get()
+      .map { response =>
+        val json = response.json
+        
+        // Check if the request was successful and items exist
+        val items = (json \ "items").as[JsArray].value
+        if (items.isEmpty) {
+          None
+        } else {
+          // Extract the live chat ID from the first item
+          (items.head \ "liveStreamingDetails" \ "activeLiveChatId").asOpt[String]
+        }
+      }
+      .recover {
+        case e: Exception =>
+          println(s"Error retrieving live chat ID: ${e.getMessage}")
+          None
+      }
+  }
+  
+  /**
    * Start monitoring the live chat for a specific streamer
    * @param streamerChatId The YouTube live chat ID to monitor
    * @return Future that completes when the initial polling is set up
