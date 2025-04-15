@@ -88,10 +88,8 @@ class AuthController @Inject()(
             )
             ytUserRepository.createFull(newYtUser)
         }
-        // Save login info for this user
-        _ <- loginInfoRepository.add(user.userId, profile.loginInfo)
-        // Save OAuth2 info for this user
-        _ <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
+        loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
+        oauthInfoInsert <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
         authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
         value <- silhouette.env.authenticatorService.init(authenticator)
         result <- silhouette.env.authenticatorService.embed(value, Redirect(routes.HomeController.index()))
