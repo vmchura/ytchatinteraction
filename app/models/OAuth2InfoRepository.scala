@@ -71,10 +71,10 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
 
         result <- ytUserOpt match {
           case Some(_) =>
-            // Insert the OAuth2 info
-            (oauth2InfoTable returning oauth2InfoTable.map(_.id) into ((info, id) => info.copy(id = Some(id))))
+            // Insert the OAuth2 info and get back only the id
+            (oauth2InfoTable returning oauth2InfoTable.map(_.id))
               .+=(dbOAuth2Info)
-              .map(_.toSilhouetteOAuth2Info)
+              .map(id => dbOAuth2Info.copy(id = Some(id)).toSilhouetteOAuth2Info)
 
           case None =>
             // YtUser not found
