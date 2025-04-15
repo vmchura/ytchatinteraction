@@ -1,15 +1,43 @@
-@(title: String)(content: Html)
-
+@import play.api.mvc.ControllerHelpers.request2flash
+@import models.User
+@(title: String, user: Option[User] = None)(content: Html)(implicit flash: Flash)
 <!DOCTYPE html>
-
-<html>
-<head>
-    <title>@title</title>
-    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
-    <link rel="stylesheet" href="@routes.Assets.versioned("lib/picocss__pico/css/pico.min.css")">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-@content
-</body>
+<html lang="en" data-theme="dark">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>@title</title>
+        <link rel="stylesheet" href="@routes.Assets.versioned("lib/picocss__pico/css/pico.min.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+    </head>
+    <body>
+        <nav class="container">
+            <ul>
+                <li>
+                    <a href="@routes.HomeController.home()" class="contrast"><strong>YT Chat Interaction</strong></a>
+                </li>
+            </ul>
+            <ul>
+                @user.map { u =>
+                    <li><a href="@routes.HomeController.home()">Dashboard</a></li>
+                    <li>@u.userName</li>
+                    <li><a href="@routes.AuthController.signOut" role="button" class="contrast" id="logout">Logout</a></li>
+                }.getOrElse {
+                    <li><a href="@routes.AuthController.authenticate("youtube")" role="button">Login with YouTube</a></li>
+                }
+            </ul>
+        </nav>
+        <main class="container">
+            @flash.get("error").map { error =>
+                <article class="error">@error</article>
+            }
+            @flash.get("success").map { successMessage =>
+                <article class="success">@successMessage</article>
+            }
+            @content
+        </main>
+        <footer class="container">
+            <small>&copy; 2025 YT Chat Interaction</small>
+        </footer>
+    </body>
 </html>

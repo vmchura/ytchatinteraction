@@ -1,6 +1,7 @@
-@(webSocketUrl: String)(implicit webJarsUtil: org.webjars.play.WebJarsUtil)
+@import play.api.mvc.ControllerHelpers.request2flash
+@(webSocketUrl: String)(implicit webJarsUtil: org.webjars.play.WebJarsUtil, flash: Flash)
 
-@main("Chat Room") {
+@main("Chat Room", None) {
   <div class="container">
     <header class="container">
       <h1>Chat Room</h1>
