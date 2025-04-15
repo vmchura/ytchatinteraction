@@ -32,6 +32,7 @@ libraryDependencies ++= Seq(
   "org.webjars" %% "webjars-play" % "3.0.2",
   "org.webjars" % "flot" % "0.8.3-1",
   "org.webjars" % "bootstrap" % "3.3.7-1",
+  "org.webjars.npm" % "picocss__pico" % "2.1.1",
   "net.logstash.logback" % "logstash-logback-encoder" % "7.3",
   "org.jsoup" % "jsoup" % "1.18.1",
   "ch.qos.logback" % "logback-classic" % "1.5.8",
