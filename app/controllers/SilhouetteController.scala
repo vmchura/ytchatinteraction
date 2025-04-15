@@ -29,7 +29,6 @@ abstract class SilhouetteController(override protected val controllerComponents:
   def clock: Clock = controllerComponents.clock
   def credentialsProvider: CredentialsProvider = controllerComponents.credentialsProvider
   def socialProviderRegistry: SocialProviderRegistry = controllerComponents.socialProviderRegistry
-  def totpProvider: GoogleTotpProvider = controllerComponents.totpProvider
   def avatarService: AvatarService = controllerComponents.avatarService
 
   def silhouette: Silhouette[EnvType] = controllerComponents.silhouette
@@ -48,7 +47,6 @@ trait SilhouetteComponents {
   def clock: Clock
   def credentialsProvider: CredentialsProvider
   def socialProviderRegistry: SocialProviderRegistry
-  def totpProvider: GoogleTotpProvider
   def avatarService: AvatarService
 
   def silhouette: Silhouette[EnvType]
@@ -64,7 +62,6 @@ final case class DefaultSilhouetteControllerComponents @Inject() (
   clock: Clock,
   credentialsProvider: CredentialsProvider,
   socialProviderRegistry: SocialProviderRegistry,
-  totpProvider: GoogleTotpProvider,
   avatarService: AvatarService,
   messagesActionBuilder: MessagesActionBuilder,
   actionBuilder: DefaultActionBuilder,

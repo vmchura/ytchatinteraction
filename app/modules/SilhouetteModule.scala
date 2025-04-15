@@ -2,6 +2,7 @@ package modules
 
 import com.google.inject.{AbstractModule, Provides}
 import com.google.inject.name.Named
+import controllers.{DefaultRememberMeConfig, DefaultSilhouetteControllerComponents, RememberMeConfig, SilhouetteControllerComponents}
 import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository}
 import models.User
 import net.codingwell.scalaguice.ScalaModule
@@ -11,13 +12,15 @@ import play.api.mvc.{Cookie, CookieHeaderEncoding}
 import play.silhouette.api.{Environment, EventBus, Silhouette, SilhouetteProvider}
 import play.silhouette.api.crypto.{Crypter, CrypterAuthenticatorEncoder, Signer}
 import play.silhouette.api.repositories.AuthInfoRepository
-import play.silhouette.api.services.{AuthenticatorService, IdentityService}
+import play.silhouette.api.services.{AuthenticatorService, AvatarService, IdentityService}
 import play.silhouette.api.util.{Clock, FingerprintGenerator, HTTPLayer, IDGenerator, PasswordHasherRegistry, PlayHTTPLayer}
 import play.silhouette.crypto.{JcaCrypter, JcaCrypterSettings, JcaSigner, JcaSignerSettings}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService, CookieAuthenticatorSettings}
 import play.silhouette.impl.providers.*
 import play.silhouette.impl.providers.state.{CsrfStateItemHandler, CsrfStateSettings}
+import play.silhouette.impl.services.GravatarService
 import play.silhouette.impl.util.{DefaultFingerprintGenerator, SecureRandomIDGenerator}
+import play.silhouette.password.{BCryptPasswordHasher, BCryptSha256PasswordHasher}
 import play.silhouette.persistence.daos.DelegableAuthInfoDAO
 import play.silhouette.persistence.repositories.DelegableAuthInfoRepository
 import providers.YouTubeProvider
@@ -228,5 +231,36 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     youTubeProvider: YouTubeProvider
   ): SocialProviderRegistry = {
     SocialProviderRegistry(Seq(youTubeProvider))
+  }
+
+  @Provides
+  def providePasswordHasherRegistry(): PasswordHasherRegistry = {
+    PasswordHasherRegistry(new BCryptSha256PasswordHasher(), Seq(new BCryptPasswordHasher()))
+  }
+
+  @Provides
+  def provideCredentialsProvider(
+                                  authInfoRepository: AuthInfoRepository,
+                                  passwordHasherRegistry: PasswordHasherRegistry): CredentialsProvider = {
+
+    new CredentialsProvider(authInfoRepository, passwordHasherRegistry)
+  }
+
+  @Provides
+  def providesRememberMeConfig(configuration: Configuration): RememberMeConfig = {
+
+    DefaultRememberMeConfig(
+      expiry = FiniteDuration.apply(configuration.underlying.getDuration("silhouette.authenticator.rememberMe.authenticatorExpiry").toMinutes, TimeUnit.MINUTES),
+      idleTimeout = Some(FiniteDuration.apply(configuration.underlying.getDuration("silhouette.authenticator.rememberMe.authenticatorIdleTimeout").toMinutes, TimeUnit.MINUTES)),
+      cookieMaxAge = Some(FiniteDuration.apply(configuration.underlying.getDuration("silhouette.authenticator.rememberMe.cookieMaxAge").toMinutes, TimeUnit.MINUTES))
+    )
+  }
+
+  @Provides
+  def provideAvatarService(httpLayer: HTTPLayer): AvatarService = new GravatarService(httpLayer)
+
+  @Provides
+  def providesSilhouetteComponents(components: DefaultSilhouetteControllerComponents): SilhouetteControllerComponents = {
+    components
   }
 }
