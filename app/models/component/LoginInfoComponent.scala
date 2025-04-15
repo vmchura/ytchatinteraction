@@ -1,5 +1,6 @@
-package models
+package models.component
 
+import models.LoginInfo
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
 
@@ -7,7 +8,7 @@ trait LoginInfoComponent {
   self: UserComponent =>
   
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   class LoginInfoTable(tag: Tag) extends Table[LoginInfo](tag, "login_info") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

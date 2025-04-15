@@ -1,7 +1,8 @@
 package controllers
 
+import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository, YtUserRepository}
 import javax.inject.Inject
-import models.{LoginInfoRepository, OAuth2InfoRepository, User, UserRepository, YtUser, YtUserRepository}
+import models.{User, YtUser}
 import play.api.i18n.I18nSupport
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Cookie, Request, Result}
 import play.silhouette.api.Authenticator.Implicits._

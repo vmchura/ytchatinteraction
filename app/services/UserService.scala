@@ -1,7 +1,8 @@
 package services
 
+import models.repository.{LoginInfoRepository, UserRepository, YtUserRepository}
 import javax.inject.Inject
-import models.{LoginInfoRepository, User, UserRepository, YtUserRepository}
+import models.User
 import play.silhouette.api.LoginInfo
 import play.silhouette.api.services.IdentityService
 

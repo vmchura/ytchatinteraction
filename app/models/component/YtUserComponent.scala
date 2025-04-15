@@ -1,14 +1,17 @@
-package models
+package models.component
 
+import models.YtUser
+import models.component.UserComponent
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
+
 import java.time.Instant
 
 trait YtUserComponent {
   self: UserComponent =>
   
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   // Implicit mapper for Instant
   given BaseColumnType[Instant] = MappedColumnType.base[Instant, java.sql.Timestamp](

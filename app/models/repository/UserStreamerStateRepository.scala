@@ -1,11 +1,14 @@
-package models
+package models.repository
 
-import javax.inject.{Inject, Singleton}
+import models.component.{UserComponent, UserStreamerStateComponent, YtStreamerComponent}
+import models.repository.UserRepository
+import models.UserStreamerState
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio
-import slick.jdbc.JdbcProfile
 import slick.dbio.DBIO
+import slick.jdbc.JdbcProfile
 
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -17,8 +20,8 @@ class UserStreamerStateRepository @Inject()(
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
   
   // No need to override tables since inheritance already provides access
 

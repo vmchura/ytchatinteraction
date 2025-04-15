@@ -3,17 +3,18 @@ package services
 import javax.inject.{Inject, Singleton}
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
 import org.apache.pekko.actor.typed.scaladsl.{Behaviors, TimerScheduler}
-import org.apache.pekko.actor.typed.scaladsl.adapter._
+import org.apache.pekko.actor.typed.scaladsl.adapter.*
 import play.api.libs.ws.WSClient
-import play.api.libs.json._
+import play.api.libs.json.*
 import play.api.Configuration
-import models._
+import models.*
+import models.repository.{UserStreamerStateRepository, YtStreamerRepository}
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
-import scala.util.{Success, Failure}
+import scala.concurrent.duration.*
+import scala.util.{Failure, Success}
 
 /**
  * Service for handling YouTube Live Chat polling

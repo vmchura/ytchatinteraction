@@ -1,5 +1,7 @@
-package models
+package models.component
 
+import models.YtStreamer
+import models.component.UserComponent
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
 
@@ -7,7 +9,7 @@ trait YtStreamerComponent {
   self: UserComponent =>
   
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   class YtStreamersTable(tag: Tag) extends Table[YtStreamer](tag, "yt_streamer") {
     def channelId = column[String]("channel_id", O.PrimaryKey)

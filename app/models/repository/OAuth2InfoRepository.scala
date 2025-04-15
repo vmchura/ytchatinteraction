@@ -1,12 +1,14 @@
-package models
+package models.repository
 
-import javax.inject.{Inject, Singleton}
+import models.component.{OAuth2InfoComponent, UserComponent, YtUserComponent}
+import models.OAuth2Info
 import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
 import play.silhouette.api.LoginInfo
 import play.silhouette.persistence.daos.DelegableAuthInfoDAO
+import slick.jdbc.JdbcProfile
 
 import java.time.Instant
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
@@ -19,8 +21,8 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
 
   /**
    * Finds the OAuth2 info for the specified login info.

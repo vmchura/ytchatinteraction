@@ -1,10 +1,13 @@
-package models
+package models.repository
+
+import models.YtStreamer
+import models.component.{UserComponent, YtStreamerComponent}
+import models.repository.UserRepository
+import play.api.db.slick.DatabaseConfigProvider
+import slick.dbio.DBIO
+import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
-import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
-import slick.dbio.DBIO
-
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -15,8 +18,8 @@ class YtStreamerRepository @Inject()(
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
   
 
   def create(channelId: String, ownerUserId: Long, currentBalanceNumber: Int = 0): Future[YtStreamer] = db.run {

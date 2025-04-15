@@ -1,30 +1,31 @@
-package models
+package models.repository
 
+import models.YtUser
+import models.repository.{OAuth2InfoRepository, YtUserRepository}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito
+import org.mockito.Mockito.when
+import org.scalatest.BeforeAndAfterEach
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.test.Injecting
-import play.silhouette.impl.providers.OAuth2Info
-import play.silhouette.api.LoginInfo
+import play.api.Application
+import play.api.db.evolutions.*
 import play.api.db.slick.DatabaseConfigProvider
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.*
-import javax.inject.Inject
-import org.scalatest.BeforeAndAfterEach
 import play.api.db.{DBApi, Database}
-import play.api.db.evolutions.{ClassLoaderEvolutionsReader, Evolution, Evolutions, ResourceEvolutionsReader, SimpleEvolutionsReader}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers.*
-import slick.jdbc.{H2Profile, JdbcProfile}
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
-import org.mockito.Mockito
-import org.scalatestplus.mockito.MockitoSugar
-import play.api.Application
+import play.api.test.Injecting
 import play.db.evolutions.EvolutionsReader
+import play.silhouette.api.LoginInfo
+import play.silhouette.impl.providers.OAuth2Info
+import slick.jdbc.{H2Profile, JdbcProfile}
 
 import java.io.File
+import javax.inject.Inject
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.*
+import scala.concurrent.{Await, Future}
 
 class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injecting with BeforeAndAfterEach with MockitoSugar {
 

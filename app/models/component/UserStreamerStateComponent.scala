@@ -1,5 +1,7 @@
-package models
+package models.component
 
+import models.component.UserComponent
+import models.UserStreamerState
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
 
@@ -7,7 +9,7 @@ trait UserStreamerStateComponent {
   self: UserComponent with YtStreamerComponent =>
   
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   class UserStreamerStateTable(tag: Tag) extends Table[UserStreamerState](tag, "user_streamer_state") {
     def userId = column[Long]("user_id")

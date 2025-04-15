@@ -1,10 +1,12 @@
-package models
+package models.repository
+
+import models.component.{LoginInfoComponent, UserComponent}
+import models.{LoginInfo, User}
+import play.api.db.slick.DatabaseConfigProvider
+import play.silhouette.api.LoginInfo as SilhouetteLoginInfo
+import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
-import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
-import play.silhouette.api.{LoginInfo => SilhouetteLoginInfo}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -15,8 +17,8 @@ class LoginInfoRepository @Inject()(
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
   
   /**
    * Saves login info.

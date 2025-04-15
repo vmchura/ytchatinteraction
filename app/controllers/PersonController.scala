@@ -1,14 +1,14 @@
 package controllers
 
-import javax.inject._
-
-import models._
+import javax.inject.*
+import models.*
+import models.repository.PersonRepository
 import play.api.data.Form
-import play.api.data.Forms._
-import play.api.data.validation.Constraints._
-import play.api.i18n._
+import play.api.data.Forms.*
+import play.api.data.validation.Constraints.*
+import play.api.i18n.*
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 
 import scala.concurrent.{ExecutionContext, Future}
 

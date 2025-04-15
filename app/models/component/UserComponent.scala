@@ -1,11 +1,12 @@
-package models
+package models.component
 
+import models.User
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
 
 trait UserComponent {
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   class UsersTable(tag: Tag) extends Table[User](tag, "users") {
     def userId = column[Long]("user_id", O.PrimaryKey, O.AutoInc)

@@ -1,20 +1,22 @@
-package models
+package models.repository
 
+import models.User
+import models.repository.UserRepository
+import org.scalatest.BeforeAndAfterEach
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
-import play.api.test.Injecting
-import play.api.db.slick.DatabaseConfigProvider
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.*
-import org.scalatest.BeforeAndAfterEach
-import play.api.db.{DBApi, Database}
+import play.api.Application
 import play.api.db.evolutions.{Evolution, Evolutions, SimpleEvolutionsReader}
+import play.api.db.slick.DatabaseConfigProvider
+import play.api.db.{DBApi, Database}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.Helpers.*
-import org.scalatestplus.mockito.MockitoSugar
-import play.api.Application
+import play.api.test.Injecting
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.*
+import scala.concurrent.{Await, Future}
 
 class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injecting with BeforeAndAfterEach with MockitoSugar {
 

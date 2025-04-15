@@ -1,10 +1,13 @@
-package models
+package models.repository
 
-import javax.inject.{Inject, Singleton}
+import models.YtUser
+import models.component.{UserComponent, YtUserComponent}
+import models.repository.UserRepository
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
-import java.time.Instant
 
+import java.time.Instant
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
@@ -15,8 +18,8 @@ class YtUserRepository @Inject()(
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
   
   /**
    * Create a new YouTube user with minimal information

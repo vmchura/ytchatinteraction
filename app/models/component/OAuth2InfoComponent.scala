@@ -1,14 +1,16 @@
-package models
+package models.component
 
+import models.OAuth2Info
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
+
 import java.time.Instant
 
 trait OAuth2InfoComponent {
   self: YtUserComponent =>
   
   protected val profile: JdbcProfile
-  import profile.api._
+  import profile.api.*
 
   // Implicit mapper for Instant
 

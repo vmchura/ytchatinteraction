@@ -1,18 +1,20 @@
-package models
+package models.repository
+
+import models.User
+import models.component.UserComponent
+import play.api.db.slick.DatabaseConfigProvider
+import slick.dbio.DBIO
+import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
-import play.api.db.slick.DatabaseConfigProvider
-import slick.jdbc.JdbcProfile
-import slick.dbio.DBIO
-
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) extends UserComponent {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
-  import dbConfig._
-  import profile.api._
+  import dbConfig.*
+  import profile.api.*
 
   // Expose the TableQuery for foreign key references
   def getTableQuery = usersTable

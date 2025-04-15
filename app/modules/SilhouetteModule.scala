@@ -2,7 +2,8 @@ package modules
 
 import com.google.inject.{AbstractModule, Provides}
 import com.google.inject.name.Named
-import models.{LoginInfoRepository, OAuth2InfoRepository, User, UserRepository}
+import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository}
+import models.User
 import net.codingwell.scalaguice.ScalaModule
 import play.api.Configuration
 import play.api.libs.ws.WSClient

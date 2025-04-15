@@ -1,7 +1,8 @@
 package services
 
 import javax.inject.{Inject, Singleton}
-import models._
+import models.*
+import models.repository.{UserRepository, UserStreamerStateRepository, YtStreamerRepository}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 
