@@ -30,8 +30,6 @@ libraryDependencies ++= Seq(
   // Keep existing dependencies
   "com.h2database" % "h2" % "2.3.232",
   "org.webjars" %% "webjars-play" % "3.0.2",
-  "org.webjars" % "flot" % "0.8.3-1",
-  "org.webjars" % "bootstrap" % "3.3.7-1",
   "org.webjars.npm" % "picocss__pico" % "2.1.1",
   "net.logstash.logback" % "logstash-logback-encoder" % "7.3",
   "org.jsoup" % "jsoup" % "1.18.1",
