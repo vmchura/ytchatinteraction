@@ -6,8 +6,8 @@
 GET     /                           controllers.PersonController.index
 POST    /person                     controllers.PersonController.addPerson
 GET     /persons                    controllers.PersonController.getPersons
-GET     /chat                       controllers.HomeController.chat()
-GET     /chatIndex                  controllers.HomeController.index()
+GET     /streamerevents                       controllers.HomeController.streamerevents()
+GET     /home                  controllers.HomeController.home()
 
 # Authentication routes
 GET     /login                      controllers.AuthController.login

@@ -47,13 +47,12 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, i
     Flow.fromSinkAndSource(chatSink, chatSource)
   }
 
-  def index: Action[AnyContent] = Action { implicit request: RequestHeader =>
-    val webSocketUrl = routes.HomeController.chat().webSocketURL()
-    logger.info(s"index: ")
-    Ok(views.html.chat(webSocketUrl))
+  def home: Action[AnyContent] = Action { implicit request: RequestHeader =>
+    val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
+    Ok(views.html.home(webSocketUrl))
   }
 
-  def chat(): WebSocket = {
+  def streamerevents(): WebSocket = {
     WebSocket.acceptOrResult[WSMessage, WSMessage] {
       case rh if sameOriginCheck(rh) =>
         Future.successful(userFlow).map { flow =>
