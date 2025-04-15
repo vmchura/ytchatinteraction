@@ -1,47 +1,70 @@
-$( document ).ready(function() {
-	if ("WebSocket" in window) {
-       console.log("WebSocket is supported by your Browser!");
-    } else {
-    	console.log("WebSocket NOT supported by your Browser!");
-    	return;
-    }
-	var getScriptParamUrl = function() {
-	    var scripts = document.getElementsByTagName('script');
-	    var lastScript = scripts[scripts.length-1];
-	    return lastScript.getAttribute('data-url');
-	};
+document.addEventListener('DOMContentLoaded', function() {
+  if ("WebSocket" in window) {
+    console.log("WebSocket is supported by your Browser!");
+  } else {
+    console.log("WebSocket NOT supported by your Browser!");
+    return;
+  }
 
-	var send = function() {
-		var text = $message.val();
-		$message.val("");
-		connection.send(text);
-	};
+  // Get elements
+  const messagesElement = document.getElementById('messages');
+  const sendButton = document.getElementById('send');
+  const messageInput = document.getElementById('message');
 
-	var $messages = $("#messages"), $send = $("#send"), $message = $("#message");
+  // Get WebSocket URL from script attribute
+  const getScriptParamUrl = function() {
+    const scripts = document.getElementsByTagName('script');
+    const lastScript = scripts[scripts.length-1];
+    return lastScript.getAttribute('data-url');
+  };
 
-	var url = getScriptParamUrl();
-	var connection = new WebSocket(url);
+  // Send message function
+  const send = function() {
+    const text = messageInput.value;
+    messageInput.value = "";
+    connection.send(text);
+  };
 
-	$send.prop("disabled", true);
+  // Create WebSocket connection
+  const url = getScriptParamUrl();
+  const connection = new WebSocket(url);
 
-	connection.onopen = function() {
-		$send.prop("disabled", false);
-		$messages
-				.prepend($("<li class='bg-info' style='font-size: 1.5em'>Connected</li>"));
-		$send.on('click', send);
-		$message.keypress(function(event) {
-			var keycode = (event.keyCode ? event.keyCode : event.which);
-			if (keycode == '13') {
-				send();
-			}
-		});
-	};
-	connection.onerror = function(error) {
-		console.log('WebSocket Error ', error);
-	};
-	connection.onmessage = function(event) {
-		$messages.append($("<li style='font-size: 1.5em'>" + event.data + "</li>"))
-	}
+  // Disable send button until connection is established
+  sendButton.disabled = true;
 
-	console.log( "chat app is running!" );
+  // WebSocket event handlers
+  connection.onopen = function() {
+    // Enable send button
+    sendButton.disabled = false;
+    
+    // Add "Connected" message
+    const connectedMessage = document.createElement('li');
+    connectedMessage.className = 'bg-info';
+    connectedMessage.style.fontSize = '1.5em';
+    connectedMessage.textContent = 'Connected';
+    messagesElement.prepend(connectedMessage);
+    
+    // Add event listeners for sending messages
+    sendButton.addEventListener('click', send);
+    
+    messageInput.addEventListener('keypress', function(event) {
+      const keycode = event.keyCode || event.which;
+      if (keycode === 13) { // Enter key
+        send();
+      }
+    });
+  };
+
+  connection.onerror = function(error) {
+    console.log('WebSocket Error ', error);
+  };
+
+  connection.onmessage = function(event) {
+    const messageElement = document.createElement('li');
+    messageElement.style.fontSize = '1.5em';
+    messageElement.textContent = event.data;
+    messagesElement.appendChild(messageElement);
+  };
+
+  console.log("chat app is running!");
 });
