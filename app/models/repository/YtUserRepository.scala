@@ -32,10 +32,9 @@ class YtUserRepository @Inject()(
       createdAt = now,
       updatedAt = now
     )
-    
-    (ytUsersTable returning ytUsersTable.map(_.userChannelId))
-      .into((_, channelId) => ytUser)
-      += ytUser
+    (ytUsersTable.map(s => (s.userChannelId, s.userId))
+      += (userChannelId, userId)).map(_ =>
+      YtUser(userChannelId, userId))
   }
 
   /**
@@ -44,10 +43,8 @@ class YtUserRepository @Inject()(
   def createFull(ytUser: YtUser): Future[YtUser] = db.run {
     val now = Instant.now()
     val userToSave = ytUser.copy(createdAt = now, updatedAt = now)
-    
-    (ytUsersTable returning ytUsersTable.map(_.userChannelId))
-      .into((_, channelId) => userToSave)
-      += userToSave
+
+    (ytUsersTable += userToSave).map(_ => userToSave)
   }
 
   /**

@@ -78,6 +78,7 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
           --- !Downs
           
           --- Remove test data
+          DELETE FROM yt_users WHERE user_id IN (1,2);
           DELETE FROM users WHERE user_id IN (1, 2);
           """
         )
