@@ -9,6 +9,7 @@ import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Source}
 import play.api.Logger
 import play.api.mvc._
+import play.api.i18n.I18nSupport
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,12 +17,13 @@ import scala.concurrent.{ExecutionContext, Future}
  * A very simple chat client using websockets.
  */
 @Singleton
-class HomeController @Inject()(val controllerComponents: ControllerComponents, inputSanitizer: InputSanitizer)
+class HomeController @Inject()(val scc: SilhouetteControllerComponents,
+                               inputSanitizer: InputSanitizer)
                               (implicit actorSystem: ActorSystem,
                                mat: Materializer,
                                executionContext: ExecutionContext,
                                webJarsUtil: org.webjars.play.WebJarsUtil)
-  extends BaseController with RequestMarkerContext {
+  extends SilhouetteController(scc) with RequestMarkerContext {
 
   private type WSMessage = String
 
@@ -47,9 +49,24 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, i
     Flow.fromSinkAndSource(chatSink, chatSource)
   }
 
-  def home: Action[AnyContent] = Action { implicit request: RequestHeader =>
+  def index(): Action[AnyContent] = silhouette.UserAwareAction.async { implicit request =>
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
-    Ok(views.html.home(webSocketUrl))
+    Future.successful {
+      request.identity match {
+        case Some(user) => 
+          // User is logged in, show dashboard with user information
+          Ok(views.html.home(webSocketUrl, Some(user)))
+        case None => 
+          // User is not logged in, show welcome/landing page
+          Ok(views.html.index(None))
+      }
+    }
+  }
+
+  // Old handler - keeping for backward compatibility if needed
+  def home: Action[AnyContent] = silhouette.UserAwareAction { implicit request =>
+    val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
+    Ok(views.html.home(webSocketUrl, request.identity))
   }
 
   def streamerevents(): WebSocket = {
@@ -112,5 +129,4 @@ class HomeController @Inject()(val controllerComponents: ControllerComponents, i
       case e: Exception => false
     }
   }
-
 }

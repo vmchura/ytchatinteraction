@@ -1,19 +1,29 @@
-@(person: Form[CreatePersonForm])(implicit request: MessagesRequestHeader, flash: Flash)
+@(user: Option[models.User])(implicit messages: Messages, flash: Flash)
 
-@import helper._
-
-@request.flash.get("success").map { key =>
-@request.messages(key)
-}
-
-@main("Welcome to Play") {
-@form(routes.PersonController.addPerson) {
-@inputText(person("name"))
-@inputText(person("age"))
-@CSRF.formField
-
-<div class="buttons">
-    <input type="submit" value="Add Person"/>
-</div>
-}
+@main("Welcome to YT Chat Interaction", user) {
+    <div class="container">
+        <header>
+            <h1>Welcome to YT Chat Interaction</h1>
+            <p>Connect with your YouTube audience in real-time.</p>
+        </header>
+        
+        <section>
+            <article>
+                <h2>What is YT Chat Interaction?</h2>
+                <p>YT Chat Interaction allows you to engage with your YouTube livestream chat directly through this application.</p>
+                
+                <a href="@routes.AuthController.authenticate("youtube")" role="button" class="primary">Get Started with YouTube</a>
+            </article>
+            
+            <article>
+                <h2>Features</h2>
+                <ul>
+                    <li>Real-time chat interaction</li>
+                    <li>Viewer statistics and engagement metrics</li>
+                    <li>Streamlined moderation tools</li>
+                    <li>Custom alerts and notifications</li>
+                </ul>
+            </article>
+        </section>
+    </div>
 }

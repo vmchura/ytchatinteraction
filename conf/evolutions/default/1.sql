@@ -1,11 +1,4 @@
 -- !Ups
-
-CREATE TABLE people (
-  id SERIAL PRIMARY KEY  NOT NULL,
-  name VARCHAR NOT NULL,
-  age INT NOT NULL
-);
-
 CREATE TABLE users (
 user_id SERIAL NOT NULL PRIMARY KEY,
 user_name VARCHAR NOT NULL);
@@ -82,4 +75,3 @@ DROP TABLE user_streamer_state;
 DROP TABLE yt_streamer;
 DROP TABLE yt_users;
 DROP TABLE users;
-DROP TABLE people;
