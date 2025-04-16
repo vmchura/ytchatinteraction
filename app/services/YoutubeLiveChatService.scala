@@ -8,7 +8,7 @@ import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import play.api.Configuration
 import models.*
-import models.repository.{UserStreamerStateRepository, YtStreamerRepository}
+import models.repository.{UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
 
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.time.format.DateTimeFormatter
@@ -25,6 +25,8 @@ class YoutubeLiveChatService @Inject()(
   config: Configuration,
   ytStreamerRepository: YtStreamerRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
+  userRepository: UserRepository,
+  ytUserRepository: YtUserRepository,
   actorSystem: org.apache.pekko.actor.ActorSystem
 )(implicit ec: ExecutionContext) {
   
@@ -80,7 +82,7 @@ class YoutubeLiveChatService @Inject()(
     val startTime = Instant.now()
     
     val chatPollingActor = system.systemActorOf(
-      YoutubeLiveChatPollingActor(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, startTime),
+      YoutubeLiveChatPollingActor(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime),
       s"youtube-chat-polling-${streamerChatId}"
     )
     
@@ -119,10 +121,12 @@ object YoutubeLiveChatPollingActor {
     apiKey: String, 
     ytStreamerRepository: YtStreamerRepository,
     userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
     startTime: Instant
   ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
-      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, startTime, timers)
+      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime, timers)
     }
   }
   
@@ -131,6 +135,8 @@ object YoutubeLiveChatPollingActor {
     apiKey: String, 
     ytStreamerRepository: YtStreamerRepository,
     userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
     startTime: Instant,
     timers: TimerScheduler[Command]
   ): Behavior[Command] = {
@@ -173,7 +179,7 @@ object YoutubeLiveChatPollingActor {
             context.log.info(s"Received ${items.size} messages, filtering for those after ${startTime}")
             
             items.foreach { item =>
-              processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, startTime)
+              processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime)
             }
             
             // Schedule next poll based on YouTube's recommended interval
@@ -246,6 +252,8 @@ object YoutubeLiveChatPollingActor {
     liveChatId: String,
     ytStreamerRepository: YtStreamerRepository,
     userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
     startTime: Instant
   )(implicit ec: ExecutionContext): Unit = {
     try {
@@ -262,6 +270,9 @@ object YoutubeLiveChatPollingActor {
       // Only process messages that were published after we started monitoring
       if (publishedAt.isAfter(startTime)) {
         println(s"Processing message from $displayName published at $publishedAt")
+        
+        // Register the message author as a user if they don't already exist
+        registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
         
         // Check if this is a special message like a donation
         if (messageText.toLowerCase.contains("donation") || messageText.toLowerCase.contains("super chat")) {
@@ -295,6 +306,52 @@ object YoutubeLiveChatPollingActor {
       case e: Exception =>
         // Log error and continue
         println(s"Error processing message: ${e.getMessage}")
+    }
+  }
+  
+  /**
+   * Register a new user from the chat message if they don't already exist
+   *
+   * @param channelId The YouTube channel ID of the user
+   * @param displayName The display name shown in the chat
+   * @param userRepository Repository for user operations
+   * @param ytUserRepository Repository for YouTube user operations
+   */
+  private def registerChatUser(
+    channelId: String, 
+    displayName: String,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository
+  )(implicit ec: ExecutionContext): Future[Option[YtUser]] = {
+    // First, check if the YouTube user already exists
+    ytUserRepository.getByChannelId(channelId).flatMap {
+      case Some(existingUser) => 
+        // User already exists, return it
+        Future.successful(Some(existingUser))
+      
+      case None =>
+        // User doesn't exist, create a new user and link it to a YouTube user
+        println(s"Registering new user from chat: $displayName ($channelId)")
+        for {
+          // Create a new User with the display name as username
+          newUser <- userRepository.create(displayName).map { user =>
+            println(s"Created new user: ID=${user.userId}, Username=${user.userName}")
+            user
+          }
+          
+          // Create a new YtUser linked to the User
+          ytUser <- ytUserRepository.createFull(YtUser(
+            userChannelId = channelId,
+            userId = newUser.userId,
+            displayName = Some(displayName),
+            email = None, // We don't have email from chat messages
+            profileImageUrl = None, // We don't have profile image from chat messages
+            activated = true // Automatically activate users from chat
+          )).map { user =>
+            println(s"Linked YouTube user: ChannelID=${user.userChannelId}, UserID=${user.userId}")
+            user
+          }
+        } yield Some(ytUser)
     }
   }
 }
