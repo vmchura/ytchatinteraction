@@ -44,11 +44,13 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   def eventManagement: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     // Get user's streamers and all events
     for {
+      streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.getAllActive()
     } yield {
       Ok(views.html.eventManagement(
         eventWithPollForm,
         events,
+        streamers,
         request.identity
       ))
     }
@@ -59,11 +61,13 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     forms.Forms.eventWithPollForm.bindFromRequest().fold(
       formWithErrors => {
         for {
+          streamers <- ytStreamerRepository.getAll()
           events <- streamerEventRepository.getAllActive()
         } yield {
           BadRequest(views.html.eventManagement(
             formWithErrors,
             events,
+            streamers,
             request.identity
           ))
         }

@@ -4,7 +4,7 @@
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], user: User)(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
 
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
@@ -18,11 +18,23 @@
         
         <form action="@routes.EventController.createEvent()" method="POST">
           @helper.CSRF.formField
-          <label for="event.channelId">Channel - id</label>
-          <input id="event.channelId" name="event.channelId">@form("event.channelId").value.getOrElse("")</input>
-          @form("event.channelId").errors.map { error =>
-          <small class="error">@error.message</small>
-          }
+
+          <div class="grid">
+            <div>
+              <label for="event.channelId">Channel</label>
+              <select id="event.channelId" name="event.channelId" required>
+                <option value="" disabled selected>Select a channel</option>
+                @for(streamer <- streamers) {
+                <option value="@streamer.channelId" @if(form("event.channelId").value.contains(streamer.channelId)) { selected }>
+                @streamer.channelTitle
+                </option>
+                }
+              </select>
+              @form("event.channelId").errors.map { error =>
+              <small class="error">@error.message</small>
+              }
+            </div>
+          </div>
 
           <label for="event.eventName">Event Name</label>
           <input type="text" id="event.eventName" name="event.eventName" value="@form("event.eventName").value.getOrElse("")" required>
