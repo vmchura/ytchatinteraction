@@ -24,15 +24,23 @@ class YtStreamerRepository @Inject()(
   /**
    * Create a YtStreamer with optional owner user ID
    */
-  def create(channelId: String, ownerUserId: Option[Long], currentBalanceNumber: Int = 0): Future[YtStreamer] = db.run {
-    (ytStreamersTable.map(s => (s.channelId, s.ownerUserId, s.currentBalanceNumber))
-      += (channelId, ownerUserId, currentBalanceNumber)).map(_ => 
-        YtStreamer(channelId, ownerUserId, currentBalanceNumber))
+  def create(channelId: String, ownerUserId: Option[Long], currentBalanceNumber: Int = 0, channelTitle: Option[String] = None): Future[YtStreamer] = db.run {
+    (ytStreamersTable.map(s => (s.channelId, s.ownerUserId, s.currentBalanceNumber, s.channelTitle))
+      += (channelId, ownerUserId, currentBalanceNumber, channelTitle)).map(_ => 
+        YtStreamer(channelId, ownerUserId, currentBalanceNumber, channelTitle))
   }
 
-  def list(): Future[Seq[YtStreamer]] = db.run {
+  /**
+   * Get all streamers
+   */
+  def getAll(): Future[Seq[YtStreamer]] = db.run {
     ytStreamersTable.result
   }
+  
+  /**
+   * Alias for getAll (for backward compatibility)
+   */
+  def list(): Future[Seq[YtStreamer]] = getAll()
   
   def getByChannelId(channelId: String): Future[Option[YtStreamer]] = db.run {
     ytStreamersTable.filter(_.channelId === channelId).result.headOption
@@ -48,8 +56,8 @@ class YtStreamerRepository @Inject()(
   
   def update(ytStreamer: YtStreamer): Future[Int] = db.run {
     ytStreamersTable.filter(_.channelId === ytStreamer.channelId)
-      .map(s => (s.ownerUserId, s.currentBalanceNumber))
-      .update((ytStreamer.ownerUserId, ytStreamer.currentBalanceNumber))
+      .map(s => (s.ownerUserId, s.currentBalanceNumber, s.channelTitle))
+      .update((ytStreamer.ownerUserId, ytStreamer.currentBalanceNumber, ytStreamer.channelTitle))
   }
   
   /**
@@ -60,6 +68,16 @@ class YtStreamerRepository @Inject()(
       .filter(_.channelId === channelId)
       .map(_.ownerUserId)
       .update(ownerUserId)
+  }
+  
+  /**
+   * Update the channel title for a YtStreamer
+   */
+  def updateChannelTitle(channelId: String, channelTitle: Option[String]): Future[Int] = db.run {
+    ytStreamersTable
+      .filter(_.channelId === channelId)
+      .map(_.channelTitle)
+      .update(channelTitle)
   }
   
   /**

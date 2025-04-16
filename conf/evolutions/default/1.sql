@@ -22,6 +22,7 @@ CREATE TABLE yt_streamer (
     channel_id VARCHAR(24) NOT NULL PRIMARY KEY,
     onwer_user_id BIGINT,
     current_balance_number BIGINT NOT NULL,
+    channel_title VARCHAR,
     CONSTRAINT fk_yt_streamer_with_users
               FOREIGN KEY (onwer_user_id)
                   REFERENCES users (user_id)
