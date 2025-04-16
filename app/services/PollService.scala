@@ -1,0 +1,63 @@
+package services
+
+import models.{EventPoll, PollOption}
+import models.repository.{EventPollRepository, PollOptionRepository, StreamerEventRepository}
+
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.{ExecutionContext, Future}
+
+/**
+ * Service for retrieving polls and their options for streamer events
+ */
+@Singleton
+class PollService @Inject()(
+  streamerEventRepository: StreamerEventRepository,
+  eventPollRepository: EventPollRepository,
+  pollOptionRepository: PollOptionRepository
+)(implicit ec: ExecutionContext) {
+
+  /**
+   * Retrieves the poll and options for the most recent event for a specific channel
+   *
+   * @param channelId The channel ID to get the recent event for
+   * @return A Future containing a tuple of (EventPoll, List[PollOption]) if found, None otherwise
+   */
+  def getPollForRecentEvent(channelId: String): Future[Option[(EventPoll, List[PollOption])]] = {
+    // Step 1: Get the most recent active event for the channel
+    streamerEventRepository.getMostRecentActiveEvent(channelId).flatMap {
+      case Some(event) => 
+        // Step 2: Get polls for this event
+        event.eventId match {
+          case Some(eventID) => getPollForEvent(eventID)
+          case None => Future.successful(None)
+        }
+      case None =>
+        // No recent event found
+        Future.successful(None)
+    }
+  }
+
+  /**
+   * Retrieves the poll and options for a specific event
+   *
+   * @param eventId The event ID
+   * @return A Future containing a tuple of (EventPoll, List[PollOption]) if found, None otherwise
+   */
+  def getPollForEvent(eventId: Int): Future[Option[(EventPoll, List[PollOption])]] = {
+    // Get polls for this event
+    eventPollRepository.getByEventId(eventId).flatMap { polls =>
+      if (polls.isEmpty) {
+        // No polls for this event
+        Future.successful(None)
+      } else {
+        // Get the first poll (assuming one poll per event)
+        val poll = polls.head
+        
+        // Get options for this poll
+        pollOptionRepository.getByPollId(poll.pollId.get).map { options =>
+          Some((poll, options.toList))
+        }
+      }
+    }
+  }
+}
