@@ -1,0 +1,87 @@
+@import models.{StreamerEvent, User}
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@import java.time.Instant
+
+@(events: Seq[StreamerEvent], user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("Event History", Some(user)) {
+  <h1>Event History</h1>
+  
+  <div>
+    <a href="@routes.EventController.eventManagement()" role="button">Back to Event Management</a>
+  </div>
+  
+  <article>
+    @if(events.isEmpty) {
+      <p>No events found.</p>
+    } else {
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Event Name</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Started</th>
+              <th>Ended</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(event <- events.sortBy(_.startTime)(Ordering[Instant].reverse)) {
+              <tr>
+                <td>@event.eventName</td>
+                <td>@event.eventType</td>
+                <td>@event.eventDescription.getOrElse("—")</td>
+                <td>@event.startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                <td>
+                  @event.endTime.map { endTime =>
+                    @endTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                  }.getOrElse("—")
+                </td>
+                <td>
+                  @if(event.isActive) {
+                    <span class="badge success">Active</span>
+                  } else {
+                    <span class="badge secondary">Ended</span>
+                  }
+                </td>
+                <td>
+                  @if(event.isActive) {
+                    <a href="@routes.EventController.endEvent(event.eventId.get)"
+                      class="end-event" role="button">End Event</a>
+                  } else {
+                    <span>—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+  
+  <style>
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      display: inline-block;
+      font-size: 0.875rem;
+    }
+    
+    .badge.success {
+      background-color: var(--card-background-color);
+      color: var(--form-element-valid-active-border-color);
+      border: 1px solid var(--form-element-valid-active-border-color);
+    }
+    
+    .badge.secondary {
+      background-color: var(--card-background-color);
+      color: var(--muted-color);
+      border: 1px solid var(--muted-border-color);
+    }
+  </style>
+}

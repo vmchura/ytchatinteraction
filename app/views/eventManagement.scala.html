@@ -1,0 +1,183 @@
+@import models.{StreamerEvent, User, YtStreamer}
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@import play.api.data.Form
+@import forms.EventWithPollForm
+
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("Event Management", Some(user)) {
+  <h1>Event Management</h1>
+  
+  <div class="grid">
+    <div>
+      <article>
+        <header>
+          <h2>Create New Event</h2>
+        </header>
+        
+        <form action="@routes.EventController.createEvent()" method="POST">
+          @helper.CSRF.formField
+          <label for="event.channelId">Channel - id</label>
+          <input id="event.channelId" name="event.channelId">@form("event.channelId").value.getOrElse("")</input>
+          @form("event.channelId").errors.map { error =>
+          <small class="error">@error.message</small>
+          }
+
+          <label for="event.eventName">Event Name</label>
+          <input type="text" id="event.eventName" name="event.eventName" value="@form("event.eventName").value.getOrElse("")" required>
+          @form("event.eventName").errors.map { error =>
+            <small class="error">@error.message</small>
+          }
+          
+          <label for="event.eventDescription">Event Description</label>
+          <textarea id="event.eventDescription" name="event.eventDescription">@form("event.eventDescription").value.getOrElse("")</textarea>
+          @form("event.eventDescription").errors.map { error =>
+            <small class="error">@error.message</small>
+          }
+
+          
+          <label for="event.eventType">Event Type</label>
+          <select id="event.eventType" name="event.eventType" required>
+            <option value="" disabled @if(form("event.eventType").value.isEmpty) { selected }>Select event type</option>
+            <option value="@StreamerEvent.TYPE_LIVE" @if(form("event.eventType").value.contains(StreamerEvent.TYPE_LIVE)) { selected }>Live</option>
+            <option value="@StreamerEvent.TYPE_SCHEDULED" @if(form("event.eventType").value.contains(StreamerEvent.TYPE_SCHEDULED)) { selected }>Scheduled</option>
+            <option value="@StreamerEvent.TYPE_OFFLINE" @if(form("event.eventType").value.contains(StreamerEvent.TYPE_OFFLINE)) { selected }>Offline</option>
+          </select>
+          @form("event.eventType").errors.map { error =>
+            <small class="error">@error.message</small>
+          }
+          
+          <label for="event.startTime">Start Time</label>
+          <input type="datetime-local" id="event.startTime" name="event.startTime" 
+            value="@form("event.startTime").value.getOrElse(java.time.LocalDateTime.now().toString)" required>
+          @form("event.startTime").errors.map { error =>
+            <small class="error">@error.message</small>
+          }
+          
+          <div class="poll-section">
+            <h3>Event Poll</h3>
+            
+            <label for="poll.pollQuestion">Poll Question</label>
+            <input type="text" id="poll.pollQuestion" name="poll.pollQuestion" 
+              value="@form("poll.pollQuestion").value.getOrElse("")" required>
+            @form("poll.pollQuestion").errors.map { error =>
+              <small class="error">@error.message</small>
+            }
+            
+            <div id="poll-options">
+              <label>Poll Options</label>
+              
+              @defining(math.max(2, form("poll.options").indexes.size)) { optionCount =>
+                @for(i <- 0 until optionCount) {
+                  <input type="text" name="poll.options[@i]" 
+                    value="@form("poll.options[" + i + "]").value.getOrElse("")" 
+                    placeholder="Option @(i+1)" required>
+                }
+              }
+              
+              @form("poll.options").errors.map { error =>
+                <small class="error">@error.message</small>
+              }
+            </div>
+            
+            <button type="button" id="add-option" class="secondary">+ Add Option</button>
+          </div>
+          
+          <button type="submit">Create Event</button>
+        </form>
+      </article>
+    </div>
+    
+    <div>
+      <article>
+        <header>
+          <h2>Active Events</h2>
+        </header>
+        
+        @if(events.isEmpty) {
+          <p>No active events found.</p>
+        } else {
+          <div class="events-list">
+            @for(event <- events) {
+              <div class="event-item">
+                <h3>@event.eventName</h3>
+                <p><strong>Type:</strong> @event.eventType</p>
+                @event.eventDescription.map { desc =>
+                  <p>@desc</p>
+                }
+                <p>
+                  <strong>Started:</strong> 
+                  @event.startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                </p>
+                
+                @event.endTime.map { endTime =>
+                  <p>
+                    <strong>Ended:</strong> 
+                    @endTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                  </p>
+                }
+                
+                @if(event.isActive) {
+                  <a href="@routes.EventController.endEvent(event.eventId.get)"
+                    class="end-event" role="button">End Event</a>
+                }
+              </div>
+            }
+          </div>
+          
+          <a href="@routes.EventController.eventHistory()" role="button" class="secondary">View All Events History</a>
+        }
+      </article>
+    </div>
+  </div>
+  
+  <style>
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .event-item {
+      border: 1px solid var(--primary);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    
+    .error {
+      color: var(--form-element-invalid-active-border-color);
+    }
+    
+    /* Space between poll options */
+    #poll-options input {
+      margin-bottom: 0.5rem;
+    }
+    
+    #add-option {
+      margin-top: 0.5rem;
+    }
+  </style>
+  
+  <script>
+    // Add option button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const addOptionBtn = document.getElementById('add-option');
+      const pollOptionsDiv = document.getElementById('poll-options');
+      
+      addOptionBtn.addEventListener('click', function() {
+        const optionInputs = pollOptionsDiv.querySelectorAll('input');
+        const newIndex = optionInputs.length;
+        
+        const newInput = document.createElement('input');
+        newInput.type = 'text';
+        newInput.name = `poll.options[${newIndex}]`;
+        newInput.placeholder = `Option ${newIndex + 1}`;
+        newInput.required = true;
+        
+        pollOptionsDiv.appendChild(newInput);
+      });
+    });
+  </script>
+}

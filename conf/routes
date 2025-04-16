@@ -6,6 +6,12 @@
 GET     /                           controllers.HomeController.home()
 GET     /streamerevents                       controllers.HomeController.streamerevents()
 
+# Event management
+GET     /events                     controllers.EventController.eventManagement()
+POST    /events                     controllers.EventController.createEvent()
+GET     /events/:id/end             controllers.EventController.endEvent(id: Int)
+GET     /events/history             controllers.EventController.eventHistory()
+
 
 # Authentication routes
 GET     /login                      controllers.AuthController.login
