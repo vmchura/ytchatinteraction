@@ -76,7 +76,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          2,
+          20,
           """
           --- !Ups
           

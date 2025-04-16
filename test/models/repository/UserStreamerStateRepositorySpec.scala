@@ -61,7 +61,7 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          2,
+          20,
           """
           --- !Ups
           

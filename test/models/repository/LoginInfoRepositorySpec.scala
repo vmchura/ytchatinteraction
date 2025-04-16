@@ -58,7 +58,7 @@ class LoginInfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inj
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          2,
+          20,
           """
           --- !Ups
           
