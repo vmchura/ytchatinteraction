@@ -122,6 +122,14 @@ class StreamerEventRepository @Inject()(
       .result
       .headOption
   }
+
+  def getOverallMostRecentActiveEvent: Future[Option[StreamerEvent]] = db.run {
+    streamerEventsTable
+      .filter(e => e.isActive === true)
+      .sortBy(_.startTime.desc)
+      .result
+      .headOption
+  }
   
   // Get table query for use by other repositories
   def getTableQuery = streamerEventsTable

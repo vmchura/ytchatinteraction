@@ -154,7 +154,7 @@ object YoutubeLiveChatPollingActor {
     inferUserOptionService: InferUserOptionService
   ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
-      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime, timers)
+      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime, timers, pollService, inferUserOptionService)
     }
   }
   
@@ -166,7 +166,9 @@ object YoutubeLiveChatPollingActor {
     userRepository: UserRepository,
     ytUserRepository: YtUserRepository,
     startTime: Instant,
-    timers: TimerScheduler[Command]
+    timers: TimerScheduler[Command],
+    pollService: PollService,
+    inferUserOptionService: InferUserOptionService
   ): Behavior[Command] = {
     Behaviors.receive { (context, message) =>
       implicit val ec = context.executionContext
@@ -204,9 +206,10 @@ object YoutubeLiveChatPollingActor {
             // Process messages - only those published after our start time
             val items = (response \ "items").as[JsArray].value
             context.log.info(s"Received ${items.size} messages, filtering for those after ${startTime}")
-            
-            items.foreach { item =>
-              processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime)
+            pollService.getPollForRecentEventOverall.flatMap{ case Some(eventPoll) =>
+              Future.sequence(items.map(item =>
+                processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime, eventPoll, inferUserOptionService )))
+            case None => Future.failed(new IllegalStateException("no events open"))
             }
             
             // Schedule next poll based on YouTube's recommended interval
@@ -281,8 +284,10 @@ object YoutubeLiveChatPollingActor {
     userStreamerStateRepository: UserStreamerStateRepository,
     userRepository: UserRepository,
     ytUserRepository: YtUserRepository,
-    startTime: Instant
-  )(implicit ec: ExecutionContext): Unit = {
+    startTime: Instant,
+    pollEvent: (EventPoll, List[PollOption]),
+    inferUserOptionService: InferUserOptionService
+  )(implicit ec: ExecutionContext): Future[Unit] = {
     try {
       // Extract message details
       val messageId = (message \ "id").as[String]
@@ -300,39 +305,24 @@ object YoutubeLiveChatPollingActor {
         
         // Register the message author as a user if they don't already exist
         registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
-        
-        // Check if this is a special message like a donation
-        if (messageText.toLowerCase.contains("donation") || messageText.toLowerCase.contains("super chat")) {
-          // Find the streamer by liveChatId and update balance
-          // Note: In a real implementation, you'd need to map liveChatId to channelId
-          // This is simplified for the example
-          ytStreamerRepository.getByChannelId(liveChatId).flatMap {
-            case Some(streamer) =>
-              // Process the donation
-              for {
-                // Increment streamer balance
-                _ <- ytStreamerRepository.incrementBalance(streamer.channelId, 1)
-                
-                // Increment user-streamer state balance
-                _ <- userStreamerStateRepository.exists(0L, streamer.channelId).flatMap {
-                  case true => userStreamerStateRepository.incrementBalance(0L, streamer.channelId, 1)
-                  case false => userStreamerStateRepository.create(0L, streamer.channelId, 1).map(_ => 1)
-                }
-              } yield ()
-              
-            case None =>
-              // Streamer not found, log error
-              Future.successful(())
-          }
+
+        inferUserOptionService.inferencePollResponse(eventPoll = pollEvent._1,
+          options = pollEvent._2,
+          response = messageText).map{
+          case Some((po, confidence)) => ()
+          case None => ()
         }
+
       } else {
         // Message is from before we started monitoring, so skip it
         println(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
+        Future.successful(())
       }
     } catch {
       case e: Exception =>
         // Log error and continue
         println(s"Error processing message: ${e.getMessage}")
+        Future.successful(())
     }
   }
   

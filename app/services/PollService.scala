@@ -37,6 +37,21 @@ class PollService @Inject()(
     }
   }
 
+  def getPollForRecentEventOverall: Future[Option[(EventPoll, List[PollOption])]] = {
+    // Step 1: Get the most recent active event for the channel
+    streamerEventRepository.getOverallMostRecentActiveEvent.flatMap {
+      case Some(event) =>
+        // Step 2: Get polls for this event
+        event.eventId match {
+          case Some(eventID) => getPollForEvent(eventID)
+          case None => Future.successful(None)
+        }
+      case None =>
+        // No recent event found
+        Future.successful(None)
+    }
+  }
+
   /**
    * Retrieves the poll and options for a specific event
    *
