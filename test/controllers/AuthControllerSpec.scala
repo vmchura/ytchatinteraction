@@ -168,7 +168,7 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       when(mockEnvironment.eventBus).thenReturn(testEventBus)
       when(mockSocialProviderRegistry.get[YouTubeProvider]).thenReturn(Some(mockYouTubeProvider))
       when(mockYtStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
-      when(mockYtStreamerRepository.create(any(), any(), any())).thenReturn(Future.successful(YtStreamer("", Some(0), 0)))
+      when(mockYtStreamerRepository.create(any(), any(), any(), any())).thenReturn(Future.successful(YtStreamer("", Some(0), 0)))
       // Mock OAuth2 authentication info
       val mockOAuth2Info = OAuth2Info(accessToken = "test-access-token")
       when(mockYouTubeProvider.authenticate()(any())).thenReturn(Future.successful(Right(mockOAuth2Info)))
