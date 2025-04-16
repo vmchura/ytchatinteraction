@@ -177,7 +177,6 @@ object YoutubeLiveChatPollingActor {
           val queryParams = Map(
             "liveChatId" -> liveChatId,
             "part" -> "id,snippet,authorDetails",
-            "maxResults" -> "20",
             "key" -> apiKey
           ) ++ (if (paginationToken != null) Map("pageToken" -> paginationToken) else Map.empty)
           

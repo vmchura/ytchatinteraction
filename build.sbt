@@ -39,6 +39,9 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion % Test,
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
   specs2 % Test,
+  "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9",
+  "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models-spanish",
+  "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models"
 )
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
