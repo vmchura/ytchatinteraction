@@ -9,6 +9,7 @@ case class StreamerEvent(
   eventName: String,
   eventDescription: Option[String] = None,
   eventType: String,
+  currentConfidenceAmount: Long,
   isActive: Boolean = true,
   startTime: Instant = Instant.now(),
   endTime: Option[Instant] = None,

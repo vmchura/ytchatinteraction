@@ -10,6 +10,7 @@ CREATE TABLE streamer_events (
   is_active BOOLEAN DEFAULT TRUE,
   start_time TIMESTAMP NOT NULL,
   end_time TIMESTAMP,
+  current_confidence_amount BIGINT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_streamer_events_channel
