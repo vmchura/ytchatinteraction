@@ -1,4 +1,5 @@
 -- !Ups
+SET TIME ZONE 'UTC';
 CREATE TABLE users (
 user_id SERIAL NOT NULL PRIMARY KEY,
 user_name VARCHAR NOT NULL);
