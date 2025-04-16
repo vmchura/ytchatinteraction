@@ -53,8 +53,8 @@ class HomeControllerSpec extends PlaySpec with ScalaFutures with IntegrationPati
       val port: Int = 19001
       val app = new GuiceApplicationBuilder().build()
       Helpers.running(TestServer(19001, app)) {
-        val myPublicAddress = s"localhost:$port"
-        val serverURL = s"ws://$myPublicAddress/chat"
+        val myPublicAddress = s"localhost:$port/streamerevents"
+        val serverURL = s"ws://$myPublicAddress"
 
         val asyncHttpClient: AsyncHttpClient = client.underlying[AsyncHttpClient]
 

@@ -93,13 +93,12 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a new YouTube streamer
-      val createdF = repository.create(testChannelId1, testUserId1, initialBalance)
+      val createdF = repository.create(testChannelId1, Some(testUserId1), initialBalance)
 
       val created = Await.result(createdF, 5.seconds)
-      println(createdF)
       // Verify the result
       created.channelId must be(testChannelId1)
-      created.ownerUserId must be(testUserId1)
+      created.ownerUserId must be(Some(testUserId1))
       created.currentBalanceNumber must be(initialBalance)
     }
     
@@ -107,12 +106,12 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create with default balance
-      val createdF = repository.create(testChannelId1, testUserId1)
+      val createdF = repository.create(testChannelId1, Some(testUserId1))
       val created = Await.result(createdF, 5.seconds)
       
       // Verify the result
       created.channelId must be(testChannelId1)
-      created.ownerUserId must be(testUserId1)
+      created.ownerUserId must be(Some(testUserId1))
       created.currentBalanceNumber must be(0)
     }
     
@@ -120,8 +119,8 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create multiple YouTube streamers
-      Await.result(repository.create(testChannelId1, testUserId1, 5), 5.seconds)
-      Await.result(repository.create(testChannelId2, testUserId2, 10), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), 5), 5.seconds)
+      Await.result(repository.create(testChannelId2, Some(testUserId2), 10), 5.seconds)
       
       // List all YouTube streamers
       val streamersF = repository.list()
@@ -131,8 +130,8 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       streamers.size must be(2)
       streamers.map(_.channelId) must contain allOf(testChannelId1, testChannelId2)
       streamers.map(s => (s.channelId, s.ownerUserId)) must contain allOf(
-        (testChannelId1, testUserId1),
-        (testChannelId2, testUserId2)
+        (testChannelId1, Some(testUserId1)),
+        (testChannelId2, Some(testUserId2))
       )
     }
     
@@ -140,7 +139,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer
-      Await.result(repository.create(testChannelId1, testUserId1, initialBalance), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), initialBalance), 5.seconds)
       
       // Get streamer by channel ID
       val streamerF = repository.getByChannelId(testChannelId1)
@@ -149,7 +148,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       // Verify the result
       streamer must not be None
       streamer.get.channelId must be(testChannelId1)
-      streamer.get.ownerUserId must be(testUserId1)
+      streamer.get.ownerUserId must be(Some(testUserId1))
       streamer.get.currentBalanceNumber must be(initialBalance)
     }
     
@@ -168,9 +167,9 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create multiple YouTube streamers for the same owner
-      Await.result(repository.create(testChannelId1, testUserId1), 5.seconds)
-      Await.result(repository.create(testChannelId2, testUserId1), 5.seconds)
-      Await.result(repository.create(testChannelId3, testUserId2), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1)), 5.seconds)
+      Await.result(repository.create(testChannelId2, Some(testUserId1)), 5.seconds)
+      Await.result(repository.create(testChannelId3, Some(testUserId2)), 5.seconds)
       
       // Get streamers by owner user ID
       val streamersF = repository.getByOwnerUserId(testUserId1)
@@ -179,17 +178,17 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       // Verify the results
       streamers.size must be(2)
       streamers.map(_.channelId) must contain allOf(testChannelId1, testChannelId2)
-      streamers.foreach(_.ownerUserId must be(testUserId1))
+      streamers.foreach(_.ownerUserId must be(Some(testUserId1)))
     }
     
     "update a YouTube streamer" in {
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer
-      Await.result(repository.create(testChannelId1, testUserId1, 5), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), 5), 5.seconds)
       
       // Update the streamer
-      val updatedStreamer = YtStreamer(testChannelId1, testUserId2, 15)
+      val updatedStreamer = YtStreamer(testChannelId1, Some(testUserId2), 15)
       val updateResultF = repository.update(updatedStreamer)
       val updateResult = Await.result(updateResultF, 5.seconds)
       
@@ -201,7 +200,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val streamer = Await.result(streamerF, 5.seconds)
       
       streamer must not be None
-      streamer.get.ownerUserId must be(testUserId2)
+      streamer.get.ownerUserId must be(Some(testUserId2))
       streamer.get.currentBalanceNumber must be(15)
     }
     
@@ -209,7 +208,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer with initial balance
-      Await.result(repository.create(testChannelId1, testUserId1, initialBalance), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), initialBalance), 5.seconds)
       
       // Update the balance
       val newBalance = 25
@@ -230,7 +229,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer with initial balance
-      Await.result(repository.create(testChannelId1, testUserId1, initialBalance), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), initialBalance), 5.seconds)
       
       // Increment the balance by default amount (1)
       val incrementResultF = repository.incrementBalance(testChannelId1)
@@ -264,7 +263,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer with initial balance
-      Await.result(repository.create(testChannelId1, testUserId1, initialBalance), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1), initialBalance), 5.seconds)
       
       // Get the balance
       val balanceF = repository.getBalance(testChannelId1)
@@ -289,7 +288,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Create a YouTube streamer
-      Await.result(repository.create(testChannelId1, testUserId1), 5.seconds)
+      Await.result(repository.create(testChannelId1, Some(testUserId1)), 5.seconds)
       
       // Verify the streamer exists before deletion
       val existsBeforeF = repository.getByChannelId(testChannelId1)
@@ -313,7 +312,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Update a non-existent streamer
-      val nonExistentStreamer = YtStreamer("NonExistentChannelId", testUserId1, 50)
+      val nonExistentStreamer = YtStreamer("NonExistentChannelId", Some(testUserId1), 50)
       val updateResultF = repository.update(nonExistentStreamer)
       val updateResult = Await.result(updateResultF, 5.seconds)
       
