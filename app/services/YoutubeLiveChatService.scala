@@ -27,7 +27,9 @@ class YoutubeLiveChatService @Inject()(
   userStreamerStateRepository: UserStreamerStateRepository,
   userRepository: UserRepository,
   ytUserRepository: YtUserRepository,
-  actorSystem: org.apache.pekko.actor.ActorSystem
+  actorSystem: org.apache.pekko.actor.ActorSystem,
+  pollService: PollService,
+  inferUserOptionService: InferUserOptionService
 )(implicit ec: ExecutionContext) {
   
   // Convert untyped ActorSystem to typed
@@ -105,7 +107,8 @@ class YoutubeLiveChatService @Inject()(
     val startTime = Instant.now()
     
     val chatPollingActor = system.systemActorOf(
-      YoutubeLiveChatPollingActor(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime),
+      YoutubeLiveChatPollingActor(ws, apiKey, ytStreamerRepository, userStreamerStateRepository,
+        userRepository, ytUserRepository, startTime, pollService, inferUserOptionService),
       s"youtube-chat-polling-${streamerChatId}"
     )
     
@@ -146,7 +149,9 @@ object YoutubeLiveChatPollingActor {
     userStreamerStateRepository: UserStreamerStateRepository,
     userRepository: UserRepository,
     ytUserRepository: YtUserRepository,
-    startTime: Instant
+    startTime: Instant,
+    pollService: PollService,
+    inferUserOptionService: InferUserOptionService
   ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
       active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, ytUserRepository, startTime, timers)
