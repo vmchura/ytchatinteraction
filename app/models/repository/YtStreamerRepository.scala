@@ -21,8 +21,10 @@ class YtStreamerRepository @Inject()(
   import dbConfig.*
   import profile.api.*
   
-
-  def create(channelId: String, ownerUserId: Long, currentBalanceNumber: Int = 0): Future[YtStreamer] = db.run {
+  /**
+   * Create a YtStreamer with optional owner user ID
+   */
+  def create(channelId: String, ownerUserId: Option[Long], currentBalanceNumber: Int = 0): Future[YtStreamer] = db.run {
     (ytStreamersTable.map(s => (s.channelId, s.ownerUserId, s.currentBalanceNumber))
       += (channelId, ownerUserId, currentBalanceNumber)).map(_ => 
         YtStreamer(channelId, ownerUserId, currentBalanceNumber))
@@ -37,7 +39,7 @@ class YtStreamerRepository @Inject()(
   }
   
   def getByOwnerUserId(ownerUserId: Long): Future[Seq[YtStreamer]] = db.run {
-    ytStreamersTable.filter(_.ownerUserId === ownerUserId).result
+    ytStreamersTable.filter(_.ownerUserId === Some(ownerUserId)).result
   }
   
   def delete(channelId: String): Future[Int] = db.run {
@@ -48,6 +50,26 @@ class YtStreamerRepository @Inject()(
     ytStreamersTable.filter(_.channelId === ytStreamer.channelId)
       .map(s => (s.ownerUserId, s.currentBalanceNumber))
       .update((ytStreamer.ownerUserId, ytStreamer.currentBalanceNumber))
+  }
+  
+  /**
+   * Update the owner user ID for a YtStreamer
+   */
+  def updateOwner(channelId: String, ownerUserId: Option[Long]): Future[Int] = db.run {
+    ytStreamersTable
+      .filter(_.channelId === channelId)
+      .map(_.ownerUserId)
+      .update(ownerUserId)
+  }
+  
+  /**
+   * Check if the YtStreamer already has an owner assigned
+   */
+  def hasOwner(channelId: String): Future[Boolean] = db.run {
+    ytStreamersTable
+      .filter(s => s.channelId === channelId && s.ownerUserId.isDefined)
+      .exists
+      .result
   }
   
   def updateBalance(channelId: String, newBalance: Int): Future[Int] = db.run {

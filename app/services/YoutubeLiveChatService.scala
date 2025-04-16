@@ -53,16 +53,34 @@ class YoutubeLiveChatService @Inject()(
     ws.url(url)
       .withQueryStringParameters(queryParams.toSeq: _*)
       .get()
-      .map { response =>
+      .flatMap { response =>
         val json = response.json
         
         // Check if the request was successful and items exist
         val items = (json \ "items").as[JsArray].value
         if (items.isEmpty) {
-          None
+          Future.successful(None)
         } else {
-          // Extract the live chat ID from the first item
-          (items.head \ "liveStreamingDetails" \ "activeLiveChatId").asOpt[String]
+          // Extract channel ID and live chat ID from the first item
+          val channelId = (items.head \ "snippet" \ "channelId").asOpt[String]
+          val liveChatId = (items.head \ "liveStreamingDetails" \ "activeLiveChatId").asOpt[String]
+          
+          // If we have both channel ID and live chat ID
+          (channelId, liveChatId) match {
+            case (Some(cid), Some(lcid)) =>
+              // Check if this channel exists as a YtStreamer
+              ytStreamerRepository.getByChannelId(cid).flatMap {
+                case None =>
+                  // Case 3: New channel found during live chat ID lookup - create YtStreamer with null owner
+                  ytStreamerRepository.create(cid, None).map(_ => Some(lcid))
+                case Some(_) =>
+                  // Channel already exists, just return the live chat ID
+                  Future.successful(Some(lcid))
+              }
+            case _ => 
+              // No live chat ID found
+              Future.successful(None)
+          }
         }
       }
       .recover {

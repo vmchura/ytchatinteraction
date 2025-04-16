@@ -1,11 +1,12 @@
 package controllers
 
-import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository, YtUserRepository}
+import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository, YtStreamerRepository, YtUserRepository}
+
 import javax.inject.Inject
 import models.{User, YtUser}
 import play.api.i18n.I18nSupport
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Cookie, Request, Result}
-import play.silhouette.api.Authenticator.Implicits._
+import play.silhouette.api.Authenticator.Implicits.*
 import play.silhouette.api.exceptions.ProviderException
 import play.silhouette.api.repositories.AuthInfoRepository
 import play.silhouette.api.{LoginEvent, LogoutEvent, Silhouette}
@@ -16,7 +17,7 @@ import services.UserService
 
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import play.api.libs.json.Json
 import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
@@ -34,7 +35,8 @@ class AuthController @Inject()(
   userRepository: UserRepository,
   ytUserRepository: YtUserRepository,
   loginInfoRepository: LoginInfoRepository,
-  oauth2InfoRepository: OAuth2InfoRepository
+  oauth2InfoRepository: OAuth2InfoRepository,
+  ytStreamerRepository: YtStreamerRepository
 )(implicit ex: ExecutionContext) extends AbstractController(components) with I18nSupport {
 
   /**
@@ -63,7 +65,26 @@ class AuthController @Inject()(
           case Some(existingUser) => Future.successful(existingUser)
           case None => userRepository.create(profile.fullName.getOrElse("Unknown Name"))
         }
-        // Create or get YouTube user
+        
+        // Check if the channel exists as a YtStreamer
+        existingYtStreamer <- ytStreamerRepository.getByChannelId(profile.loginInfo.providerKey)
+        
+        // Handle YtStreamer creation or owner assignment based on cases
+        _ <- existingYtStreamer match {
+          case None => 
+            // Case 1: New user login and channel doesn't exist - create YtStreamer and assign ownership
+            ytStreamerRepository.create(profile.loginInfo.providerKey, Some(user.userId))
+            
+          case Some(streamer) if streamer.ownerUserId.isEmpty => 
+            // Case 2: Channel exists but has no owner - assign ownership to this user
+            ytStreamerRepository.updateOwner(profile.loginInfo.providerKey, Some(user.userId))
+            
+          case Some(_) => 
+            // Case 2 (alternate): Channel exists and already has an owner - do nothing
+            Future.successful(())
+        }
+        
+        // Continue with YtUser creation/update as before
         ytUser <- ytUserRepository.getByChannelId(profile.loginInfo.providerKey) flatMap {
           case Some(existingYtUser) => 
             // Update YouTube user's profile info if needed
@@ -88,6 +109,7 @@ class AuthController @Inject()(
             )
             ytUserRepository.createFull(newYtUser)
         }
+        
         loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
         oauthInfoInsert <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
         authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
