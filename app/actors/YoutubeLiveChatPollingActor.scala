@@ -216,7 +216,8 @@ object YoutubeLiveChatPollingActor {
         val userFuture = registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
         
         // Broadcast the message to all connected WebSocket clients
-        chatService.broadcastMessage(messageText, "youtube", Some(displayName))
+        // Format the message to show who sent it
+        chatService.broadcastMessage(s"$displayName: $messageText", "youtube", Some(displayName))
 
         // Process the message for poll responses
         inferUserOptionService.inferencePollResponse(

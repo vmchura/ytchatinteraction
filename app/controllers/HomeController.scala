@@ -1,15 +1,15 @@
 package controllers
 
 import java.net.URI
-import javax.inject._
-
+import javax.inject.*
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.event.{Logging, LoggingAdapter}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Source}
 import play.api.Logger
-import play.api.mvc._
+import play.api.mvc.*
 import play.api.i18n.I18nSupport
+import services.ChatService
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -18,7 +18,8 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 @Singleton
 class HomeController @Inject()(val scc: SilhouetteControllerComponents,
-                               inputSanitizer: InputSanitizer)
+                               inputSanitizer: InputSanitizer,
+                               chatService: ChatService)
                               (implicit actorSystem: ActorSystem,
                                mat: Materializer,
                                executionContext: ExecutionContext,
@@ -31,23 +32,7 @@ class HomeController @Inject()(val scc: SilhouetteControllerComponents,
 
   private implicit val logging: LoggingAdapter = Logging(actorSystem.eventStream, logger.underlyingLogger.getName)
 
-  // chat room many clients -> merge hub -> broadcasthub -> many clients
-  private val (chatSink, chatSource) = {
-    // Don't log MergeHub$ProducerFailed as error if the client disconnects.
-    // recoverWithRetries -1 is essentially "recoverWith"
-    val source = MergeHub.source[WSMessage]
-      .log("source")
-      // Let's also do some input sanitization to avoid XSS attacks
-      .map(inputSanitizer.sanitize)
-      .recoverWithRetries(-1, { case _: Exception => Source.empty })
-
-    val sink = BroadcastHub.sink[WSMessage]
-    source.toMat(sink)(Keep.both).run()
-  }
-
-  private val userFlow: Flow[WSMessage, WSMessage, _] = {
-    Flow.fromSinkAndSource(chatSink, chatSource)
-  }
+  // We're now using ChatService for WebSocket management instead of MergeHub/BroadcastHub
 
   def index(): Action[AnyContent] = silhouette.UserAwareAction.async { implicit request =>
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
@@ -72,15 +57,15 @@ class HomeController @Inject()(val scc: SilhouetteControllerComponents,
   def streamerevents(): WebSocket = {
     WebSocket.acceptOrResult[WSMessage, WSMessage] {
       case rh if sameOriginCheck(rh) =>
-        Future.successful(userFlow).map { flow =>
-          Right(flow)
-        }.recover {
-          case e: Exception =>
-            val msg = "Cannot create websocket"
-            logger.error(msg, e)
-            val result = InternalServerError(msg)
-            Left(result)
-        }
+        // Use the chatFlow from ChatService instead of userFlow
+        Future.successful(Right(chatService.chatFlow()))
+          .recover {
+            case e: Exception =>
+              val msg = "Cannot create websocket"
+              logger.error(msg, e)
+              val result = InternalServerError(msg)
+              Left(result)
+          }
 
       case rejected =>
         logger.error(s"Request ${rejected} failed same origin check")

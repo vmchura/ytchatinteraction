@@ -60,10 +60,51 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   connection.onmessage = function(event) {
-    const messageElement = document.createElement('li');
-    messageElement.style.fontSize = '1.5em';
-    messageElement.textContent = event.data;
-    messagesElement.appendChild(messageElement);
+    try {
+      // Parse the JSON message
+      const data = JSON.parse(event.data);
+      
+      // Create message element based on source
+      const messageElement = document.createElement('li');
+      messageElement.style.fontSize = '1.5em';
+      
+      // Add styling based on message source
+      if (data.source === 'youtube') {
+        // YouTube message styling
+        messageElement.className = 'youtube-message';
+        messageElement.innerHTML = `<strong>${data.message}</strong>`;
+      } else if (data.source === 'user') {
+        // User message styling
+        messageElement.className = 'user-message';
+        messageElement.textContent = data.message;
+      } else {
+        // System message styling
+        messageElement.className = 'system-message';
+        messageElement.textContent = data.message;
+      }
+      
+      // Add timestamp
+      const timestamp = new Date(data.timestamp).toLocaleTimeString();
+      const timeElement = document.createElement('span');
+      timeElement.className = 'message-time';
+      timeElement.style.color = '#7f8c8d';
+      timeElement.style.fontSize = '0.8em';
+      timeElement.style.marginLeft = '10px';
+      timeElement.textContent = timestamp;
+      messageElement.appendChild(timeElement);
+      
+      messagesElement.appendChild(messageElement);
+      
+      // Auto-scroll to bottom
+      messagesElement.scrollTop = messagesElement.scrollHeight;
+    } catch (e) {
+      // Fallback for non-JSON messages
+      console.log('Received non-JSON message:', event.data);
+      const messageElement = document.createElement('li');
+      messageElement.style.fontSize = '1.5em';
+      messageElement.textContent = event.data;
+      messagesElement.appendChild(messageElement);
+    }
   };
 
   console.log("chat app is running!");
