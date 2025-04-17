@@ -10,7 +10,7 @@ CREATE TABLE streamer_events (
   is_active BOOLEAN DEFAULT TRUE,
   start_time TIMESTAMP NOT NULL,
   end_time TIMESTAMP,
-  current_confidence_amount BIGINT NOT NULL,
+  current_confidence_amount INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_streamer_events_channel
@@ -48,7 +48,7 @@ CREATE TABLE poll_votes (
   option_id INTEGER NOT NULL,
   user_id BIGINT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  confidence_amount BIGINT NOT NULL,
+  confidence_amount INT NOT NULL,
   message_by_chat VARCHAR,
   CONSTRAINT fk_poll_votes_poll
     FOREIGN KEY (poll_id)

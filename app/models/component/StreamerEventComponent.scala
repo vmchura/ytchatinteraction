@@ -18,7 +18,7 @@ trait StreamerEventComponent {
     def eventName = column[String]("event_name")
     def eventDescription = column[Option[String]]("event_description")
     def eventType = column[String]("event_type")
-    def currentConfidenceAmount = column[Long]("current_confidence_amount", O.Default(0L))
+    def currentConfidenceAmount = column[Int]("current_confidence_amount")
     def isActive = column[Boolean]("is_active", O.Default(true))
     def startTime = column[Instant]("start_time")
     def endTime = column[Option[Instant]]("end_time")
@@ -44,11 +44,5 @@ trait StreamerEventComponent {
 
   val streamerEventsTable = TableQuery[StreamerEventsTable]
   
-  def getCurrentConfidenceAmountAction(eventID: Int): DBIO[Option[Long]] = {
-    streamerEventsTable
-      .filter(s => s.eventId === eventID)
-      .map(_.currentConfidenceAmount)
-      .result
-      .headOption
-  }
+ 
 }

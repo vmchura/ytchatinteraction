@@ -209,7 +209,7 @@ class PollVoteRepository @Inject()(
     
     db.run(transactionAction.transactionally)
   }
-  
+
   /**
    * Count votes for each option in a poll
    * Returns a map of optionId -> count
@@ -226,7 +226,7 @@ class PollVoteRepository @Inject()(
    * Sum the confidence amounts for each option in a poll
    * Returns a map of optionId -> total confidence
    */
-  def sumConfidenceByOption(pollId: Int): Future[Map[Int, Long]] = db.run {
+  def sumConfidenceByOption(pollId: Int): Future[Map[Int, Int]] = db.run {
     pollVotesTable
       .filter(_.pollId === pollId)
       .groupBy(_.optionId)
@@ -234,13 +234,6 @@ class PollVoteRepository @Inject()(
       .result
   }.map(_.collect { case (optionId, Some(sum)) => optionId -> sum }.toMap)
 
-//  def transferConfidenceAmount(eventID: EventID, userID: Long, streamerChannelID: String, confidence: Int): Future[Int] = {
-//    for{
-//      currentUserStreamerBalanceAmount <- getUserStreamerBalanceAction(userID, streamerChannelID)
-//      currentStreamerEventBalance <- 
-//      newStreamerBalance <- getStreamerBalance(toChannelId)
-//    }
-//  } 
   // Get table query for use by other repositories
   def getTableQuery = pollVotesTable
 }

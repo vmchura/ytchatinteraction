@@ -98,4 +98,21 @@ class UserStreamerStateRepository @Inject()(
   def deleteByStreamerChannelId(channelId: String): Future[Int] = db.run {
     userStreamerStateTable.filter(_.streamerChannelId === channelId).delete
   }
+
+  def updateStreamerBalanceAction(userId: Long, streamerChannelId: String, newAmount: Int): DBIO[Int] = {
+    for {
+      rows <- userStreamerStateTable
+        .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId).map(_.currentBalanceNumber)
+        .update(newAmount)
+    } yield {
+      rows
+    }
+  }
+  def getUserStreamerBalanceAction(userId: Long, streamerChannelId: String): DBIO[Option[Int]] = {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .map(_.currentBalanceNumber)
+      .result
+      .headOption
+  }
 }

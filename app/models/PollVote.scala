@@ -9,7 +9,7 @@ case class PollVote(
   optionId: Int,
   userId: Long,
   createdAt: Option[Instant] = None,
-  confidenceAmount: Long = 0,
+  confidenceAmount: Int = 0,
   messageByChatOpt: Option[String] = None
 )
 

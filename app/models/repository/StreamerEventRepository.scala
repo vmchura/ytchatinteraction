@@ -130,21 +130,22 @@ class StreamerEventRepository @Inject()(
       .result
       .headOption
   }
-
-  /**
-   * Add to the current confidence amount for an event
-   */
-  def addToCurrentConfidenceAmount(eventId: Int, amountToAdd: Long): Future[Int] = {
-    val query = for {
-      event <- streamerEventsTable if event.eventId === eventId
-    } yield (event.currentConfidenceAmount, event.updatedAt)
-    
-    val action = query.result.head.flatMap { case (currentAmount, _) =>
-      val newAmount = currentAmount + amountToAdd
-      query.update((newAmount, Instant.now()))
+  def updateCurrentConfidenceAmount(eventId: Int, newAmount: Int): DBIO[Int] = {
+    for{
+      rows <- streamerEventsTable
+      .filter(_.eventId === eventId).map(_.currentConfidenceAmount)
+      .update(newAmount)
+    }yield{
+      rows
     }
-    
-    db.run(action)
+  }
+
+  def getCurrentConfidenceAmountAction(eventID: Int): DBIO[Option[Int]] = {
+    streamerEventsTable
+      .filter(s => s.eventId === eventID)
+      .map(_.currentConfidenceAmount)
+      .result
+      .headOption
   }
   // Get table query for use by other repositories
   def getTableQuery = streamerEventsTable

@@ -18,7 +18,7 @@ trait PollVoteComponent {
     def optionId = column[Int]("option_id")
     def userId = column[Long]("user_id")
     def createdAt = column[Instant]("created_at", O.Default(Instant.now()))
-    def confidenceAmount = column[Long]("confidence_amount")
+    def confidenceAmount = column[Int]("confidence_amount")
     def messageByChat = column[Option[String]]("message_by_chat")
     
     def pollFk = foreignKey("fk_poll_votes_poll", pollId, eventPollsTable)(_.pollId)
