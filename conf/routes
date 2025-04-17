@@ -26,7 +26,6 @@ POST    /youtube/start-monitoring   controllers.YoutubeFrontendController.startM
 GET     /youtube/stop-monitoring/:id controllers.YoutubeFrontendController.stopMonitoring(id: String)
 
 # YouTube Live Chat monitoring endpoints
-POST    /api/youtube/livechat/get-id controllers.YoutubeLiveChatController.getLiveChatId
 
 # Currency management endpoints
 GET     /currency                   controllers.CurrencyController.showCurrencyForm()
