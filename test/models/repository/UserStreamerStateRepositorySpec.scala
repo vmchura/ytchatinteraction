@@ -216,7 +216,7 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       val balanceF = repository.getBalance(testUserId1, testChannelId1)
       val balance = Await.result(balanceF, 5.seconds)
       
-      balance must be(newBalance)
+      balance must be(Some(newBalance))
     }
     
     "increment balance for a user streamer state" in {
@@ -236,7 +236,7 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       val balanceF = repository.getBalance(testUserId1, testChannelId1)
       val balance = Await.result(balanceF, 5.seconds)
       
-      balance must be(initialBalance + 1)
+      balance must be(Some(initialBalance + 1))
       
       // Increment the balance by a specific amount
       val incrementAmount = 5
@@ -250,7 +250,7 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       val newBalanceF = repository.getBalance(testUserId1, testChannelId1)
       val newBalance = Await.result(newBalanceF, 5.seconds)
       
-      newBalance must be(initialBalance + 1 + incrementAmount)
+      newBalance must be(Some(initialBalance + 1 + incrementAmount))
     }
     
     "get balance for a user streamer state" in {
@@ -264,10 +264,10 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       val balance = Await.result(balanceF, 5.seconds)
       
       // Verify the balance
-      balance must be(initialBalance)
+      balance must be(Some(initialBalance))
     }
     
-    "return 0 when getting balance for non-existent user streamer state" in {
+    "return None when getting balance for non-existent user streamer state" in {
       val repository = new UserStreamerStateRepository(dbConfigProvider, userRepository, ytStreamerRepository)
       
       // Get balance for non-existent state
@@ -275,7 +275,7 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       val balance = Await.result(balanceF, 5.seconds)
       
       // Verify the balance is 0 for non-existent state
-      balance must be(0)
+      balance must be(None)
     }
     
     "delete a user streamer state" in {

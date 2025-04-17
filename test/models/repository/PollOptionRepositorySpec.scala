@@ -74,8 +74,8 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
           INSERT INTO users (user_id, user_name) VALUES (1, 'Test User');
           INSERT INTO yt_streamer (channel_id, onwer_user_id, current_balance_number) 
             VALUES ('UC123456789', 1, 0);
-          INSERT INTO streamer_events (event_id, channel_id, event_name, event_type, is_active, start_time) 
-            VALUES (1, 'UC123456789', 'Test Event', 'LIVE', true, CURRENT_TIMESTAMP);
+          INSERT INTO streamer_events (event_id, channel_id, event_name, event_type, current_confidence_amount, is_active, start_time)
+            VALUES (1, 'UC123456789', 'Test Event', 'LIVE', 0, true, CURRENT_TIMESTAMP);
           INSERT INTO event_polls (poll_id, event_id, poll_question) 
             VALUES (1, 1, 'Test question?');
           """,

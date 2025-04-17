@@ -222,7 +222,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val balanceF = repository.getBalance(testChannelId1)
       val balance = Await.result(balanceF, 5.seconds)
       
-      balance must be(newBalance)
+      balance must be(Some(newBalance))
     }
     
     "increment balance for a YouTube streamer" in {
@@ -242,7 +242,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val balanceF = repository.getBalance(testChannelId1)
       val balance = Await.result(balanceF, 5.seconds)
       
-      balance must be(initialBalance + 1)
+      balance must be(Some(initialBalance + 1))
       
       // Increment the balance by a specific amount
       val incrementAmount = 5
@@ -256,7 +256,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val newBalanceF = repository.getBalance(testChannelId1)
       val newBalance = Await.result(newBalanceF, 5.seconds)
       
-      newBalance must be(initialBalance + 1 + incrementAmount)
+      newBalance must be(Some(initialBalance + 1 + incrementAmount))
     }
     
     "get balance for a YouTube streamer" in {
@@ -270,10 +270,10 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val balance = Await.result(balanceF, 5.seconds)
       
       // Verify the balance
-      balance must be(initialBalance)
+      balance must be(Some(initialBalance))
     }
     
-    "return 0 when getting balance for non-existent YouTube streamer" in {
+    "return None when getting balance for non-existent YouTube streamer" in {
       val repository = new YtStreamerRepository(dbConfigProvider, userRepository)
       
       // Get balance for non-existent streamer
@@ -281,7 +281,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val balance = Await.result(balanceF, 5.seconds)
       
       // Verify the balance is 0 for non-existent streamer
-      balance must be(0)
+      balance must be(None)
     }
     
     "delete a YouTube streamer" in {
