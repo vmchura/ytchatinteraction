@@ -104,7 +104,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
         testEventName1,
         Some(testDescription),
         testEventType,
-        0L,
+        0,
         true,
         Instant.now(),
         None,
@@ -136,7 +136,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
         testEventName1,
         Some(testDescription),
         testEventType,
-        0L,
+        0,
         true,
         Instant.now(),
         None,
@@ -172,14 +172,14 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create multiple events for the same channel
-      val event1 = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
-      val event2 = StreamerEvent(None, testChannelId1, testEventName2, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val event1 = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
+      val event2 = StreamerEvent(None, testChannelId1, testEventName2, None, testEventType, 0, true, Instant.now(), None, None, None)
       
       Await.result(repository.create(event1), 5.seconds)
       Await.result(repository.create(event2), 5.seconds)
       
       // Create an event for another channel
-      val event3 = StreamerEvent(None, testChannelId2, "Other event", None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val event3 = StreamerEvent(None, testChannelId2, "Other event", None, testEventType, 0, true, Instant.now(), None, None, None)
       Await.result(repository.create(event3), 5.seconds)
       
       // Get events for channel 1
@@ -196,8 +196,8 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create active and inactive events for the same channel
-      val activeEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
-      val inactiveEvent = StreamerEvent(None, testChannelId1, testEventName2, None, testEventType, 0L, false, Instant.now(), Some(Instant.now()), None, None)
+      val activeEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
+      val inactiveEvent = StreamerEvent(None, testChannelId1, testEventName2, None, testEventType, 0, false, Instant.now(), Some(Instant.now()), None, None)
       
       Await.result(repository.create(activeEvent), 5.seconds)
       Await.result(repository.create(inactiveEvent), 5.seconds)
@@ -216,11 +216,11 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create active events for different channels
-      val activeEvent1 = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
-      val activeEvent2 = StreamerEvent(None, testChannelId2, testEventName2, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val activeEvent1 = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
+      val activeEvent2 = StreamerEvent(None, testChannelId2, testEventName2, None, testEventType, 0, true, Instant.now(), None, None, None)
       
       // Create an inactive event
-      val inactiveEvent = StreamerEvent(None, testChannelId1, "Inactive event", None, testEventType, 0L, false, Instant.now(), Some(Instant.now()), None, None)
+      val inactiveEvent = StreamerEvent(None, testChannelId1, "Inactive event", None, testEventType, 0, false, Instant.now(), Some(Instant.now()), None, None)
       
       Await.result(repository.create(activeEvent1), 5.seconds)
       Await.result(repository.create(activeEvent2), 5.seconds)
@@ -240,7 +240,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create an event
-      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
       val created = Await.result(repository.create(event), 5.seconds)
       
       // Update the event
@@ -269,7 +269,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create an active event
-      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
       val created = Await.result(repository.create(event), 5.seconds)
       
       // End the event
@@ -292,7 +292,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create an event
-      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val event = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
       val created = Await.result(repository.create(event), 5.seconds)
       
       // Verify the event exists before deletion
@@ -320,8 +320,8 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val now = Instant.now()
       val olderTime = now.minusSeconds(3600) // 1 hour ago
       // Create multiple active events with different start times
-      val olderEvent = StreamerEvent(None, testChannelId1, "Older event", None, testEventType, 0L, true, olderTime, None, None, None)
-      val newerEvent = StreamerEvent(None, testChannelId1, "Newer event", None, testEventType, 0L, true, now, None, None, None)
+      val olderEvent = StreamerEvent(None, testChannelId1, "Older event", None, testEventType, 0, true, olderTime, None, None, None)
+      val newerEvent = StreamerEvent(None, testChannelId1, "Newer event", None, testEventType, 0, true, now, None, None, None)
       
       Await.result(repository.create(olderEvent), 5.seconds)
       Await.result(repository.create(newerEvent), 5.seconds)
@@ -340,7 +340,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Create an inactive event
-      val inactiveEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, false, Instant.now(), Some(Instant.now()), None, None)
+      val inactiveEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, false, Instant.now(), Some(Instant.now()), None, None)
       Await.result(repository.create(inactiveEvent), 5.seconds)
       
       // Try to get active event
@@ -355,7 +355,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
       // Attempt to update an event without an ID
-      val invalidEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0L, true, Instant.now(), None, None, None)
+      val invalidEvent = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
       
       // Should throw an exception
       an[IllegalArgumentException] must be thrownBy {

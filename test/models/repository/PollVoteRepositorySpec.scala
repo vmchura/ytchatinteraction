@@ -60,7 +60,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
   val testOptionId2 = 2
   val testOptionText1 = "Option 1"
   val testOptionText2 = "Option 2"
-  val testConfidenceAmount = 100L
+  val testConfidenceAmount = 100
   val testMessage = "Test message"
 
   override def beforeEach(): Unit = {
@@ -325,9 +325,9 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
       
       // Create multiple votes with different confidence amounts
-      val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, 100L, None)
-      val vote2 = PollVote(None, testPollId, testOptionId1, testUserId2, None, 200L, None)
-      val vote3 = PollVote(None, testPollId, testOptionId2, testUserId3, None, 150L, None)
+      val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, 100, None)
+      val vote2 = PollVote(None, testPollId, testOptionId1, testUserId2, None, 200, None)
+      val vote3 = PollVote(None, testPollId, testOptionId2, testUserId3, None, 150, None)
       
       Await.result(repository.create(vote1), 5.seconds)
       Await.result(repository.create(vote2), 5.seconds)

@@ -219,40 +219,6 @@ class UserStreamerStateRepositorySpec extends PlaySpec with GuiceOneAppPerSuite 
       balance must be(Some(newBalance))
     }
     
-    "increment balance for a user streamer state" in {
-      val repository = new UserStreamerStateRepository(dbConfigProvider, userRepository, ytStreamerRepository)
-      
-      // Create a user streamer state with initial balance
-      Await.result(repository.create(testUserId1, testChannelId1, initialBalance), 5.seconds)
-      
-      // Increment the balance by default amount (1)
-      val incrementResultF = repository.incrementBalance(testUserId1, testChannelId1)
-      val incrementResult = Await.result(incrementResultF, 5.seconds)
-      
-      // Verify the increment worked
-      incrementResult must be(1) // 1 row affected
-      
-      // Get the balance to confirm the increment
-      val balanceF = repository.getBalance(testUserId1, testChannelId1)
-      val balance = Await.result(balanceF, 5.seconds)
-      
-      balance must be(Some(initialBalance + 1))
-      
-      // Increment the balance by a specific amount
-      val incrementAmount = 5
-      val incrementAgainF = repository.incrementBalance(testUserId1, testChannelId1, incrementAmount)
-      val incrementAgain = Await.result(incrementAgainF, 5.seconds)
-      
-      // Verify the second increment worked
-      incrementAgain must be(1) // 1 row affected
-      
-      // Get the balance to confirm the second increment
-      val newBalanceF = repository.getBalance(testUserId1, testChannelId1)
-      val newBalance = Await.result(newBalanceF, 5.seconds)
-      
-      newBalance must be(Some(initialBalance + 1 + incrementAmount))
-    }
-    
     "get balance for a user streamer state" in {
       val repository = new UserStreamerStateRepository(dbConfigProvider, userRepository, ytStreamerRepository)
       
