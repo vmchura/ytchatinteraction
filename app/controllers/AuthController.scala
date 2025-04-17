@@ -73,7 +73,7 @@ class AuthController @Inject()(
         _ <- existingYtStreamer match {
           case None => 
             // Case 1: New user login and channel doesn't exist - create YtStreamer and assign ownership
-            ytStreamerRepository.create(profile.loginInfo.providerKey, Some(user.userId))
+            ytStreamerRepository.create(profile.loginInfo.providerKey, Some(user.userId), channelTitle=profile.fullName)
             
           case Some(streamer) if streamer.ownerUserId.isEmpty => 
             // Case 2: Channel exists but has no owner - assign ownership to this user
