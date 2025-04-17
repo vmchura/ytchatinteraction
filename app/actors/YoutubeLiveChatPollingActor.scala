@@ -1,7 +1,7 @@
 package actors
 
 import org.apache.pekko.actor.typed.{ActorRef, Behavior}
-import org.apache.pekko.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
 import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import models._
@@ -29,6 +29,17 @@ object YoutubeLiveChatPollingActor {
   
   // Command to handle errors during API calls
   final case class HandleError(error: Throwable, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  
+  // Command to process messages after getting poll data
+  final case class ProcessMessages(
+    messages: Seq[JsValue], 
+    liveChatId: String,
+    startTime: Instant,
+    pollEvent: (EventPoll, List[PollOption])
+  ) extends Command
+  
+  // Command for when no poll is available
+  final case class NoPollAvailable(liveChatId: String) extends Command
 
   // Timer key for scheduling
   private case object PollingTimer
@@ -107,18 +118,17 @@ object YoutubeLiveChatPollingActor {
             val items = (response \ "items").as[JsArray].value
             context.log.info(s"Received ${items.size} messages, filtering for those after ${startTime}")
             
-            pollService.getPollForRecentEventOverall.onComplete {
-              case Success(Some(eventPoll)) =>
-                // Process each message
-                items.foreach { item =>
-                  processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, 
-                    userRepository, ytUserRepository, startTime, eventPoll, inferUserOptionService, chatService)
-                }
-              case Success(None) =>
-                context.log.error("No events open")
-              case Failure(ex) =>
-                context.log.error("Error getting poll event", ex)
-            }
+            // Get the event poll, but handle the result in the actor context
+            // Use pipeTo pattern to send the result back to self
+            pollService.getPollForRecentEventOverall.map {
+              case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, startTime, eventPoll)
+              case None => NoPollAvailable(liveChatId)
+            }.recover {
+              case ex => 
+                // Log error but continue with next poll
+                println(s"Error getting poll event: ${ex.getMessage}")
+                NoPollAvailable(liveChatId)
+            }.foreach(context.self ! _)
             
             // Schedule next poll based on YouTube's recommended interval
             if (nextPageToken.isDefined) {
@@ -152,6 +162,22 @@ object YoutubeLiveChatPollingActor {
           handleRetry(context, timers, liveChatId, paginationToken, retryCount)
           
           Behaviors.same
+          
+        case ProcessMessages(messages, liveChatId, messageStartTime, pollEvent) =>
+          context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
+          
+          // Process each message - this happens within the actor context now
+          messages.foreach { message =>
+            processMessageInActor(message, liveChatId, ytStreamerRepository, userStreamerStateRepository,
+              userRepository, ytUserRepository, messageStartTime, pollEvent, 
+              inferUserOptionService, chatService, context)
+          }
+          
+          Behaviors.same
+          
+        case NoPollAvailable(liveChatId) =>
+          context.log.warn(s"No active poll available for live chat $liveChatId")
+          Behaviors.same
       }
     }
   }
@@ -183,7 +209,73 @@ object YoutubeLiveChatPollingActor {
   }
 
   /**
+   * Process a single message from the live chat within the actor context
+   * This is a safe version that won't try to access context from outside the actor
+   */
+  private def processMessageInActor(
+    message: JsValue,
+    liveChatId: String,
+    ytStreamerRepository: YtStreamerRepository,
+    userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
+    startTime: Instant,
+    pollEvent: (EventPoll, List[PollOption]),
+    inferUserOptionService: InferUserOptionService,
+    chatService: ChatService,
+    context: ActorContext[Command]
+  )(implicit ec: ExecutionContext): Unit = {
+    try {
+      // Extract message details
+      val messageId = (message \ "id").as[String]
+      val authorChannelId = (message \ "authorDetails" \ "channelId").as[String]
+      val displayName = (message \ "authorDetails" \ "displayName").as[String]
+      val messageText = (message \ "snippet" \ "displayMessage").as[String]
+      
+      // Extract the published time
+      val publishedAtStr = (message \ "snippet" \ "publishedAt").as[String]
+      val publishedAt = Instant.parse(publishedAtStr)
+      
+      // Only process messages that were published after we started monitoring
+      if (publishedAt.isAfter(startTime)) {
+        context.log.info(s"Processing message from $displayName published at $publishedAt")
+        
+        // Register the message author as a user if they don't already exist
+        val userFuture = registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
+        
+        // Broadcast the message to all connected WebSocket clients
+        // Format the message to show who sent it
+
+        // Process the message for poll responses - don't use context logger here
+        inferUserOptionService.inferencePollResponse(
+          eventPoll = pollEvent._1,
+          options = pollEvent._2,
+          response = messageText
+        ).onComplete {
+          case Success(Some((po, confidence))) => 
+            // Successfully processed poll response, but don't log from here
+            chatService.broadcastMessage(s"$displayName: $messageText: [${po.optionText} [${confidence}]]", "youtube", Some(displayName))
+          case Success(None) => 
+            // No poll response detected, but don't log from here
+            chatService.broadcastMessage(s"$displayName: $messageText: [  ]", "youtube", Some(displayName))
+          case Failure(ex) => 
+            // Just print to console to avoid actor context issues
+            println(s"Error processing poll response: ${ex.getMessage}")
+        }
+      } else {
+        // Message is from before we started monitoring, so skip it
+        context.log.debug(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
+      }
+    } catch {
+      case e: Exception =>
+        // Log error and continue
+        context.log.error(s"Error processing message: ${e.getMessage}")
+    }
+  }
+
+  /**
    * Process a single message from the live chat
+   * This is kept for backward compatibility but should eventually be removed
    */
   private def processMessage(
     message: JsValue,
