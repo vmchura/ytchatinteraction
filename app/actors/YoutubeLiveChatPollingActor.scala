@@ -1,0 +1,285 @@
+package actors
+
+import org.apache.pekko.actor.typed.{ActorRef, Behavior}
+import org.apache.pekko.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import play.api.libs.ws.WSClient
+import play.api.libs.json._
+import models._
+import models.repository.{UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
+import services.{ChatService, InferUserOptionService, PollService}
+
+import java.time.Instant
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+
+/**
+ * Actor that handles polling the YouTube Live Chat API.
+ * Uses Pekko Typed for actor implementation.
+ */
+object YoutubeLiveChatPollingActor {
+  // Message protocol for the YoutubeLiveChatPollingActor
+  sealed trait Command
+  
+  // Command to initiate or continue polling
+  final case class PollLiveChat(liveChatId: String, paginationToken: String, retryCount: Int = 0) extends Command
+  
+  // Command to process the API response
+  final case class ProcessApiResponse(response: JsValue, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  
+  // Command to handle errors during API calls
+  final case class HandleError(error: Throwable, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+
+  // Timer key for scheduling
+  private case object PollingTimer
+
+  /**
+   * Create a new YoutubeLiveChatPollingActor behavior
+   */
+  def apply(
+    ws: WSClient,
+    apiKey: String,
+    ytStreamerRepository: YtStreamerRepository,
+    userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
+    startTime: Instant,
+    pollService: PollService,
+    inferUserOptionService: InferUserOptionService,
+    chatService: ChatService
+  ): Behavior[Command] = {
+    Behaviors.withTimers { timers =>
+      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository, 
+        ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService)
+    }
+  }
+
+  /**
+   * Main behavior for handling chat polling
+   */
+  private def active(
+    ws: WSClient,
+    apiKey: String,
+    ytStreamerRepository: YtStreamerRepository,
+    userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
+    startTime: Instant,
+    timers: TimerScheduler[Command],
+    pollService: PollService,
+    inferUserOptionService: InferUserOptionService,
+    chatService: ChatService
+  ): Behavior[Command] = {
+    Behaviors.setup { context =>
+      implicit val ec: ExecutionContext = context.executionContext
+
+      Behaviors.receiveMessage {
+        case PollLiveChat(liveChatId, paginationToken, retryCount) =>
+          context.log.info(s"Polling live chat: $liveChatId, token: $paginationToken, retry: $retryCount")
+          
+          // Build the API URL
+          val url = "https://www.googleapis.com/youtube/v3/liveChat/messages"
+          
+          // Build query parameters
+          val queryParams = Map(
+            "liveChatId" -> liveChatId,
+            "part" -> "id,snippet,authorDetails",
+            "key" -> apiKey
+          ) ++ (if (paginationToken != null) Map("pageToken" -> paginationToken) else Map.empty)
+          
+          // Make the API call
+          ws.url(url)
+            .withQueryStringParameters(queryParams.toSeq: _*)
+            .get()
+            .map(response => ProcessApiResponse(response.json, liveChatId, paginationToken, retryCount))
+            .recover { case error => HandleError(error, liveChatId, paginationToken, retryCount) }
+            .foreach(context.self ! _)
+          
+          Behaviors.same
+          
+        case ProcessApiResponse(response, liveChatId, currentPaginationToken, retryCount) =>
+          // Process the API response
+          try {
+            val nextPageToken = (response \ "nextPageToken").asOpt[String]
+            val pollingIntervalMs = (response \ "pollingIntervalMillis").as[Int]
+            
+            // Process messages - only those published after our start time
+            val items = (response \ "items").as[JsArray].value
+            context.log.info(s"Received ${items.size} messages, filtering for those after ${startTime}")
+            
+            pollService.getPollForRecentEventOverall.onComplete {
+              case Success(Some(eventPoll)) =>
+                // Process each message
+                items.foreach { item =>
+                  processMessage(item, liveChatId, ytStreamerRepository, userStreamerStateRepository, 
+                    userRepository, ytUserRepository, startTime, eventPoll, inferUserOptionService, chatService)
+                }
+              case Success(None) =>
+                context.log.error("No events open")
+              case Failure(ex) =>
+                context.log.error("Error getting poll event", ex)
+            }
+            
+            // Schedule next poll based on YouTube's recommended interval
+            if (nextPageToken.isDefined) {
+              val delay = math.max(pollingIntervalMs, 60000) // Minimum 1 minute to avoid rate limits
+              context.log.info(s"Scheduling next poll in ${delay}ms")
+              
+              // Reset retry count since we had a successful call
+              timers.startSingleTimer(
+                PollingTimer, 
+                PollLiveChat(liveChatId, nextPageToken.get, 0), // Reset retry count
+                delay.milliseconds
+              )
+            } else {
+              context.log.info(s"No next page token, chat may have ended for $liveChatId")
+              // Chat may have ended or there's an error
+            }
+          } catch {
+            case e: Exception =>
+              context.log.error(s"Error processing response: ${e.getMessage}")
+              
+              // Handle retry with the same mechanism as network errors
+              handleRetry(context, timers, liveChatId, currentPaginationToken, retryCount)
+          }
+          
+          Behaviors.same
+          
+        case HandleError(error, liveChatId, paginationToken, retryCount) =>
+          context.log.error(s"Error polling live chat $liveChatId: ${error.getMessage}")
+          
+          // Handle retry logic
+          handleRetry(context, timers, liveChatId, paginationToken, retryCount)
+          
+          Behaviors.same
+      }
+    }
+  }
+
+  /**
+   * Handle retry logic for API call failures
+   */
+  private def handleRetry(
+    context: org.apache.pekko.actor.typed.scaladsl.ActorContext[Command],
+    timers: TimerScheduler[Command],
+    liveChatId: String,
+    paginationToken: String,
+    retryCount: Int
+  ): Unit = {
+    val maxRetries = 3
+    val retryDelayMinutes = 3
+    
+    if (retryCount < maxRetries) {
+      context.log.info(s"Scheduling retry ${retryCount + 1}/$maxRetries in $retryDelayMinutes minutes")
+      timers.startSingleTimer(
+        PollingTimer,
+        PollLiveChat(liveChatId, paginationToken, retryCount + 1), // Increment retry count
+        retryDelayMinutes.minutes
+      )
+    } else {
+      context.log.error(s"Maximum retry attempts ($maxRetries) reached for $liveChatId. Stopping polling.")
+      // Do not schedule another poll, effectively stopping the polling
+    }
+  }
+
+  /**
+   * Process a single message from the live chat
+   */
+  private def processMessage(
+    message: JsValue,
+    liveChatId: String,
+    ytStreamerRepository: YtStreamerRepository,
+    userStreamerStateRepository: UserStreamerStateRepository,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository,
+    startTime: Instant,
+    pollEvent: (EventPoll, List[PollOption]),
+    inferUserOptionService: InferUserOptionService,
+    chatService: ChatService
+  )(implicit ec: ExecutionContext): Future[Unit] = {
+    try {
+      // Extract message details
+      val messageId = (message \ "id").as[String]
+      val authorChannelId = (message \ "authorDetails" \ "channelId").as[String]
+      val displayName = (message \ "authorDetails" \ "displayName").as[String]
+      val messageText = (message \ "snippet" \ "displayMessage").as[String]
+      
+      // Extract the published time
+      val publishedAtStr = (message \ "snippet" \ "publishedAt").as[String]
+      val publishedAt = Instant.parse(publishedAtStr)
+      
+      // Only process messages that were published after we started monitoring
+      if (publishedAt.isAfter(startTime)) {
+        println(s"Processing message from $displayName published at $publishedAt")
+        
+        // Register the message author as a user if they don't already exist
+        val userFuture = registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
+        
+        // Broadcast the message to all connected WebSocket clients
+        chatService.broadcastMessage(messageText, "youtube", Some(displayName))
+
+        // Process the message for poll responses
+        inferUserOptionService.inferencePollResponse(
+          eventPoll = pollEvent._1,
+          options = pollEvent._2,
+          response = messageText
+        ).map {
+          case Some((po, confidence)) => ()
+          case None => ()
+        }
+
+        userFuture.map(_ => ())
+      } else {
+        // Message is from before we started monitoring, so skip it
+        println(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
+        Future.successful(())
+      }
+    } catch {
+      case e: Exception =>
+        // Log error and continue
+        println(s"Error processing message: ${e.getMessage}")
+        Future.successful(())
+    }
+  }
+
+  /**
+   * Register a new user from the chat message if they don't already exist
+   */
+  private def registerChatUser(
+    channelId: String,
+    displayName: String,
+    userRepository: UserRepository,
+    ytUserRepository: YtUserRepository
+  )(implicit ec: ExecutionContext): Future[Option[YtUser]] = {
+    // First, check if the YouTube user already exists
+    ytUserRepository.getByChannelId(channelId).flatMap {
+      case Some(existingUser) => 
+        // User already exists, return it
+        Future.successful(Some(existingUser))
+      
+      case None =>
+        // User doesn't exist, create a new user and link it to a YouTube user
+        println(s"Registering new user from chat: $displayName ($channelId)")
+        for {
+          // Create a new User with the display name as username
+          newUser <- userRepository.create(displayName).map { user =>
+            println(s"Created new user: ID=${user.userId}, Username=${user.userName}")
+            user
+          }
+          
+          // Create a new YtUser linked to the User
+          ytUser <- ytUserRepository.createFull(YtUser(
+            userChannelId = channelId,
+            userId = newUser.userId,
+            displayName = Some(displayName),
+            email = None, // We don't have email from chat messages
+            profileImageUrl = None, // We don't have profile image from chat messages
+            activated = true // Automatically activate users from chat
+          )).map { user =>
+            println(s"Linked YouTube user: ChannelID=${user.userChannelId}, UserID=${user.userId}")
+            user
+          }
+        } yield Some(ytUser)
+    }
+  }
+}
