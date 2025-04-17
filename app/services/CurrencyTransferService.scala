@@ -23,7 +23,24 @@ class CurrencyTransferService @Inject()(
   private val dbConfig = dbConfigProvider.get[JdbcProfile]
   import dbConfig._
   import dbConfig.profile.api._
-  
+
+  def transferCurrencyUserStream(userID: Long, channelID: String, amount: Int): DBIO[Boolean] = {
+    (for{
+      relationExists <- userStreamerStateRepository.existsAction(userID, channelID)
+      _ <- if (!relationExists) userStreamerStateRepository.createAction(userID, channelID, 0) else DBIO.successful(())
+      userBalanceOption <- getUserBalance(userID, channelID)
+      userBalance <- userBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the user found")))(DBIO.successful)
+      rows_update_event <- if(userBalance + amount < 0) DBIO.failed(new IllegalStateException("Negative balance for user"))
+      else userStreamerStateRepository.updateBalanceAction(userID, channelID, userBalance + amount)
+      streamerBalanceOption <- getStreamerBalance(channelID)
+      streamerBalance <- streamerBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the streamer found")))(DBIO.successful)
+      rows_update_streamer <- if(streamerBalance - amount < 0) DBIO.failed(new IllegalStateException("Negative balance for streamer"))
+      else ytStreamerRepository.updateBalanceAction(channelID, streamerBalance - amount)
+      operation_complete <- if(rows_update_event == 1 && rows_update_streamer == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
+    }yield {
+      operation_complete
+    }).transactionally
+  }
   /**
    * Transfers currency from a user to a streamer channel.
    *
@@ -39,42 +56,7 @@ class CurrencyTransferService @Inject()(
     amount: Int
   ): Future[Boolean] = {
     
-    // First check all preconditions
-    val action = for {
-      // Verify the user exists
-      userExists <- userRepository.existsAction(fromUserId)
-      _ <- if (!userExists) DBIO.failed(new Exception(s"User with ID $fromUserId not found"))
-           else DBIO.successful(())
-           
-      // Verify the streamer exists
-      streamerOpt <- ytStreamerRepository.getTableQuery.filter(_.channelId === toChannelId).result.headOption
-      _ <- if (streamerOpt.isEmpty) DBIO.failed(new Exception(s"Streamer with channel ID $toChannelId not found"))
-           else DBIO.successful(())
-      
-      // Get the current relationship or create it if it doesn't exist
-      relationExists <- userStreamerStateRepository.existsAction(fromUserId, toChannelId)
-      _ <- if (!relationExists) {
-             userStreamerStateRepository.createAction(fromUserId, toChannelId, 0)
-           } else DBIO.successful(())
-      
-      // Get current balances
-      userBalance <- getUserBalance(fromUserId, toChannelId)
-      
-      // Ensure user has enough balance
-      _ <- if (userBalance.getOrElse(0) < amount)
-             DBIO.failed(new Exception(s"Insufficient balance: User has $userBalance, trying to send $amount"))
-           else 
-             DBIO.successful(())
-      
-      // Update balances atomically within the transaction
-      _ <- userStreamerStateRepository.incrementBalanceAction(fromUserId, toChannelId, -amount)
-      _ <- ytStreamerRepository.incrementBalanceAction(toChannelId, amount)
-      
-      // Get the new balances to return
-    } yield true
-    
-    // Run the entire action as a transaction
-    db.run(action.transactionally)
+    db.run(transferCurrencyUserStream(fromUserId, toChannelId, -amount))
   }
   
   /**
@@ -91,42 +73,8 @@ class CurrencyTransferService @Inject()(
     toUserId: Long, 
     amount: Int
   ): Future[Boolean] = {
-    
-    // First check all preconditions
-    val action = for {
-      // Verify the streamer exists
-      streamerOpt <- ytStreamerRepository.getTableQuery.filter(_.channelId === fromChannelId).result.headOption
-      _ <- if (streamerOpt.isEmpty) DBIO.failed(new Exception(s"Streamer with channel ID $fromChannelId not found"))
-           else DBIO.successful(())
-      
-      // Verify the user exists
-      userExists <- userRepository.existsAction(toUserId)
-      _ <- if (!userExists) DBIO.failed(new Exception(s"User with ID $toUserId not found"))
-           else DBIO.successful(())
-           
-      // Get the current relationship or create it if it doesn't exist
-      relationExists <- userStreamerStateRepository.existsAction(toUserId, fromChannelId)
-      _ <- if (!relationExists) {
-             userStreamerStateRepository.createAction(toUserId, fromChannelId, 0)
-           } else DBIO.successful(())
-      
-      // Get current streamer balance
-      streamerBalance <- getStreamerBalance(fromChannelId)
-      
-      // Ensure streamer has enough balance
-      _ <- streamerBalance.fold(DBIO.failed(new IllegalStateException("Streamer with Null balance")))(streamerBalanceInt => if(streamerBalanceInt < amount) {
-             DBIO.failed(new Exception(s"Insufficient balance: Streamer has $streamerBalance, trying to send $amount"))}
-                else
-             DBIO.successful(()))
-      
-      // Update balances atomically within the transaction
-      _ <- ytStreamerRepository.incrementBalanceAction(fromChannelId, -amount)
-      _ <- userStreamerStateRepository.incrementBalanceAction(toUserId, fromChannelId, amount)
 
-    } yield true
-    
-    // Run the entire action as a transaction
-    db.run(action.transactionally)
+    db.run(transferCurrencyUserStream(toUserId, fromChannelId, amount))
   }
 
   // Helper methods to get balances as DBIO actions (for use within transactions)

@@ -57,29 +57,15 @@ class UserStreamerStateRepository @Inject()(
   def exists(userId: Long, streamerChannelId: String): Future[Boolean] = db.run {
     existsAction(userId, streamerChannelId)
   }
-  
-  def updateBalance(userId: Long, streamerChannelId: String, newBalance: Int): Future[Int] = db.run {
+
+  def updateBalanceAction(userId: Long, streamerChannelId: String, newBalance: Int): DBIO[Int] = 
     userStreamerStateTable
       .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
       .map(_.currentBalanceNumber)
       .update(newBalance)
+  def updateBalance(userId: Long, streamerChannelId: String, newBalance: Int): Future[Int] = db.run {
+    updateBalanceAction(userId, streamerChannelId, newBalance)
   }
-  
-  def incrementBalanceAction(userId: Long, streamerChannelId: String, amount: Int = 1): DBIO[Int] = {
-    val userStreamerFilter = userStreamerStateTable
-      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
-      .map(_.currentBalanceNumber)
-    for {
-      current_amount <- userStreamerFilter.result.headOption
-      updated_value <- userStreamerFilter.update(current_amount.getOrElse(0) + amount)
-    } yield updated_value
-  }
-  
-  def incrementBalance(userId: Long, streamerChannelId: String, amount: Int = 1): Future[Int] = {
-    db.run(incrementBalanceAction(userId, streamerChannelId, amount).transactionally)
-  }
-  
-
   
   def getBalance(userId: Long, streamerChannelId: String): Future[Option[Int]] = {
     db.run(getUserStreamerBalanceAction(userId, streamerChannelId))

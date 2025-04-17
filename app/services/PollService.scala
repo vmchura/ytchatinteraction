@@ -83,9 +83,9 @@ class PollService @Inject()(
       eventCurrentBalance <- eventCurrentBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the event found")))(DBIO.successful)
       userChannelBalanceOption <- userStreamerStateRepository.getUserStreamerBalanceAction(userID, streamChannelID)
       userChannelBalance <- userChannelBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the user channel found")))(DBIO.successful)
-      rows_update_event <- if(eventCurrentBalance + amount < 0) DBIO.failed(new IllegalStateException(""))
+      rows_update_event <- if(eventCurrentBalance + amount < 0) DBIO.failed(new IllegalStateException("Negative balance for streamer event"))
       else streamerEventRepository.updateCurrentConfidenceAmount(eventID, eventCurrentBalance + amount)
-      rows_update_user_stream <- if(userChannelBalance + amount < 0) DBIO.failed(new IllegalStateException(""))
+      rows_update_user_stream <- if(userChannelBalance - amount < 0) DBIO.failed(new IllegalStateException("Negative amount for user balance"))
       else userStreamerStateRepository.updateStreamerBalanceAction(userID, streamChannelID, userChannelBalance - amount)
       operation_complete <- if(rows_update_event == 1 && rows_update_user_stream == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
     }yield{

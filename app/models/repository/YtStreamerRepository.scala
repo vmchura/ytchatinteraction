@@ -89,12 +89,15 @@ class YtStreamerRepository @Inject()(
       .exists
       .result
   }
-  
-  def updateBalance(channelId: String, newBalance: Int): Future[Int] = db.run {
+
+  def updateBalanceAction(channelId: String, newBalance: Int): DBIO[Int] =
     ytStreamersTable
       .filter(_.channelId === channelId)
       .map(_.currentBalanceNumber)
       .update(newBalance)
+
+  def updateBalance(channelId: String, newBalance: Int): Future[Int] = db.run {
+    updateBalanceAction(channelId, newBalance)
   }
   
   def incrementBalanceAction(channelId: String, amount: Int = 1): DBIO[Int] = {
