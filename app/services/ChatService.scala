@@ -81,8 +81,10 @@ class ChatService @Inject()(
     val outgoingMessages: Source[String, _] = Source.actorRef[String](
       // The completionMatcher and failureMatcher are not used in our case,
       // but they are required by the API
-      { case _ => CompletionStrategy.immediately }, // completionMatcher - we don't complete from the source
-      { case _ => new IllegalStateException("Stopped from source") }, // failureMatcher - we don't fail from the source
+      { case _ => CompletionStrategy.draining }, // completionMatcher - we don't complete from the source
+      { case e =>
+        println(e)
+        new IllegalStateException("Stopped from source") }, // failureMatcher - we don't fail from the source
       bufferSize = 100,
       OverflowStrategy.dropHead
     ).mapMaterializedValue { outgoingActor =>

@@ -100,10 +100,11 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {
       // Fallback for non-JSON messages
       console.log('Received non-JSON message:', event.data);
-      const messageElement = document.createElement('li');
-      messageElement.style.fontSize = '1.5em';
-      messageElement.textContent = event.data;
-      messagesElement.appendChild(messageElement);
+      // Use a different variable name to avoid redeclaration
+      const plainMessageElement = document.createElement('li');
+      plainMessageElement.style.fontSize = '1.5em';
+      plainMessageElement.textContent = event.data;
+      messagesElement.appendChild(plainMessageElement);
     }
   };
 

@@ -4,7 +4,7 @@ import javax.inject._
 import play.api.mvc._
 import play.api.data._
 import play.api.data.Forms._
-import services.YoutubeLiveChatService
+import services.YoutubeLiveChatServiceTyped
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class YoutubeFrontendController @Inject()(
   cc: MessagesControllerComponents,
-  youtubeLiveChatService: YoutubeLiveChatService
+  youtubeLiveChatService: YoutubeLiveChatServiceTyped
 )(implicit ec: ExecutionContext) extends MessagesAbstractController(cc) {
 
   // Form for stream ID input
