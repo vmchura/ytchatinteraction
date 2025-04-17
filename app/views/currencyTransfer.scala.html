@@ -1,0 +1,62 @@
+@import forms.CurrencyTransferForm
+@(currencyForm: Form[CurrencyTransferForm], streamers: Seq[models.YtStreamer])(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("Add Currency to Streamer") {
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3>Add Currency to YouTube Streamer</h3>
+                    </div>
+                    <div class="card-body">
+                        @if(flash.get("success").isDefined) {
+                            <div class="alert alert-success">
+                                @flash.get("success")
+                            </div>
+                        }
+                        @if(flash.get("error").isDefined) {
+                            <div class="alert alert-danger">
+                                @flash.get("error")
+                            </div>
+                        }
+                        
+                        @helper.form(action = routes.CurrencyController.addCurrency()) {
+                            @helper.CSRF.formField
+                            
+                            <div class="form-group mb-3">
+                                <label for="channelId">Select Streamer:</label>
+                                <select id="channelId" name="channelId" class="form-control" required>
+                                    <option value="">-- Select a Streamer --</option>
+                                    @for(streamer <- streamers) {
+                                        <option value="@streamer.channelId" @if(currencyForm("channelId").value.contains(streamer.channelId)){selected}>
+                                            @streamer.channelTitle.getOrElse(streamer.channelId) 
+                                            (Current Balance: @streamer.currentBalanceNumber)
+                                        </option>
+                                    }
+                                </select>
+                                @if(currencyForm("channelId").hasErrors) {
+                                    <div class="text-danger">@currencyForm("channelId").errors.map(_.message).mkString(", ")</div>
+                                }
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="amount">Amount to Add:</label>
+                                <input type="number" id="amount" name="amount" class="form-control" 
+                                    value="@currencyForm("amount").value" min="1" required>
+                                @if(currencyForm("amount").hasErrors) {
+                                    <div class="text-danger">@currencyForm("amount").errors.map(_.message).mkString(", ")</div>
+                                }
+                            </div>
+                            
+                            <div class="form-group text-center">
+                                <button type="submit" class="btn btn-primary">Add Currency</button>
+                                <a href="@routes.HomeController.home()" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

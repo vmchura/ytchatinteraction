@@ -21,6 +21,7 @@
                 @user.map { u =>
                     <li><a href="@routes.HomeController.home()">Dashboard</a></li>
                     <li><a href="@routes.EventController.eventManagement()">Event Management</a></li>
+                    <li><a href="@routes.CurrencyController.showCurrencyForm()">Currency Management</a></li>
                     <li>@u.userName</li>
                     <li><a href="@routes.AuthController.signOut" role="button" class="contrast" id="logout">Logout</a></li>
                 }.getOrElse {

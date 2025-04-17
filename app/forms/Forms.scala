@@ -23,6 +23,13 @@ case class EventWithPollForm(
                               event: EventForm,
                               poll: PollForm
                             )
+
+// Form for adding currency to a YouTube streamer
+case class CurrencyTransferForm(
+                                 channelId: String,
+                                 amount: Int
+                               )
+
 object Forms:
   val eventForm = Form(
     mapping(
@@ -55,4 +62,11 @@ object Forms:
         "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2)
       )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options))
     )(EventWithPollForm.apply)(nn => Some(nn.event, nn.poll))
+  )
+  
+  val currencyTransferForm = Form(
+    mapping(
+      "channelId" -> nonEmptyText,
+      "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
+    )(CurrencyTransferForm.apply)(nn => Some(nn.channelId, nn.amount))
   )

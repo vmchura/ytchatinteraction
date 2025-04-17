@@ -28,6 +28,11 @@ GET     /youtube/stop-monitoring/:id controllers.YoutubeFrontendController.stopM
 # YouTube Live Chat monitoring endpoints
 POST    /api/youtube/livechat/get-id controllers.YoutubeLiveChatController.getLiveChatId
 
+# Currency management endpoints
+GET     /currency                   controllers.CurrencyController.showCurrencyForm()
+POST    /currency                   controllers.CurrencyController.addCurrency()
+GET     /currency/:channelId        controllers.CurrencyController.getStreamerBalance(channelId: String)
+
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
 ->      /webjars                    webjars.Routes
