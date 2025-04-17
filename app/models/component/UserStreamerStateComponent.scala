@@ -24,4 +24,13 @@ trait UserStreamerStateComponent {
   }
 
   val userStreamerStateTable = TableQuery[UserStreamerStateTable]
+
+  def getUserStreamerBalanceAction(userId: Long, streamerChannelId: String): DBIO[Option[Int]] = {
+    userStreamerStateTable
+      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
+      .map(_.currentBalanceNumber)
+      .result
+      .headOption
+  }
+  
 }

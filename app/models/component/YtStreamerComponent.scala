@@ -23,4 +23,12 @@ trait YtStreamerComponent {
   }
 
   val ytStreamersTable = TableQuery[YtStreamersTable]
+
+  def getStreamerBalanceAction(channelId: String): DBIO[Option[Int]] = {
+    ytStreamersTable
+      .filter(_.channelId === channelId)
+      .map(_.currentBalanceNumber)
+      .result
+      .headOption
+  }
 }

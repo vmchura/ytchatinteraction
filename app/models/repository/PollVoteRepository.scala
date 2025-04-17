@@ -1,7 +1,8 @@
 package models.repository
 
+import com.sun.java.accessibility.util.EventID
 import models.PollVote
-import models.component._
+import models.component.*
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio.DBIO
 import slick.jdbc.JdbcProfile
@@ -16,7 +17,7 @@ class PollVoteRepository @Inject()(
   pollOptionRepository: PollOptionRepository,
   userRepository: UserRepository
 )(implicit ec: ExecutionContext) extends PollVoteComponent with PollOptionComponent with EventPollComponent 
-  with StreamerEventComponent with UserComponent with YtStreamerComponent {
+  with StreamerEventComponent with UserComponent with YtStreamerComponent with UserStreamerStateComponent {
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
@@ -232,7 +233,14 @@ class PollVoteRepository @Inject()(
       .map { case (optionId, votes) => optionId -> votes.map(_.confidenceAmount).sum }
       .result
   }.map(_.collect { case (optionId, Some(sum)) => optionId -> sum }.toMap)
-  
+
+//  def transferConfidenceAmount(eventID: EventID, userID: Long, streamerChannelID: String, confidence: Int): Future[Int] = {
+//    for{
+//      currentUserStreamerBalanceAmount <- getUserStreamerBalanceAction(userID, streamerChannelID)
+//      currentStreamerEventBalance <- 
+//      newStreamerBalance <- getStreamerBalance(toChannelId)
+//    }
+//  } 
   // Get table query for use by other repositories
   def getTableQuery = pollVotesTable
 }

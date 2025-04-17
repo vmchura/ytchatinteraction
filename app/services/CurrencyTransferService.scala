@@ -37,7 +37,7 @@ class CurrencyTransferService @Inject()(
     fromUserId: Long, 
     toChannelId: String, 
     amount: Int
-  ): Future[(Int, Int)] = {
+  ): Future[Boolean] = {
     
     // First check all preconditions
     val action = for {
@@ -61,7 +61,7 @@ class CurrencyTransferService @Inject()(
       userBalance <- getUserBalance(fromUserId, toChannelId)
       
       // Ensure user has enough balance
-      _ <- if (userBalance < amount) 
+      _ <- if (userBalance.getOrElse(0) < amount)
              DBIO.failed(new Exception(s"Insufficient balance: User has $userBalance, trying to send $amount"))
            else 
              DBIO.successful(())
@@ -71,9 +71,7 @@ class CurrencyTransferService @Inject()(
       _ <- ytStreamerRepository.incrementBalanceAction(toChannelId, amount)
       
       // Get the new balances to return
-      newUserBalance <- getUserBalance(fromUserId, toChannelId)
-      newStreamerBalance <- getStreamerBalance(toChannelId)
-    } yield (newUserBalance, newStreamerBalance)
+    } yield true
     
     // Run the entire action as a transaction
     db.run(action.transactionally)
@@ -92,7 +90,7 @@ class CurrencyTransferService @Inject()(
     fromChannelId: String, 
     toUserId: Long, 
     amount: Int
-  ): Future[(Int, Int)] = {
+  ): Future[Boolean] = {
     
     // First check all preconditions
     val action = for {
@@ -116,31 +114,28 @@ class CurrencyTransferService @Inject()(
       streamerBalance <- getStreamerBalance(fromChannelId)
       
       // Ensure streamer has enough balance
-      _ <- if (streamerBalance < amount) 
-             DBIO.failed(new Exception(s"Insufficient balance: Streamer has $streamerBalance, trying to send $amount"))
-           else 
-             DBIO.successful(())
+      _ <- streamerBalance.fold(DBIO.failed(new IllegalStateException("Streamer with Null balance")))(streamerBalanceInt => if(streamerBalanceInt < amount) {
+             DBIO.failed(new Exception(s"Insufficient balance: Streamer has $streamerBalance, trying to send $amount"))}
+                else
+             DBIO.successful(()))
       
       // Update balances atomically within the transaction
       _ <- ytStreamerRepository.incrementBalanceAction(fromChannelId, -amount)
       _ <- userStreamerStateRepository.incrementBalanceAction(toUserId, fromChannelId, amount)
-      
-      // Get the new balances to return
-      newStreamerBalance <- getStreamerBalance(fromChannelId)
-      newUserBalance <- getUserBalance(toUserId, fromChannelId)
-    } yield (newStreamerBalance, newUserBalance)
+
+    } yield true
     
     // Run the entire action as a transaction
     db.run(action.transactionally)
   }
-  
+
   // Helper methods to get balances as DBIO actions (for use within transactions)
   
-  private def getUserBalance(userId: Long, streamerChannelId: String): DBIO[Int] = {
-    userStreamerStateRepository.getBalanceAction(userId, streamerChannelId)
+  private def getUserBalance(userId: Long, streamerChannelId: String): DBIO[Option[Int]] = {
+    userStreamerStateRepository.getUserStreamerBalanceAction(userId, streamerChannelId)
   }
   
-  private def getStreamerBalance(channelId: String): DBIO[Int] = {
-    ytStreamerRepository.getBalanceAction(channelId)
+  private def getStreamerBalance(channelId: String): DBIO[Option[Int]] = {
+    ytStreamerRepository.getStreamerBalanceAction(channelId)
   }
 }

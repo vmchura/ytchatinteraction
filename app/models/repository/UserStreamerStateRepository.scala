@@ -79,17 +79,10 @@ class UserStreamerStateRepository @Inject()(
     db.run(incrementBalanceAction(userId, streamerChannelId, amount).transactionally)
   }
   
-  def getBalanceAction(userId: Long, streamerChannelId: String): DBIO[Int] = {
-    userStreamerStateTable
-      .filter(s => s.userId === userId && s.streamerChannelId === streamerChannelId)
-      .map(_.currentBalanceNumber)
-      .result
-      .headOption
-      .map(_.getOrElse(0))
-  }
+
   
-  def getBalance(userId: Long, streamerChannelId: String): Future[Int] = {
-    db.run(getBalanceAction(userId, streamerChannelId))
+  def getBalance(userId: Long, streamerChannelId: String): Future[Option[Int]] = {
+    db.run(getUserStreamerBalanceAction(userId, streamerChannelId))
   }
   
   def delete(userId: Long, streamerChannelId: String): Future[Int] = db.run {

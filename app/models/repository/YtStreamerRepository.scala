@@ -109,17 +109,10 @@ class YtStreamerRepository @Inject()(
     db.run(incrementBalanceAction(channelId, amount).transactionally)
   }
   
-  def getBalanceAction(channelId: String): DBIO[Int] = {
-    ytStreamersTable
-      .filter(_.channelId === channelId)
-      .map(_.currentBalanceNumber)
-      .result
-      .headOption
-      .map(_.getOrElse(0))
-  }
   
-  def getBalance(channelId: String): Future[Int] = {
-    db.run(getBalanceAction(channelId))
+  
+  def getBalance(channelId: String): Future[Option[Int]] = {
+    db.run(getStreamerBalanceAction(channelId))
   }
   
   // Get table query for use by other repositories (like UserStreamerState)

@@ -43,4 +43,12 @@ trait StreamerEventComponent {
   }
 
   val streamerEventsTable = TableQuery[StreamerEventsTable]
+  
+  def getCurrentConfidenceAmountAction(eventID: Int): DBIO[Option[Long]] = {
+    streamerEventsTable
+      .filter(s => s.eventId === eventID)
+      .map(_.currentConfidenceAmount)
+      .result
+      .headOption
+  }
 }
