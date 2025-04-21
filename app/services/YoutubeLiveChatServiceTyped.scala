@@ -2,11 +2,11 @@ package services
 
 import javax.inject.{Inject, Singleton}
 import org.apache.pekko.actor.typed.{ActorRef, ActorSystem}
-import org.apache.pekko.actor.typed.scaladsl.adapter._
+import org.apache.pekko.actor.typed.scaladsl.adapter.*
 import play.api.libs.ws.WSClient
 import play.api.Configuration
-import models._
-import models.repository.{UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
+import models.*
+import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
 import actors.YoutubeLiveChatPollingActor
 
 import java.time.Instant
@@ -27,7 +27,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
   actorSystem: ActorSystem[Nothing],
   pollService: PollService,
   inferUserOptionService: InferUserOptionService,
-  chatService: ChatService
+  chatService: ChatService,
+  pollVoteRepository: PollVoteRepository
 )(implicit ec: ExecutionContext) {
   
   // Get API key from configuration
@@ -54,7 +55,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
         startTime, 
         pollService, 
         inferUserOptionService, 
-        chatService
+        chatService,
+        pollVoteRepository
       ),
       s"youtube-chat-polling-${streamerChatId}"
     )
