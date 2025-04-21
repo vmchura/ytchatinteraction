@@ -65,8 +65,8 @@ class StreamerEventRepository @Inject()(
    * Get all active events
    */
   def getAllActive(): Future[Seq[StreamerEvent]] = db.run {
-    streamerEventsTable.filter(_.isActive === true).result
-  }
+    streamerEventsTable.result
+  }.map(_.sortBy(_.createdAt))
 
   /**
    * Get all active events

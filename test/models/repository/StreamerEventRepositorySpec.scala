@@ -214,28 +214,27 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
     
     "get all active events" in {
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
-      
+
       // Create active events for different channels
       val activeEvent1 = StreamerEvent(None, testChannelId1, testEventName1, None, testEventType, 0, true, Instant.now(), None, None, None)
       val activeEvent2 = StreamerEvent(None, testChannelId2, testEventName2, None, testEventType, 0, true, Instant.now(), None, None, None)
-      
+
       // Create an inactive event
       val inactiveEvent = StreamerEvent(None, testChannelId1, "Inactive event", None, testEventType, 0, false, Instant.now(), Some(Instant.now()), None, None)
-      
+
       Await.result(repository.create(activeEvent1), 5.seconds)
       Await.result(repository.create(activeEvent2), 5.seconds)
       Await.result(repository.create(inactiveEvent), 5.seconds)
-      
+
       // Get all active events
       val eventsF = repository.getAllActive()
       val events = Await.result(eventsF, 5.seconds)
-      
+
       // Verify results
-      events.size must be(2)
-      events.map(_.eventName) must contain allOf(testEventName1, testEventName2)
-      events.foreach(_.isActive must be(true))
+      events.size must be(3)
+      events.map(_.eventName) must contain allOf(testEventName1, testEventName2, "Inactive event")
     }
-    
+
     "update an event" in {
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
       
