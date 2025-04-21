@@ -45,7 +45,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     // Get user's streamers and all events
     for {
       streamers <- ytStreamerRepository.getAll()
-      events <- streamerEventRepository.getAllActive()
+      events <- streamerEventRepository.list()
     } yield {
       Ok(views.html.rivalTeamsEventForm(
         eventWithPollForm,
@@ -61,7 +61,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     // Get user's streamers and all events
     for {
       streamers <- ytStreamerRepository.getAll()
-      events <- streamerEventRepository.getAllActive()
+      events <- streamerEventRepository.list()
     } yield {
       Ok(views.html.eventManagement(
         eventWithPollForm,
@@ -78,7 +78,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       formWithErrors => {
         for {
           streamers <- ytStreamerRepository.getAll()
-          events <- streamerEventRepository.getAllActive()
+          events <- streamerEventRepository.list()
         } yield {
           BadRequest(views.html.eventManagement(
             formWithErrors,
@@ -118,7 +118,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           _ <- pollOptionRepository.createMultiple(createdPoll.pollId.get, formData.poll.options)
 
           // Get updated list of streamers and events for the view
-          events <- streamerEventRepository.getAllActive()
+          events <- streamerEventRepository.list()
         } yield {
           Redirect(routes.EventController.eventManagement())
             .flashing("success" -> "Event created successfully")

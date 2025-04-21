@@ -60,20 +60,13 @@ class StreamerEventRepository @Inject()(
       .filter(e => e.channelId === channelId && e.isActive === true)
       .result
   }
-  
-  /**
-   * Get all active events
-   */
-  def getAllActive(): Future[Seq[StreamerEvent]] = db.run {
-    streamerEventsTable.result
-  }.map(_.sortBy(_.createdAt))
 
   /**
    * Get all active events
    */
   def list(): Future[Seq[StreamerEvent]] = db.run {
     streamerEventsTable.result
-  }
+  }.map(_.sortBy(_.createdAt))
   /**
    * Update an event
    */
