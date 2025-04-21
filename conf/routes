@@ -11,6 +11,8 @@ GET     /events                     controllers.EventController.eventManagement(
 POST    /events                     controllers.EventController.createEvent()
 GET     /events/:id/stop-votes      controllers.EventController.endEvent(id: Int)
 GET     /events/:id/close           controllers.EventController.closeEvent(id: Int)
+GET     /events/:id/select-winner   controllers.EventController.selectWinnerForm(id: Int)
+POST    /events/:id/select-winner   controllers.EventController.setWinnerAndClose(id: Int)
 GET     /events/history             controllers.EventController.eventHistory()
 GET     /events/full-form           controllers.EventController.fullEventForm()
 

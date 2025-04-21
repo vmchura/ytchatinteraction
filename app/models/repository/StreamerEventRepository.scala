@@ -66,7 +66,7 @@ class StreamerEventRepository @Inject()(
    */
   def list(): Future[Seq[StreamerEvent]] = db.run {
     streamerEventsTable.result
-  }.map(_.sortBy(_.createdAt))
+  }.map(_.sortBy(_.createdAt).reverse)
   /**
    * Update an event
    */

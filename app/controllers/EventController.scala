@@ -150,7 +150,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     }
   }
   
-  // Close an event (set end time)
+  // Close an event without setting a winner
   def closeEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     streamerEventRepository.closeEvent(eventId).map { result =>
       if (result > 0) {
@@ -176,6 +176,90 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     } yield {
       Ok(views.html.eventHistory(events, request.identity))
     }
+  }
+
+  // Show form to select winner and close an event
+  def selectWinnerForm(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    for {
+      eventOpt <- streamerEventRepository.getById(eventId)
+      polls <- eventPollRepository.getByEventId(eventId)
+      pollId = polls.headOption.flatMap(_.pollId)
+      options <- pollId match {
+        case Some(id) => pollOptionRepository.getByPollId(id)
+        case None => Future.successful(Seq.empty)
+      }
+    } yield {
+      eventOpt match {
+        case Some(event) if polls.nonEmpty =>
+          Ok(views.html.selectWinner(
+            forms.Forms.setWinnerForm,
+            event,
+            polls.head,
+            options,
+            request.identity
+          ))
+        case Some(_) =>
+          Redirect(routes.EventController.eventManagement())
+            .flashing("error" -> "No poll found for this event")
+        case None =>
+          Redirect(routes.EventController.eventManagement())
+            .flashing("error" -> "Event not found")
+      }
+    }
+  }
+
+  // Process winner selection and close the event
+  def setWinnerAndClose(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    forms.Forms.setWinnerForm.bindFromRequest().fold(
+      formWithErrors => {
+        for {
+          eventOpt <- streamerEventRepository.getById(eventId)
+          polls <- eventPollRepository.getByEventId(eventId)
+          pollId = polls.headOption.flatMap(_.pollId)
+          options <- pollId match {
+            case Some(id) => pollOptionRepository.getByPollId(id)
+            case None => Future.successful(Seq.empty)
+          }
+        } yield {
+          eventOpt match {
+            case Some(event) if polls.nonEmpty =>
+              BadRequest(views.html.selectWinner(
+                formWithErrors,
+                event,
+                polls.head,
+                options,
+                request.identity
+              ))
+            case _ =>
+              Redirect(routes.EventController.eventManagement())
+                .flashing("error" -> "Event or poll not found")
+          }
+        }
+      },
+      formData => {
+        (for {
+          // Get the poll for this event
+          polls <- eventPollRepository.getByEventId(eventId)
+          pollId = polls.headOption.flatMap(_.pollId).getOrElse(
+            throw new IllegalStateException("No poll found for this event")
+          )
+
+          // Set the winner option
+          _ <- eventPollRepository.setWinnerOption(pollId, formData.optionId)
+
+          // Close the event
+          _ <- streamerEventRepository.closeEvent(eventId)
+        } yield {
+          Redirect(routes.EventController.eventManagement())
+            .flashing("success" -> "Event closed successfully and winner selected")
+        }).recover {
+          case e: Exception =>
+            logger.error("Error setting winner and closing event", e)
+            Redirect(routes.EventController.eventManagement())
+              .flashing("error" -> s"Error closing event: ${e.getMessage}")
+        }
+      }
+    )
   }
 
 

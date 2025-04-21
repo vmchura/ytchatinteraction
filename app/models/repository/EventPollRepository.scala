@@ -1,7 +1,7 @@
 package models.repository
 
-import models.EventPoll
-import models.component.{EventPollComponent, StreamerEventComponent, UserComponent, YtStreamerComponent}
+import models.{EventPoll, PollOption}
+import models.component.{EventPollComponent, PollOptionComponent, StreamerEventComponent, UserComponent, YtStreamerComponent}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 
@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class EventPollRepository @Inject()(
   dbConfigProvider: DatabaseConfigProvider,
   streamerEventRepository: StreamerEventRepository
-)(implicit ec: ExecutionContext) extends EventPollComponent with StreamerEventComponent with YtStreamerComponent with UserComponent{
+)(implicit ec: ExecutionContext) extends EventPollComponent with PollOptionComponent with StreamerEventComponent with YtStreamerComponent with UserComponent{
   
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
@@ -67,6 +67,16 @@ class EventPollRepository @Inject()(
    */
   def deleteByEventId(eventId: Int): Future[Int] = db.run {
     eventPollsTable.filter(_.eventId === eventId).delete
+  }
+  
+  /**
+   * Set the winner option for a poll
+   */
+  def setWinnerOption(pollId: Int, optionId: Int): Future[Int] = db.run {
+    eventPollsTable
+      .filter(_.pollId === pollId)
+      .map(_.winnerOptionId)
+      .update(Some(optionId))
   }
   
   // Get table query for use by other repositories

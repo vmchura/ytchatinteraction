@@ -100,8 +100,8 @@
                       class="end-event" role="button">Stop New Votes</a>
                   }
                   @if(event.endTime.isEmpty) {
-                    <a href="@routes.EventController.closeEvent(event.eventId.get)"
-                      class="close-event" role="button" data-tooltip="This will permanently close the event">Close Event</a>
+                    <a href="@routes.EventController.selectWinnerForm(event.eventId.get)"
+                      class="close-event" role="button" data-tooltip="Select winner and close event">Select Winner & Close</a>
                   }
                 </div>
               </div>

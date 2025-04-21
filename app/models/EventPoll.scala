@@ -5,7 +5,8 @@ import play.api.libs.json._
 case class EventPoll(
   pollId: Option[Int] = None,
   eventId: Int,
-  pollQuestion: String
+  pollQuestion: String,
+  winnerOptionId: Option[Int] = None
 )
 
 object EventPoll {

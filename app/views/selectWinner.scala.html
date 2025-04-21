@@ -1,0 +1,100 @@
+@import models.{StreamerEvent, EventPoll, PollOption, User}
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@import play.api.data.Form
+@import forms.SetWinnerForm
+
+@(form: Form[SetWinnerForm], event: StreamerEvent, poll: EventPoll, options: Seq[PollOption], user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("Select Event Winner", Some(user)) {
+  <h1>Select Event Winner</h1>
+  
+  <div class="event-details">
+    <h2>@event.eventName</h2>
+    @event.eventDescription.map { desc =>
+      <p>@desc</p>
+    }
+    <p>
+      <strong>Poll Question:</strong> @poll.pollQuestion
+    </p>
+  </div>
+  
+  <article>
+    <header>
+      <h2>Select Winning Option</h2>
+      <p>Choose the winning option for this event. All users who voted for this option will be rewarded.</p>
+    </header>
+    
+    <form action="@routes.EventController.setWinnerAndClose(event.eventId.get)" method="POST">
+      @helper.CSRF.formField
+      
+      <div class="options-container">
+        @options.map { option =>
+          <label class="option-radio">
+            <input 
+              type="radio" 
+              name="optionId" 
+              value="@option.optionId.get" 
+              @if(form("optionId").value.contains(option.optionId.get.toString)) { checked }
+            >
+            <span>@option.optionText</span>
+          </label>
+        }
+      </div>
+      
+      @form.globalError.map { error =>
+        <small class="error">@error.message</small>
+      }
+      
+      <div class="action-buttons">
+        <button type="submit" class="primary">Set Winner & Close Event</button>
+        <a href="@routes.EventController.closeEvent(event.eventId.get)" role="button" class="secondary" data-tooltip="Close event without selecting a winner">Close Without Winner</a>
+        <a href="@routes.EventController.eventManagement()" role="button" class="contrast">Cancel</a>
+      </div>
+    </form>
+  </article>
+  
+  <style>
+    .event-details {
+      margin-bottom: 1.5rem;
+    }
+    
+    .options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .option-radio {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid var(--muted-border-color);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .option-radio:hover {
+      border-color: var(--primary);
+      background-color: var(--card-background-color);
+    }
+    
+    input[type="radio"]:checked + span {
+      font-weight: bold;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .error {
+      color: var(--form-element-invalid-active-border-color);
+      margin-bottom: 1rem;
+      display: block;
+    }
+  </style>
+}

@@ -57,8 +57,8 @@
                         class="end-event" role="button">Stop Votes</a>
                     }
                     @if(event.endTime.isEmpty) {
-                      <a href="@routes.EventController.closeEvent(event.eventId.get)"
-                        class="close-event" role="button">Close</a>
+                      <a href="@routes.EventController.selectWinnerForm(event.eventId.get)"
+                        class="close-event" role="button">Select Winner</a>
                     }
                     @if(!event.isActive && event.endTime.isDefined) {
                       <span>—</span>
