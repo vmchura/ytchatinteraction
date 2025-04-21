@@ -119,7 +119,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
       
       // Create a new vote
-      val vote = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, Some(testMessage))
+      val vote = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None)
       val createdF = repository.create(vote)
       
       val created = Await.result(createdF, 5.seconds)
@@ -138,7 +138,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
       
       // Create a vote
-      val vote = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, Some(testMessage))
+      val vote = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None)
       val created = Await.result(repository.create(vote), 5.seconds)
       
       // Get vote by ID
@@ -170,8 +170,8 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
       
       // Create multiple votes for the poll
-      val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, Some(testMessage))
-      val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, None, testConfidenceAmount * 2, Some("Another message"))
+      val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None )
+      val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, Some("Another message"), testConfidenceAmount * 2, None)
       
       Await.result(repository.create(vote1), 5.seconds)
       Await.result(repository.create(vote2), 5.seconds)

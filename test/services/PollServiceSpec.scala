@@ -1,8 +1,9 @@
 package services
 
+import models.StreamerEvent
 import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateRepository}
-import org.mockito.Mockito._
-import org.mockito.ArgumentMatchers._
+import org.mockito.Mockito.*
+import org.mockito.ArgumentMatchers.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.must.Matchers
@@ -10,15 +11,18 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.RecoverMethods
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import play.api.db.slick.DatabaseConfigProvider
+import slick.basic.DatabaseConfig
 import slick.dbio.{DBIO, DBIOAction}
 import slick.jdbc.JdbcProfile
 import slick.jdbc.H2Profile
-import slick.jdbc.H2Profile.api._
+import slick.jdbc.H2Profile.api.*
+
 import javax.inject.Singleton
 
 class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach with ScalaFutures with RecoverMethods {
@@ -30,7 +34,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
   private val mockPollVoteRepository = mock[PollVoteRepository]
   private val mockUserStreamerStateRepository = mock[UserStreamerStateRepository]
   private val mockDbConfigProvider = mock[DatabaseConfigProvider]
-  
+  private val mockDbConfig = mock[DatabaseConfig[JdbcProfile]]
+  private val mockJDBProfile = mock[JdbcProfile]
+
   // Service under test
   private var pollService: PollService = _
   
@@ -59,7 +65,10 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       mockUserStreamerStateRepository,
       mockDbConfigProvider
     )
-    
+    when(mockDbConfigProvider.get[JdbcProfile]).thenReturn(mockDbConfig)
+    when(mockDbConfig.profile).thenReturn(mockJDBProfile)
+    when(mockDbConfig.db).thenReturn(db)
+
     // Set up the mock repository with the mock database
 
     pollService = new PollService(
@@ -67,7 +76,8 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       mockEventPollRepository,
       mockPollOptionRepository,
       mockPollVoteRepository,
-      mockUserStreamerStateRepository
+      mockUserStreamerStateRepository,
+      mockDbConfigProvider
     )
   }
 
@@ -98,7 +108,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId, transferAmount)
       val result = execDBIO(dbioAction)
       result mustBe true
       
@@ -127,7 +137,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0),  testUserId, transferAmount)
       val result = execDBIO(dbioAction)
       result mustBe true
       
@@ -143,7 +153,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(None))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, 10)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId, 10)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -163,7 +173,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(None))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, 10)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId, 10)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -187,7 +197,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(Some(userBalance)))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId, transferAmount)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -215,7 +225,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId,  transferAmount)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -248,7 +258,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
 
 
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0),testUserId, transferAmount)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -279,7 +289,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(0)) // No rows updated
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId , transferAmount)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)
@@ -311,7 +321,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId , transferAmount)
       val result = execDBIO(dbioAction)
       result mustBe true
       
@@ -338,7 +348,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None,"", 0), testUserId, transferAmount)
       val result = execDBIO(dbioAction)
       result mustBe true
       
@@ -363,7 +373,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
         .thenReturn(DBIO.successful(Some(userBalance)))
       
       // Act & Assert
-      val dbioAction = pollService.transferConfidenceVoteStreamer(testEventId, testUserId, testStreamChannelId, transferAmount)
+      val dbioAction = pollService.transferConfidenceVoteStreamer(StreamerEvent(Some(testEventId), testStreamChannelId, "", None, "", 0), testUserId, transferAmount)
       
       val thrown = intercept[IllegalStateException] {
         execDBIO(dbioAction)

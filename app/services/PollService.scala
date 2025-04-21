@@ -90,7 +90,7 @@ class PollService @Inject()(
                        userId: Long,
                        messageByChatOpt: Option[String],
                        confidenceAmount: Int): Future[EventPoll] = {
-    db.run(registerPollVoteAction(pollId, optionId, userId, messageByChatOpt, confidenceAmount))
+    db.run(registerPollVoteAction(pollId, optionId, userId, messageByChatOpt, confidenceAmount).transactionally)
   }
   def registerPollVoteAction(pollId: Int,
                        optionId: Int,
