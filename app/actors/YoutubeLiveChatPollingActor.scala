@@ -274,68 +274,6 @@ object YoutubeLiveChatPollingActor {
   }
 
   /**
-   * Process a single message from the live chat
-   * This is kept for backward compatibility but should eventually be removed
-   */
-  private def processMessage(
-    message: JsValue,
-    liveChatId: String,
-    ytStreamerRepository: YtStreamerRepository,
-    userStreamerStateRepository: UserStreamerStateRepository,
-    userRepository: UserRepository,
-    ytUserRepository: YtUserRepository,
-    startTime: Instant,
-    pollEvent: (EventPoll, List[PollOption]),
-    inferUserOptionService: InferUserOptionService,
-    chatService: ChatService
-  )(implicit ec: ExecutionContext): Future[Unit] = {
-    try {
-      // Extract message details
-      val messageId = (message \ "id").as[String]
-      val authorChannelId = (message \ "authorDetails" \ "channelId").as[String]
-      val displayName = (message \ "authorDetails" \ "displayName").as[String]
-      val messageText = (message \ "snippet" \ "displayMessage").as[String]
-      
-      // Extract the published time
-      val publishedAtStr = (message \ "snippet" \ "publishedAt").as[String]
-      val publishedAt = Instant.parse(publishedAtStr)
-      
-      // Only process messages that were published after we started monitoring
-      if (publishedAt.isAfter(startTime)) {
-        println(s"Processing message from $displayName published at $publishedAt")
-        
-        // Register the message author as a user if they don't already exist
-        val userFuture = registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
-        
-        // Broadcast the message to all connected WebSocket clients
-        // Format the message to show who sent it
-        chatService.broadcastMessage(s"$displayName: $messageText", "youtube", Some(displayName))
-
-        // Process the message for poll responses
-        inferUserOptionService.inferencePollResponse(
-          eventPoll = pollEvent._1,
-          options = pollEvent._2,
-          response = messageText
-        ).map {
-          case Some((po, confidence)) => ()
-          case None => ()
-        }
-
-        userFuture.map(_ => ())
-      } else {
-        // Message is from before we started monitoring, so skip it
-        println(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
-        Future.successful(())
-      }
-    } catch {
-      case e: Exception =>
-        // Log error and continue
-        println(s"Error processing message: ${e.getMessage}")
-        Future.successful(())
-    }
-  }
-
-  /**
    * Register a new user from the chat message if they don't already exist
    */
   private def registerChatUser(
@@ -343,12 +281,12 @@ object YoutubeLiveChatPollingActor {
     displayName: String,
     userRepository: UserRepository,
     ytUserRepository: YtUserRepository
-  )(implicit ec: ExecutionContext): Future[Option[YtUser]] = {
+  )(implicit ec: ExecutionContext): Future[YtUser] = {
     // First, check if the YouTube user already exists
     ytUserRepository.getByChannelId(channelId).flatMap {
       case Some(existingUser) => 
         // User already exists, return it
-        Future.successful(Some(existingUser))
+        Future.successful(existingUser)
       
       case None =>
         // User doesn't exist, create a new user and link it to a YouTube user
@@ -372,7 +310,7 @@ object YoutubeLiveChatPollingActor {
             println(s"Linked YouTube user: ChannelID=${user.userChannelId}, UserID=${user.userId}")
             user
           }
-        } yield Some(ytUser)
+        } yield ytUser
     }
   }
 }
