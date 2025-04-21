@@ -40,14 +40,14 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     Instant.parse(isoFormatString)
   }
 
-  // Event management page
+  // Event management page (now shows the rival teams form by default)
   def eventManagement: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     // Get user's streamers and all events
     for {
       streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.getAllActive()
     } yield {
-      Ok(views.html.eventManagement(
+      Ok(views.html.rivalTeamsEventForm(
         eventWithPollForm,
         events,
         streamers,
@@ -56,14 +56,16 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     }
   }
   
-  // Rival teams event form
-  def rivalTeamsEventForm: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // Get user's streamers
+  // Full event creation form
+  def fullEventForm: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    // Get user's streamers and all events
     for {
       streamers <- ytStreamerRepository.getAll()
+      events <- streamerEventRepository.getAllActive()
     } yield {
-      Ok(views.html.rivalTeamsEventForm(
+      Ok(views.html.eventManagement(
         eventWithPollForm,
+        events,
         streamers,
         request.identity
       ))

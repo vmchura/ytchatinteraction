@@ -6,18 +6,19 @@
 
 @(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
 
-@main("Event Management", Some(user)) {
-  <h1>Event Management</h1>
+@main("Complete Event Form", Some(user)) {
+  <h1>Complete Event Form</h1>
   
   <div class="event-actions">
-    <a href="@routes.EventController.rivalTeamsEventForm()" role="button" class="secondary">Create Rival Teams Event</a>
+    <a href="@routes.EventController.eventManagement()" role="button" class="secondary">Return to Simple Event Form</a>
   </div>
   
   <div class="grid">
     <div>
       <article>
         <header>
-          <h2>Create New Event</h2>
+          <h2>Create Complete New Event</h2>
+          <p>Use this form for creating events with custom options.</p>
         </header>
         
         <form action="@routes.EventController.createEvent()" method="POST">

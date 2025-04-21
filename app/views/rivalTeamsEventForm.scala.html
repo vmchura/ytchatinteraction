@@ -1,17 +1,23 @@
 @import models.{StreamerEvent, User, YtStreamer}
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
 
-@main("Create Rival Teams Event", Some(user)) {
-  <h1>Create Rival Teams Event</h1>
+@main("Event Management", Some(user)) {
+  <h1>Event Management</h1>
+  
+  <div class="event-actions">
+    <a href="@routes.EventController.fullEventForm()" role="button" class="secondary">Create Complete New Event</a>
+  </div>
   
   <div class="grid">
     <div>
       <article>
         <header>
-          <h2>Team vs Team Event</h2>
+          <h2>Create Team vs Team Event</h2>
         </header>
         
         <form action="@routes.EventController.createEvent()" method="POST">
@@ -50,11 +56,79 @@
         </form>
       </article>
     </div>
+    
+    <div>
+      <article>
+        <header>
+          <h2>Active Events</h2>
+        </header>
+        
+        @if(events.isEmpty) {
+          <p>No active events found.</p>
+        } else {
+          <div class="events-list">
+            @for(event <- events) {
+              <div class="event-item">
+                <h3>@event.eventName</h3>
+                <p><strong>Type:</strong> @event.eventType</p>
+                @event.eventDescription.map { desc =>
+                  <p>@desc</p>
+                }
+                <p>
+                  <strong>Started:</strong> 
+                  @event.startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                </p>
+                
+                @event.endTime.map { endTime =>
+                  <p>
+                    <strong>Ended:</strong> 
+                    @endTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                  </p>
+                }
+                
+                @if(event.isActive) {
+                  <a href="@routes.EventController.endEvent(event.eventId.get)"
+                    class="end-event" role="button">End Event</a>
+                }
+              </div>
+            }
+          </div>
+          
+          <a href="@routes.EventController.eventHistory()" role="button" class="secondary">View All Events History</a>
+        }
+      </article>
+    </div>
   </div>
   
   <style>
+    .event-actions {
+      margin-bottom: 1rem;
+    }
+    
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .event-item {
+      border: 1px solid var(--primary);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+    
     .error {
       color: var(--form-element-invalid-active-border-color);
+    }
+    
+    /* Space between poll options */
+    #poll-options input {
+      margin-bottom: 0.5rem;
+    }
+    
+    #add-option {
+      margin-top: 0.5rem;
     }
   </style>
   
