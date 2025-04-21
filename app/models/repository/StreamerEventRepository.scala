@@ -85,7 +85,7 @@ class StreamerEventRepository @Inject()(
   }
   
   /**
-   * End an event (set isActive to false and set end time)
+   * Stop new votes for an event (set isActive to false)
    */
   def endEvent(eventId: Int): Future[Int] = {
     val now = Instant.now()
@@ -93,8 +93,22 @@ class StreamerEventRepository @Inject()(
     db.run {
       streamerEventsTable
         .filter(e => e.eventId === eventId && e.isActive === true)
-        .map(e => (e.isActive, e.endTime, e.updatedAt))
-        .update((false, Some(now), now))
+        .map(e => (e.isActive, e.updatedAt))
+        .update((false, now))
+    }
+  }
+  
+  /**
+   * Close an event (set end time)
+   */
+  def closeEvent(eventId: Int): Future[Int] = {
+    val now = Instant.now()
+    
+    db.run {
+      streamerEventsTable
+        .filter(e => e.eventId === eventId)
+        .map(e => (e.endTime, e.updatedAt))
+        .update((Some(now), now))
     }
   }
   

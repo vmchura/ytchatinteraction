@@ -132,21 +132,39 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     )
   }
 
-  // End an active event
+  // Stop accepting new votes for an event
   def endEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     streamerEventRepository.endEvent(eventId).map { result =>
       if (result > 0) {
         Redirect(routes.EventController.eventManagement())
-          .flashing("success" -> "Event ended successfully")
+          .flashing("success" -> "Stopped accepting new votes for this event")
       } else {
         Redirect(routes.EventController.eventManagement())
-          .flashing("error" -> "Event not found or already ended")
+          .flashing("error" -> "Event not found or already inactive")
       }
     }.recover {
       case e: Exception =>
-        logger.error("Error ending event", e)
+        logger.error("Error stopping votes for event", e)
         Redirect(routes.EventController.eventManagement())
-          .flashing("error" -> s"Error ending event: ${e.getMessage}")
+          .flashing("error" -> s"Error stopping votes: ${e.getMessage}")
+    }
+  }
+  
+  // Close an event (set end time)
+  def closeEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    streamerEventRepository.closeEvent(eventId).map { result =>
+      if (result > 0) {
+        Redirect(routes.EventController.eventManagement())
+          .flashing("success" -> "Event closed successfully")
+      } else {
+        Redirect(routes.EventController.eventManagement())
+          .flashing("error" -> "Event not found")
+      }
+    }.recover {
+      case e: Exception =>
+        logger.error("Error closing event", e)
+        Redirect(routes.EventController.eventManagement())
+          .flashing("error" -> s"Error closing event: ${e.getMessage}")
     }
   }
 

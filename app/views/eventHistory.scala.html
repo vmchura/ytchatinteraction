@@ -43,18 +43,27 @@
                 </td>
                 <td>
                   @if(event.isActive) {
-                    <span class="badge success">Active</span>
+                    <span class="badge success">Voting Active</span>
+                  } else if(event.endTime.isDefined) {
+                    <span class="badge danger">Closed</span>
                   } else {
-                    <span class="badge secondary">Ended</span>
+                    <span class="badge warning">Voting Paused</span>
                   }
                 </td>
                 <td>
-                  @if(event.isActive) {
-                    <a href="@routes.EventController.endEvent(event.eventId.get)"
-                      class="end-event" role="button">End Event</a>
-                  } else {
-                    <span>—</span>
-                  }
+                  <div class="event-actions">
+                    @if(event.isActive) {
+                      <a href="@routes.EventController.endEvent(event.eventId.get)"
+                        class="end-event" role="button">Stop Votes</a>
+                    }
+                    @if(event.endTime.isEmpty) {
+                      <a href="@routes.EventController.closeEvent(event.eventId.get)"
+                        class="close-event" role="button">Close</a>
+                    }
+                    @if(!event.isActive && event.endTime.isDefined) {
+                      <span>—</span>
+                    }
+                  </div>
                 </td>
               </tr>
             }
@@ -65,6 +74,11 @@
   </article>
   
   <style>
+    .event-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
     .badge {
       padding: 0.25rem 0.5rem;
       border-radius: 0.25rem;
@@ -76,6 +90,18 @@
       background-color: var(--card-background-color);
       color: var(--form-element-valid-active-border-color);
       border: 1px solid var(--form-element-valid-active-border-color);
+    }
+    
+    .badge.warning {
+      background-color: var(--card-background-color);
+      color: var(--card-sectionning-background-color);
+      border: 1px solid var(--card-sectionning-background-color);
+    }
+    
+    .badge.danger {
+      background-color: var(--card-background-color);
+      color: var(--form-element-invalid-active-border-color);
+      border: 1px solid var(--form-element-invalid-active-border-color);
     }
     
     .badge.secondary {

@@ -211,7 +211,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       events.head.eventName must be(testEventName1)
       events.head.isActive must be(true)
     }
-    
+
 
     "update an event" in {
       val repository = new StreamerEventRepository(dbConfigProvider, ytStreamerRepository)
@@ -262,7 +262,7 @@ class StreamerEventRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with
       
       retrieved must not be None
       retrieved.get.isActive must be(false)
-      retrieved.get.endTime must not be None
+      retrieved.get.endTime must be(None)
     }
     
     "delete an event" in {
