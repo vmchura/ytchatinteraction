@@ -37,12 +37,14 @@ class StreamerEventRepository @Inject()(
       ) += eventWithTimestamps
     )
   }
-  
+
+  def getByIdAction(eventId: Int): DBIO[Option[StreamerEvent]] =
+    streamerEventsTable.filter(_.eventId === eventId).result.headOption
   /**
    * Get an event by ID
    */
   def getById(eventId: Int): Future[Option[StreamerEvent]] = db.run {
-    streamerEventsTable.filter(_.eventId === eventId).result.headOption
+    getByIdAction(eventId)
   }
   
   /**

@@ -70,6 +70,7 @@ trait BaseYouTubeProvider extends OAuth2Provider {
           case 200 =>
             // Check if response contains items
             val json = response.json
+            println(json)
             val items = (json \ "items").asOpt[Seq[JsValue]]
             items.filter(_.nonEmpty) match {
               case Some(channelItems) => Future.successful(channelItems.head)

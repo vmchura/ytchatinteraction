@@ -30,9 +30,9 @@ trait PollVoteComponent {
       pollId,
       optionId,
       userId,
-      createdAt.?,
+      messageByChat,
       confidenceAmount,
-      messageByChat
+      createdAt.?
     ) <> ((PollVote.apply _).tupled, PollVote.unapply)
   }
 

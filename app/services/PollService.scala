@@ -1,11 +1,14 @@
 package services
 
-import models.{EventPoll, PollOption}
+import models.{EventPoll, PollOption, PollVote, StreamerEvent}
 import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateRepository}
+import org.apache.pekko.event.EventStream
+import play.api.db.slick.DatabaseConfigProvider
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import slick.dbio.DBIO
+import slick.jdbc.JdbcProfile
 /**
  * Service for retrieving polls and their options for streamer events
  */
@@ -15,9 +18,14 @@ class PollService @Inject()(
   eventPollRepository: EventPollRepository,
   pollOptionRepository: PollOptionRepository,
   pollVoteRepository: PollVoteRepository,
-  userStreamerStateRepository: UserStreamerStateRepository
+  userStreamerStateRepository: UserStreamerStateRepository,
+  dbConfigProvider: DatabaseConfigProvider
 )(implicit ec: ExecutionContext) {
+  val dbConfig = dbConfigProvider.get[JdbcProfile]
+  protected val profile = dbConfig.profile
 
+  import dbConfig._
+  import profile.api._
   /**
    * Retrieves the poll and options for the most recent event for a specific channel
    *
@@ -77,17 +85,42 @@ class PollService @Inject()(
       }
     }
   }
-  def transferConfidenceVoteStreamer(eventID: Int, userID: Long, streamChannelID: String, amount: Int): DBIO[Boolean] = {
+  def registerPollVote(pollId: Int,
+                       optionId: Int,
+                       userId: Long,
+                       messageByChatOpt: Option[String],
+                       confidenceAmount: Int): Future[EventPoll] = {
+    db.run(registerPollVoteAction(pollId, optionId, userId, messageByChatOpt, confidenceAmount))
+  }
+  def registerPollVoteAction(pollId: Int,
+                       optionId: Int,
+                       userId: Long,
+                       messageByChatOpt: Option[String],
+                       confidenceAmount: Int): DBIO[EventPoll] = {
+    for{
+      _ <- pollVoteRepository.addVoteAction(PollVote(None, pollId, optionId, userId, messageByChatOpt, confidenceAmount))
+      eventPollOption <- eventPollRepository.getByIdAction(pollId)
+      eventPoll <- eventPollOption.fold(DBIO.failed(new IllegalStateException("No poll found by pollID")))(e => DBIO.successful(e))
+      eventOption <- streamerEventRepository.getByIdAction(eventPoll.eventId)
+      event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event found by eventId")))(e => DBIO.successful(e))
+      _ <- transferConfidenceVoteStreamer(event, userId, confidenceAmount)
+    }yield{
+      eventPoll
+    }
+  }
+
+  def transferConfidenceVoteStreamer(event: StreamerEvent, userID: Long, amount: Int): DBIO[Boolean] = {
     for {
+      eventID <- event.eventId.fold(DBIO.failed(new IllegalStateException("Event with no ID?")))(e => DBIO.successful(e))
       eventCurrentBalanceOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
       eventCurrentBalance <- eventCurrentBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the event found")))(DBIO.successful)
-      userChannelBalanceOption <- userStreamerStateRepository.getUserStreamerBalanceAction(userID, streamChannelID)
+      userChannelBalanceOption <- userStreamerStateRepository.getUserStreamerBalanceAction(userID, event.channelId)
       userChannelBalance <- userChannelBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the user channel found")))(DBIO.successful)
       actualTransferAmount <- DBIO.successful(if(amount == Int.MaxValue) userChannelBalance else amount)
       rows_update_event <- if(eventCurrentBalance + actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative balance for streamer event"))
       else streamerEventRepository.updateCurrentConfidenceAmount(eventID, eventCurrentBalance + actualTransferAmount)
       rows_update_user_stream <- if(userChannelBalance - actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative amount for user balance"))
-      else userStreamerStateRepository.updateStreamerBalanceAction(userID, streamChannelID, userChannelBalance - actualTransferAmount)
+      else userStreamerStateRepository.updateStreamerBalanceAction(userID, event.channelId, userChannelBalance - actualTransferAmount)
       operation_complete <- if(rows_update_event == 1 && rows_update_user_stream == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
     }yield{
       operation_complete

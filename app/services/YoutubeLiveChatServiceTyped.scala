@@ -96,9 +96,10 @@ class YoutubeLiveChatServiceTyped @Inject()(
       .withQueryStringParameters(queryParams.toSeq: _*)
       .get()
       .flatMap { response =>
+
         import play.api.libs.json._
         val json = response.json
-        
+        println(json)
         // Check if the request was successful and items exist
         val items = (json \ "items").as[JsArray].value
         if (items.isEmpty) {

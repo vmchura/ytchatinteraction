@@ -24,6 +24,16 @@ class PollVoteRepository @Inject()(
   import dbConfig._
   import profile.api._
   
+  
+  def addVoteAction(pollVote: PollVote): DBIO[PollVote] = {
+    val voteWithTimestamp = pollVote.copy(
+      createdAt = Some(Instant.now())
+    )
+    val addVoteAction = (pollVotesTable returning pollVotesTable.map(_.voteId)
+      into ((vote, id) => vote.copy(voteId = Some(id)))
+      ) += voteWithTimestamp
+    addVoteAction
+  }
   /**
    * Create a new vote for a poll option and update the event's confidence amount
    */
@@ -236,4 +246,5 @@ class PollVoteRepository @Inject()(
 
   // Get table query for use by other repositories
   def getTableQuery = pollVotesTable
+  
 }

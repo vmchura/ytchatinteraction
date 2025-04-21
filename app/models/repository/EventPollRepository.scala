@@ -27,12 +27,14 @@ class EventPollRepository @Inject()(
       into ((poll, id) => poll.copy(pollId = Some(id)))
     ) += eventPoll
   }
+  def getByIdAction(pollId: Int): DBIO[Option[EventPoll]] =
+    eventPollsTable.filter(_.pollId === pollId).result.headOption
   
   /**
    * Get a poll by ID
    */
   def getById(pollId: Int): Future[Option[EventPoll]] = db.run {
-    eventPollsTable.filter(_.pollId === pollId).result.headOption
+    getByIdAction(pollId)
   }
   
   /**

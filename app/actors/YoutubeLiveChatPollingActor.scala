@@ -167,12 +167,14 @@ object YoutubeLiveChatPollingActor {
 
         case ProcessMessages(messages, liveChatId, messageStartTime, pollEvent) =>
           context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
+          println(s"Processing ${messages.size} messages for live chat $liveChatId")
 
           // Process each message - this happens within the actor context now
           messages.foreach { message =>
+            println(s"Message $message")
             processMessageInActor(message, liveChatId, ytStreamerRepository, userStreamerStateRepository,
               userRepository, ytUserRepository, messageStartTime, pollEvent,
-              inferUserOptionService, chatService, context, pollVoteRepository)
+              inferUserOptionService, chatService, context, pollService)
           }
 
           Behaviors.same
@@ -226,7 +228,7 @@ object YoutubeLiveChatPollingActor {
                                      inferUserOptionService: InferUserOptionService,
                                      chatService: ChatService,
                                      context: ActorContext[Command],
-                                     pollVoteRepository: PollVoteRepository
+                                     pollService: PollService
                                    )(implicit ec: ExecutionContext): Unit = {
     try {
       // Extract message details
@@ -242,6 +244,7 @@ object YoutubeLiveChatPollingActor {
       // Only process messages that were published after we started monitoring
       if (publishedAt.isAfter(startTime)) {
         context.log.info(s"Processing message from $displayName published at $publishedAt")
+        println(s"Processing message from $displayName published at $publishedAt")
 
         // Register the message author as a user if they don't already exist
         val voteRegistered = for {
@@ -257,10 +260,17 @@ object YoutubeLiveChatPollingActor {
                 pollID <- pollEvent._1.pollId
                 optionID <- po.optionId
               } yield {
-                pollVoteRepository.create(PollVote(None, pollID, optionID, user.userId)).map(po => Some(po))
+                println(s"$message : $po $confidenceValue")
+                pollService.registerPollVote(pollID,
+                  optionID,
+                  user.userId,
+                  Some(messageText),
+                  confidenceValue).map(po => Some(po))
               }).getOrElse(Future.successful(None))
 
-            case None => Future.successful(None)
+            case None =>
+              println(s"$message : [None, None]")
+              Future.successful(None)
           }
 
         } yield {
@@ -274,7 +284,7 @@ object YoutubeLiveChatPollingActor {
         voteRegistered.onComplete {
           case Success(Some(pollVote)) =>
             // Successfully processed poll response, but don't log from here
-            chatService.broadcastMessage(s"$displayName: [${pollVote.optionId}]+${pollVote.confidenceAmount} ", "youtube", Some(displayName))
+            chatService.broadcastMessage(s"$displayName: [${pollVote.pollId}]+${pollVote.pollQuestion} ", "youtube", Some(displayName))
           case Success(None) =>
             // No poll response detected, but don't log from here
             chatService.broadcastMessage(s"$displayName: $messageText: [  ]", "youtube", Some(displayName))

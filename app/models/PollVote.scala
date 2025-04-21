@@ -8,9 +8,9 @@ case class PollVote(
   pollId: Int,
   optionId: Int,
   userId: Long,
+  messageByChatOpt: Option[String],
+  confidenceAmount: Int,
   createdAt: Option[Instant] = None,
-  confidenceAmount: Int = 0,
-  messageByChatOpt: Option[String] = None
 )
 
 object PollVote {
