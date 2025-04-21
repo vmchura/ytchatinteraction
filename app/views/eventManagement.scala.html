@@ -9,6 +9,10 @@
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
   
+  <div class="event-actions">
+    <a href="@routes.EventController.rivalTeamsEventForm()" role="button" class="secondary">Create Rival Teams Event</a>
+  </div>
+  
   <div class="grid">
     <div>
       <article>
@@ -145,6 +149,10 @@
   </div>
   
   <style>
+    .event-actions {
+      margin-bottom: 1rem;
+    }
+    
     .events-list {
       display: flex;
       flex-direction: column;

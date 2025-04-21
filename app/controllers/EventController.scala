@@ -55,6 +55,20 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       ))
     }
   }
+  
+  // Rival teams event form
+  def rivalTeamsEventForm: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    // Get user's streamers
+    for {
+      streamers <- ytStreamerRepository.getAll()
+    } yield {
+      Ok(views.html.rivalTeamsEventForm(
+        eventWithPollForm,
+        streamers,
+        request.identity
+      ))
+    }
+  }
 
   // Create a new event with a poll
   def createEvent: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>

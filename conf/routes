@@ -11,6 +11,7 @@ GET     /events                     controllers.EventController.eventManagement(
 POST    /events                     controllers.EventController.createEvent()
 GET     /events/:id/end             controllers.EventController.endEvent(id: Int)
 GET     /events/history             controllers.EventController.eventHistory()
+GET     /events/rival-teams         controllers.EventController.rivalTeamsEventForm()
 
 
 # Authentication routes
