@@ -9,9 +9,7 @@
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
   
-  <div class="event-actions">
-    <a href="@routes.EventController.fullEventForm()" role="button" class="secondary">Create Complete New Event</a>
-  </div>
+
   
   <div class="grid">
     <div>
@@ -99,7 +97,9 @@
       </article>
     </div>
   </div>
-  
+  <div class="event-actions">
+    <a href="@routes.EventController.fullEventForm()" role="button" class="secondary">Create Complete New Event</a>
+  </div>
   <style>
     .event-actions {
       margin-bottom: 1rem;
