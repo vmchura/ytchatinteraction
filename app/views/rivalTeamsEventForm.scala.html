@@ -1,0 +1,91 @@
+@import models.{StreamerEvent, User, YtStreamer}
+@import play.api.data.Form
+@import forms.EventWithPollForm
+
+@(form: Form[EventWithPollForm], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("Create Rival Teams Event", Some(user)) {
+  <h1>Create Rival Teams Event</h1>
+  
+  <div class="grid">
+    <div>
+      <article>
+        <header>
+          <h2>Team vs Team Event</h2>
+        </header>
+        
+        <form action="@routes.EventController.createEvent()" method="POST">
+          @helper.CSRF.formField
+
+          <div class="grid">
+            <div>
+              <label for="event.channelId">Streamer</label>
+              <select id="event.channelId" name="event.channelId" required>
+                <option value="" disabled selected>Select a streamer</option>
+                @for(streamer <- streamers) {
+                <option value="@streamer.channelId" @if(form("event.channelId").value.contains(streamer.channelId)) { selected }>
+                @streamer.channelTitle
+                </option>
+                }
+              </select>
+              @form("event.channelId").errors.map { error =>
+              <small class="error">@error.message</small>
+              }
+            </div>
+          </div>
+
+          <label for="teamsInput">Teams (e.g. "Team A vs Team B")</label>
+          <input type="text" id="teamsInput" name="teamsInput" placeholder="Team A vs Team B" required>
+          
+          <!-- Hidden fields that will be auto-populated -->
+          <input type="hidden" id="event.eventName" name="event.eventName" value="">
+          <input type="hidden" id="event.eventDescription" name="event.eventDescription" value="">
+          <input type="hidden" id="event.eventType" name="event.eventType" value="@StreamerEvent.TYPE_LIVE">
+          <input type="hidden" id="event.startTime" name="event.startTime" value="">
+          <input type="hidden" id="poll.pollQuestion" name="poll.pollQuestion" value="Who will win?">
+          <input type="hidden" id="poll.options[0]" name="poll.options[0]" value="">
+          <input type="hidden" id="poll.options[1]" name="poll.options[1]" value="">
+          
+          <button type="submit">Create Event</button>
+        </form>
+      </article>
+    </div>
+  </div>
+  
+  <style>
+    .error {
+      color: var(--form-element-invalid-active-border-color);
+    }
+  </style>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set current time for the start time field
+      const now = new Date();
+      const formattedDateTime = now.toISOString().slice(0, 16);
+      document.getElementById('event.startTime').value = formattedDateTime;
+      
+      // Auto-populate fields based on teams input
+      const teamsInput = document.getElementById('teamsInput');
+      
+      teamsInput.addEventListener('input', function() {
+        const teamsText = teamsInput.value.trim();
+        
+        // Set event name
+        document.getElementById('event.eventName').value = teamsText;
+        
+        // Set event description
+        document.getElementById('event.eventDescription').value = teamsText + " match";
+        
+        // Parse team names for poll options
+        if (teamsText.includes("vs")) {
+          const teams = teamsText.split("vs").map(team => team.trim());
+          if (teams.length >= 2) {
+            document.getElementById('poll.options[0]').value = teams[0];
+            document.getElementById('poll.options[1]').value = teams[1];
+          }
+        }
+      });
+    });
+  </script>
+}
