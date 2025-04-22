@@ -37,6 +37,7 @@ libraryDependencies ++= Seq(
   "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion,
   "org.apache.pekko" %% "pekko-testkit" % pekkoVersion % Test,
   "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion % Test,
+  "org.apache.pekko" %% "pekko-actor-testkit-typed" % pekkoVersion % Test,
   "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
   specs2 % Test,
   "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9",

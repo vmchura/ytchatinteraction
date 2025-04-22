@@ -168,11 +168,9 @@ object YoutubeLiveChatPollingActor {
 
         case ProcessMessages(messages, liveChatId, channelID, messageStartTime, pollEvent) =>
           context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
-          println(s"Processing ${messages.size} messages for live chat $liveChatId")
 
           // Process each message - this happens within the actor context now
           messages.foreach { message =>
-            println(s"Message $message")
             processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
               userRepository, ytUserRepository, messageStartTime, pollEvent,
               inferUserOptionService, chatService, context, pollService)
@@ -247,7 +245,6 @@ object YoutubeLiveChatPollingActor {
       // Only process messages that were published after we started monitoring
       if (publishedAt.isAfter(startTime)) {
         context.log.info(s"Processing message from $displayName published at $publishedAt")
-        println(s"Processing message from $displayName published at $publishedAt")
 
         // Register the message author as a user if they don't already exist
         val voteRegistered = for {
@@ -265,7 +262,6 @@ object YoutubeLiveChatPollingActor {
                 pollID <- pollEvent._1.pollId
                 optionID <- po.optionId
               } yield {
-                println(s"$message : $po $confidenceValue")
                 pollService.registerPollVote(pollID,
                   optionID,
                   user.userId,
@@ -274,7 +270,6 @@ object YoutubeLiveChatPollingActor {
               }).getOrElse(Future.successful(None))
 
             case None =>
-              println(s"$message : [None, None]")
               Future.successful(None)
           }
 
@@ -325,11 +320,9 @@ object YoutubeLiveChatPollingActor {
 
       case None =>
         // User doesn't exist, create a new user and link it to a YouTube user
-        println(s"Registering new user from chat: $displayName ($channelId)")
         for {
           // Create a new User with the display name as username
           newUser <- userRepository.create(displayName).map { user =>
-            println(s"Created new user: ID=${user.userId}, Username=${user.userName}")
             user
           }
 
@@ -342,7 +335,6 @@ object YoutubeLiveChatPollingActor {
             profileImageUrl = None, // We don't have profile image from chat messages
             activated = true // Automatically activate users from chat
           )).map { user =>
-            println(s"Linked YouTube user: ChannelID=${user.userChannelId}, UserID=${user.userId}")
             user
           }
         } yield ytUser
