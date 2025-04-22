@@ -39,7 +39,7 @@ class YoutubeLiveChatServiceTyped @Inject()(
    * @param streamerChatId The YouTube live chat ID to monitor
    * @return Future that completes when the initial polling is set up
    */
-  def startMonitoringLiveChat(streamerChatId: String): Future[Boolean] = {
+  def startMonitoringLiveChat(streamerChatId: String, chanelID: String): Future[Boolean] = {
     // Get current time to filter messages
     val startTime = Instant.now()
     
@@ -62,7 +62,7 @@ class YoutubeLiveChatServiceTyped @Inject()(
     )
     
     // Send the initial message to start polling with 0 retry count
-    chatPollingActor ! YoutubeLiveChatPollingActor.PollLiveChat(streamerChatId, null, 0)
+    chatPollingActor ! YoutubeLiveChatPollingActor.PollLiveChat(streamerChatId, chanelID, null, 0)
     
     // Return a completed future
     Future.successful(true)
@@ -83,7 +83,7 @@ class YoutubeLiveChatServiceTyped @Inject()(
    * @param streamId The YouTube video/stream ID
    * @return Future containing the live chat ID if found
    */
-  def getLiveChatId(streamId: String): Future[Option[String]] = {
+  def getLiveChatId(streamId: String): Future[Option[LiveChat]] = {
     val url = "https://www.googleapis.com/youtube/v3/videos"
     
     val queryParams = Map(
@@ -108,22 +108,24 @@ class YoutubeLiveChatServiceTyped @Inject()(
           // Extract channel ID, channel title, and live chat ID from the first item
           val channelId = (items.head \ "snippet" \ "channelId").asOpt[String]
           val channelTitle = (items.head \ "snippet" \ "channelTitle").asOpt[String]
+          val title = (items.head \ "snippet" \ "title").asOpt[String].getOrElse(channelTitle.getOrElse("?"))
           val liveChatId = (items.head \ "liveStreamingDetails" \ "activeLiveChatId").asOpt[String]
           
           // If we have both channel ID and live chat ID
           (channelId, liveChatId) match {
             case (Some(cid), Some(lcid)) =>
+              val response = LiveChat(cid, lcid, title)
               // Check if this channel exists as a YtStreamer
               ytStreamerRepository.getByChannelId(cid).flatMap {
                 case None =>
                   // Case 3: New channel found during live chat ID lookup - create YtStreamer with null owner
-                  ytStreamerRepository.create(cid, None, 0, channelTitle).map(_ => Some(lcid))
+                  ytStreamerRepository.create(cid, None, 0, channelTitle).map(_ => Some(response))
                 case Some(existingStreamer) =>
                   // Channel already exists, update the channel title if needed and return the live chat ID
                   if (channelTitle.isDefined && existingStreamer.channelTitle != channelTitle) {
-                    ytStreamerRepository.updateChannelTitle(cid, channelTitle).map(_ => Some(lcid))
+                    ytStreamerRepository.updateChannelTitle(cid, channelTitle).map(_ => Some(response))
                   } else {
-                    Future.successful(Some(lcid))
+                    Future.successful(Some(response))
                   }
               }
             case _ => 

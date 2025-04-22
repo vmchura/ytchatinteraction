@@ -27,8 +27,9 @@ class YoutubeFrontendController @Inject()(
   // Form for direct live chat ID input
   val liveChatIdForm = Form(
     mapping(
-      "liveChatId" -> nonEmptyText
-    )(LiveChatIdForm.apply)(nn => Some(nn.liveChatId))
+      "liveChatId" -> nonEmptyText,
+      "channelID" -> nonEmptyText,
+    )(LiveChatIdForm.apply)(nn => Some(nn.liveChatId, nn.channelID))
   )
 
   /**
@@ -74,7 +75,7 @@ class YoutubeFrontendController @Inject()(
       },
       liveChatData => {
         // Form is valid, start monitoring
-        youtubeLiveChatService.startMonitoringLiveChat(liveChatData.liveChatId).map { _ =>
+        youtubeLiveChatService.startMonitoringLiveChat(liveChatData.liveChatId, liveChatData.channelID).map { _ =>
           Ok(views.html.monitoringStatus(liveChatData.liveChatId))
         }
       }
@@ -99,4 +100,4 @@ case class StreamIdForm(streamId: String)
 /**
  * Form data class for Live Chat ID
  */
-case class LiveChatIdForm(liveChatId: String)
+case class LiveChatIdForm(liveChatId: String, channelID: String)

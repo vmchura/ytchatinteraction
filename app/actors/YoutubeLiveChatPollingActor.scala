@@ -22,18 +22,19 @@ object YoutubeLiveChatPollingActor {
   sealed trait Command
 
   // Command to initiate or continue polling
-  final case class PollLiveChat(liveChatId: String, paginationToken: String, retryCount: Int = 0) extends Command
+  final case class PollLiveChat(liveChatId: String, channelID: String, paginationToken: String, retryCount: Int = 0) extends Command
 
   // Command to process the API response
-  final case class ProcessApiResponse(response: JsValue, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  final case class ProcessApiResponse(response: JsValue, liveChatId: String, channelID: String, paginationToken: String, retryCount: Int) extends Command
 
   // Command to handle errors during API calls
-  final case class HandleError(error: Throwable, liveChatId: String, paginationToken: String, retryCount: Int) extends Command
+  final case class HandleError(error: Throwable, liveChatId: String, channelID: String, paginationToken: String, retryCount: Int) extends Command
 
   // Command to process messages after getting poll data
   final case class ProcessMessages(
                                     messages: Seq[JsValue],
                                     liveChatId: String,
+                                    channelID: String,
                                     startTime: Instant,
                                     pollEvent: (EventPoll, List[PollOption])
                                   ) extends Command
@@ -87,7 +88,7 @@ object YoutubeLiveChatPollingActor {
       implicit val ec: ExecutionContext = context.executionContext
 
       Behaviors.receiveMessage {
-        case PollLiveChat(liveChatId, paginationToken, retryCount) =>
+        case PollLiveChat(liveChatId, channelID, paginationToken, retryCount) =>
           context.log.info(s"Polling live chat: $liveChatId, token: $paginationToken, retry: $retryCount")
 
           // Build the API URL
@@ -104,13 +105,13 @@ object YoutubeLiveChatPollingActor {
           ws.url(url)
             .withQueryStringParameters(queryParams.toSeq: _*)
             .get()
-            .map(response => ProcessApiResponse(response.json, liveChatId, paginationToken, retryCount))
-            .recover { case error => HandleError(error, liveChatId, paginationToken, retryCount) }
+            .map(response => ProcessApiResponse(response.json, liveChatId, channelID, paginationToken, retryCount))
+            .recover { case error => HandleError(error, liveChatId, channelID, paginationToken, retryCount) }
             .foreach(context.self ! _)
 
           Behaviors.same
 
-        case ProcessApiResponse(response, liveChatId, currentPaginationToken, retryCount) =>
+        case ProcessApiResponse(response, liveChatId, channelID, currentPaginationToken, retryCount) =>
           // Process the API response
           try {
             val nextPageToken = (response \ "nextPageToken").asOpt[String]
@@ -122,8 +123,8 @@ object YoutubeLiveChatPollingActor {
 
             // Get the event poll, but handle the result in the actor context
             // Use pipeTo pattern to send the result back to self
-            pollService.getPollForRecentEventOverall.map {
-              case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, startTime, eventPoll)
+            pollService.getPollForRecentEvent(channelID).map {
+              case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, channelID, startTime, eventPoll)
               case None => NoPollAvailable(liveChatId)
             }.recover {
               case ex =>
@@ -140,7 +141,7 @@ object YoutubeLiveChatPollingActor {
               // Reset retry count since we had a successful call
               timers.startSingleTimer(
                 PollingTimer,
-                PollLiveChat(liveChatId, nextPageToken.get, 0), // Reset retry count
+                PollLiveChat(liveChatId, channelID, nextPageToken.get, 0), // Reset retry count
                 delay.milliseconds
               )
             } else {
@@ -152,27 +153,27 @@ object YoutubeLiveChatPollingActor {
               context.log.error(s"Error processing response: ${e.getMessage}")
 
               // Handle retry with the same mechanism as network errors
-              handleRetry(context, timers, liveChatId, currentPaginationToken, retryCount)
+              handleRetry(context, timers, liveChatId, channelID, currentPaginationToken, retryCount)
           }
 
           Behaviors.same
 
-        case HandleError(error, liveChatId, paginationToken, retryCount) =>
+        case HandleError(error, liveChatId, channelID, paginationToken, retryCount) =>
           context.log.error(s"Error polling live chat $liveChatId: ${error.getMessage}")
 
           // Handle retry logic
-          handleRetry(context, timers, liveChatId, paginationToken, retryCount)
+          handleRetry(context, timers, liveChatId, channelID, paginationToken, retryCount)
 
           Behaviors.same
 
-        case ProcessMessages(messages, liveChatId, messageStartTime, pollEvent) =>
+        case ProcessMessages(messages, liveChatId, channelID, messageStartTime, pollEvent) =>
           context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
           println(s"Processing ${messages.size} messages for live chat $liveChatId")
 
           // Process each message - this happens within the actor context now
           messages.foreach { message =>
             println(s"Message $message")
-            processMessageInActor(message, liveChatId, ytStreamerRepository, userStreamerStateRepository,
+            processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
               userRepository, ytUserRepository, messageStartTime, pollEvent,
               inferUserOptionService, chatService, context, pollService)
           }
@@ -193,6 +194,7 @@ object YoutubeLiveChatPollingActor {
                            context: org.apache.pekko.actor.typed.scaladsl.ActorContext[Command],
                            timers: TimerScheduler[Command],
                            liveChatId: String,
+                           channelID: String,
                            paginationToken: String,
                            retryCount: Int
                          ): Unit = {
@@ -203,7 +205,7 @@ object YoutubeLiveChatPollingActor {
       context.log.info(s"Scheduling retry ${retryCount + 1}/$maxRetries in $retryDelayMinutes minutes")
       timers.startSingleTimer(
         PollingTimer,
-        PollLiveChat(liveChatId, paginationToken, retryCount + 1), // Increment retry count
+        PollLiveChat(liveChatId, channelID, paginationToken, retryCount + 1), // Increment retry count
         retryDelayMinutes.minutes
       )
     } else {
@@ -219,6 +221,7 @@ object YoutubeLiveChatPollingActor {
   private def processMessageInActor(
                                      message: JsValue,
                                      liveChatId: String,
+                                     channelID: String,
                                      ytStreamerRepository: YtStreamerRepository,
                                      userStreamerStateRepository: UserStreamerStateRepository,
                                      userRepository: UserRepository,
