@@ -98,7 +98,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           eventName = formData.event.eventName,
           eventDescription = formData.event.eventDescription,
           eventType = formData.event.eventType,
-          currentConfidenceAmount = 0,
+          currentConfidenceAmount = 1000,
           startTime = startTime
         )
 

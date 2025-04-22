@@ -38,18 +38,12 @@ class PollVoteRepository @Inject()(
    * Create a new vote for a poll option and update the event's confidence amount
    */
   def create(pollVote: PollVote): Future[PollVote] = {
-    val voteWithTimestamp = pollVote.copy(
-      createdAt = Some(Instant.now())
-    )
-    
-    val addVoteAction = (pollVotesTable returning pollVotesTable.map(_.voteId)
-      into ((vote, id) => vote.copy(voteId = Some(id)))
-    ) += voteWithTimestamp
+  
     
     // Transaction to add vote and update event confidence amount
     val transactionAction = for {
       // Add the vote
-      savedVote <- addVoteAction
+      savedVote <- addVoteAction(pollVote)
       
       // Get the event ID for this poll
       eventPollOpt <- eventPollsTable.filter(_.pollId === pollVote.pollId).result.headOption
