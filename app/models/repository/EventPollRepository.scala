@@ -1,6 +1,6 @@
 package models.repository
 
-import models.{EventPoll, PollOption}
+import models.{EventPoll, PollOption, StreamerEvent}
 import models.component.{EventPollComponent, PollOptionComponent, StreamerEventComponent, UserComponent, YtStreamerComponent}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
@@ -83,4 +83,19 @@ class EventPollRepository @Inject()(
   
   // Get table query for use by other repositories
   def getTableQuery = eventPollsTable
+
+  def getMostRecentActiveEvent(channelId: String): Future[Option[StreamerEvent]] =
+    streamerEventRepository.getMostRecentActiveEvent(channelId)
+
+  def getOverallMostRecentActiveEvent: Future[Option[StreamerEvent]] =
+    streamerEventRepository.getOverallMostRecentActiveEvent
+
+  def getEventByIdAction(eventId: Int): DBIO[Option[StreamerEvent]] =
+    streamerEventRepository.getByIdAction(eventId)
+
+  def getCurrentConfidenceAmountAction(eventID: Int): DBIO[Option[Int]] =
+    streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
+
+  def updateCurrentConfidenceAmount(eventId: Int, newAmount: Int): DBIO[Int] =
+    streamerEventRepository.updateCurrentConfidenceAmount(eventId, newAmount)
 }

@@ -28,7 +28,7 @@ import javax.inject.Singleton
 class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach with ScalaFutures with RecoverMethods {
 
   // Mock repositories
-  private val mockStreamerEventRepository = mock[StreamerEventRepository]
+  
   private val mockEventPollRepository = mock[EventPollRepository]
   private val mockPollOptionRepository = mock[PollOptionRepository]
   private val mockPollVoteRepository = mock[PollVoteRepository]
@@ -58,7 +58,6 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
   override def beforeEach(): Unit = {
     super.beforeEach()
     reset(
-      mockStreamerEventRepository, 
       mockEventPollRepository, 
       mockPollOptionRepository, 
       mockPollVoteRepository,
@@ -72,7 +71,6 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
     // Set up the mock repository with the mock database
 
     pollService = new PollService(
-      mockStreamerEventRepository,
       mockEventPollRepository,
       mockPollOptionRepository,
       mockPollVoteRepository,
@@ -95,13 +93,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = 20
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(1))
       
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount))
@@ -112,9 +110,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val result = execDBIO(dbioAction)
       result mustBe true
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
       verify(mockUserStreamerStateRepository).updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount)
     }
     
@@ -124,13 +122,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = Int.MaxValue // Special value to transfer all balance
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + userBalance))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + userBalance))
         .thenReturn(DBIO.successful(1))
       
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, 0))
@@ -141,15 +139,15 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val result = execDBIO(dbioAction)
       result mustBe true
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + userBalance)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + userBalance)
       verify(mockUserStreamerStateRepository).updateStreamerBalanceAction(testUserId, testStreamChannelId, 0)
     }
     
     "fail when event balance is not found" in {
       // Arrange
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(None))
       
       // Act & Assert
@@ -160,13 +158,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("No balance of the event found")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verifyNoMoreInteractions(mockUserStreamerStateRepository)
     }
     
     "fail when user balance is not found" in {
       // Arrange
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(100)))
         
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
@@ -180,7 +178,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("No balance of the user channel found")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
     }
     
@@ -190,7 +188,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = -20 // Trying to decrease further
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
@@ -204,9 +202,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("Negative balance for streamer event")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verifyNoMoreInteractions(mockStreamerEventRepository)
+      verifyNoMoreInteractions(mockEventPollRepository)
     }
     
     "fail when transfer would result in negative user balance" in {
@@ -215,13 +213,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 10
       val transferAmount = 20 // More than user balance
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(1))
       
       // Act & Assert
@@ -232,9 +230,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("Negative amount for user balance")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
     }
     
     "fail when update to event confidence amount returns 0_rows updated" in {
@@ -243,7 +241,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = 20
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
@@ -252,7 +250,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount)).
         thenReturn(DBIO.successful(1))
 
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(0)) // No rows updated
 
 
@@ -265,9 +263,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("Not updated done")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
     }
     
     "fail when update to user streamer balance returns 0 rows updated" in {
@@ -276,13 +274,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = 20
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(1))
       
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount))
@@ -296,9 +294,9 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       }
       thrown.getMessage must include("Not updated done")
       
-      verify(mockStreamerEventRepository).getCurrentConfidenceAmountAction(testEventId)
+      verify(mockEventPollRepository).getCurrentConfidenceAmountAction(testEventId)
       verify(mockUserStreamerStateRepository).getUserStreamerBalanceAction(testUserId, testStreamChannelId)
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount)
       verify(mockUserStreamerStateRepository).updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount)
     }
     
@@ -308,13 +306,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = 0
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(1))
       
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount))
@@ -325,7 +323,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val result = execDBIO(dbioAction)
       result mustBe true
       
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + 0)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance + 0)
       verify(mockUserStreamerStateRepository).updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - 0)
     }
     
@@ -335,13 +333,13 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 50
       val transferAmount = -20 // Negative transfer (from event to user)
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))
         .thenReturn(DBIO.successful(Some(userBalance)))
       
-      when(mockStreamerEventRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
+      when(mockEventPollRepository.updateCurrentConfidenceAmount(testEventId, eventBalance + transferAmount))
         .thenReturn(DBIO.successful(1))
       
       when(mockUserStreamerStateRepository.updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance - transferAmount))
@@ -352,7 +350,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val result = execDBIO(dbioAction)
       result mustBe true
       
-      verify(mockStreamerEventRepository).updateCurrentConfidenceAmount(testEventId, eventBalance - 20)
+      verify(mockEventPollRepository).updateCurrentConfidenceAmount(testEventId, eventBalance - 20)
       verify(mockUserStreamerStateRepository).updateStreamerBalanceAction(testUserId, testStreamChannelId, userBalance + 20)
     }
     
@@ -366,7 +364,7 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       val userBalance = 500
       val transferAmount = Int.MinValue
       
-      when(mockStreamerEventRepository.getCurrentConfidenceAmountAction(testEventId))
+      when(mockEventPollRepository.getCurrentConfidenceAmountAction(testEventId))
         .thenReturn(DBIO.successful(Some(eventBalance)))
       
       when(mockUserStreamerStateRepository.getUserStreamerBalanceAction(testUserId, testStreamChannelId))

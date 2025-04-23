@@ -14,7 +14,6 @@ import slick.jdbc.JdbcProfile
  */
 @Singleton
 class PollService @Inject()(
-  streamerEventRepository: StreamerEventRepository,
   eventPollRepository: EventPollRepository,
   pollOptionRepository: PollOptionRepository,
   pollVoteRepository: PollVoteRepository,
@@ -34,7 +33,7 @@ class PollService @Inject()(
    */
   def getPollForRecentEvent(channelId: String): Future[Option[(EventPoll, List[PollOption])]] = {
     // Step 1: Get the most recent active event for the channel
-    streamerEventRepository.getMostRecentActiveEvent(channelId).flatMap {
+    eventPollRepository.getMostRecentActiveEvent(channelId).flatMap {
       case Some(event) => 
         // Step 2: Get polls for this event
         event.eventId match {
@@ -49,7 +48,7 @@ class PollService @Inject()(
 
   def getPollForRecentEventOverall: Future[Option[(EventPoll, List[PollOption])]] = {
     // Step 1: Get the most recent active event for the channel
-    streamerEventRepository.getOverallMostRecentActiveEvent.flatMap {
+    eventPollRepository.getOverallMostRecentActiveEvent.flatMap {
       case Some(event) =>
         // Step 2: Get polls for this event
         event.eventId match {
@@ -101,7 +100,7 @@ class PollService @Inject()(
       _ <- pollVoteRepository.addVoteAction(PollVote(None, pollId, optionId, userId, messageByChatOpt, confidenceAmount))
       eventPollOption <- eventPollRepository.getByIdAction(pollId)
       eventPoll <- eventPollOption.fold(DBIO.failed(new IllegalStateException("No poll found by pollID")))(e => DBIO.successful(e))
-      eventOption <- streamerEventRepository.getByIdAction(eventPoll.eventId)
+      eventOption <- eventPollRepository.getEventByIdAction(eventPoll.eventId)
       event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event found by eventId")))(e => DBIO.successful(e))
       _ <- transferConfidenceVoteStreamer(event, userId, confidenceAmount)
     }yield{
@@ -112,13 +111,13 @@ class PollService @Inject()(
   def transferConfidenceVoteStreamer(event: StreamerEvent, userID: Long, amount: Int): DBIO[Boolean] = {
     for {
       eventID <- event.eventId.fold(DBIO.failed(new IllegalStateException("Event with no ID?")))(e => DBIO.successful(e))
-      eventCurrentBalanceOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
+      eventCurrentBalanceOption <- eventPollRepository.getCurrentConfidenceAmountAction(eventID)
       eventCurrentBalance <- eventCurrentBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the event found")))(DBIO.successful)
       userChannelBalanceOption <- userStreamerStateRepository.getUserStreamerBalanceAction(userID, event.channelId)
       userChannelBalance <- userChannelBalanceOption.fold(DBIO.failed(new IllegalStateException("No balance of the user channel found")))(DBIO.successful)
       actualTransferAmount <- DBIO.successful(if(amount == Int.MaxValue) userChannelBalance else amount)
       rows_update_event <- if(eventCurrentBalance + actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative balance for streamer event"))
-      else streamerEventRepository.updateCurrentConfidenceAmount(eventID, eventCurrentBalance + actualTransferAmount)
+      else eventPollRepository.updateCurrentConfidenceAmount(eventID, eventCurrentBalance + actualTransferAmount)
       rows_update_user_stream <- if(userChannelBalance - actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative amount for user balance"))
       else userStreamerStateRepository.updateStreamerBalanceAction(userID, event.channelId, userChannelBalance - actualTransferAmount)
       operation_complete <- if(rows_update_event == 1 && rows_update_user_stream == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
