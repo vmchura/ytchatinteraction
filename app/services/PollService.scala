@@ -125,4 +125,17 @@ class PollService @Inject()(
       operation_complete
     }
   }
+  def spreadPollConfidence(eventID: Int, pollID: Int): DBIO[Boolean] = {
+    for{
+      pollOption <- eventPollRepository.getByIdAction(pollID)
+      poll <- pollOption.fold(DBIO.failed(new IllegalStateException("No PollID")))(DBIO.successful)
+      winnerOption <- poll.winnerOptionId.fold(DBIO.failed(new IllegalStateException("No winner selected?")))(DBIO.successful)
+      votes <- pollVoteRepository.getByPollIdAction(pollID)
+      winnersLosers <- DBIO.successful(votes.partition(singleVote => winnerOption == singleVote.optionId))
+      totalAmountWinners <- DBIO.successful(winnersLosers._1.map(_.confidenceAmount))
+      totalAmountLosers <- DBIO.successful(winnersLosers._2.map(_.confidenceAmount))
+    }yield{
+      votes == null
+    }
+  }
 }

@@ -88,8 +88,11 @@ class PollVoteRepository @Inject()(
    * Get all votes for a poll
    */
   def getByPollId(pollId: Int): Future[Seq[PollVote]] = db.run {
-    pollVotesTable.filter(_.pollId === pollId).result
+    getByPollIdAction(pollId)
   }
+  
+  def getByPollIdAction(pollId: Int): DBIO[Seq[PollVote]] =
+    pollVotesTable.filter(_.pollId === pollId).result  
   
   /**
    * Get all votes for a poll option
