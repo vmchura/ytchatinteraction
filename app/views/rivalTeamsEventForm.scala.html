@@ -125,14 +125,23 @@
                               <form action="@routes.EventController.setWinnerAndClose(eventId)" method="POST" class="winner-form">
                                 @helper.CSRF.formField
                                 
-                                <select id="optionId" name="optionId" required class="winner-select">
-                                  <option value="" disabled selected>Select winner</option>
+                                <fieldset>
+                                  <legend>Select the winning team:</legend>
                                   @for(option <- options) {
-                                    <option value="@option.optionId.get">
-                                      @option.optionText (@{(option.confidenceRatio * 100).toInt}% win chance)
-                                    </option>
+                                    <div class="radio-option">
+                                      <input 
+                                        type="radio" 
+                                        id="option-@option.optionId.get" 
+                                        name="optionId" 
+                                        value="@option.optionId.get" 
+                                        required 
+                                      />
+                                      <label for="option-@option.optionId.get">
+                                        @option.optionText (@{(option.confidenceRatio * 100).toInt}% win chance)
+                                      </label>
+                                    </div>
                                   }
-                                </select>
+                                </fieldset>
                                 
                                 <button type="submit" class="close-event">Close Event with Winner</button>
                               </form>
@@ -243,8 +252,24 @@
       gap: 0.5rem;
     }
     
-    .winner-select {
+    .winner-form fieldset {
+      margin-bottom: 0.75rem;
+      padding: 0.5rem 0.75rem;
+    }
+    
+    .winner-form legend {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    
+    .radio-option {
       margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+    }
+    
+    .radio-option input[type="radio"] {
+      margin-right: 0.5rem;
     }
     
     .close-event {
