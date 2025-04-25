@@ -2,20 +2,21 @@ package controllers
 
 import java.net.URI
 import java.time.Instant
-import javax.inject._
-
-import models._
-import models.repository._
+import javax.inject.*
+import models.*
+import models.repository.*
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.event.{Logging, LoggingAdapter}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Source}
 import play.api.Logger
-import play.api.mvc._
+import play.api.mvc.*
 import play.api.i18n.I18nSupport
-import play.api.data._
-import play.api.data.Forms._
+import play.api.data.*
+import play.api.data.Forms.*
 import forms.Forms.*
+import services.PollService
+
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -27,7 +28,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                 streamerEventRepository: StreamerEventRepository,
                                 eventPollRepository: EventPollRepository,
                                 pollOptionRepository: PollOptionRepository,
-                                ytStreamerRepository: YtStreamerRepository)
+                                ytStreamerRepository: YtStreamerRepository,
+                                pollService: PollService)
                                (implicit actorSystem: ActorSystem,
                                 mat: Materializer,
                                 executionContext: ExecutionContext,
@@ -260,9 +262,9 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
 
           // Set the winner option
           _ <- eventPollRepository.setWinnerOption(pollId, formData.optionId)
-
           // Close the event
           _ <- streamerEventRepository.closeEvent(eventId)
+          spread <- pollService.spreadPollConfidence(eventId, pollId)
         } yield {
           Redirect(routes.EventController.eventManagement())
             .flashing("success" -> "Event closed successfully and winner selected")

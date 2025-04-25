@@ -125,17 +125,23 @@ class PollService @Inject()(
       operation_complete
     }
   }
-  def spreadPollConfidence(eventID: Int, pollID: Int): DBIO[Boolean] = {
+  def spreadPollConfidenceAction(eventID: Int, pollID: Int): DBIO[Boolean] = {
     for{
+      eventOption <- eventPollRepository.getEventByIdAction(eventID)
+      event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event ID?")))(DBIO.successful)
       pollOption <- eventPollRepository.getByIdAction(pollID)
       poll <- pollOption.fold(DBIO.failed(new IllegalStateException("No PollID")))(DBIO.successful)
-      winnerOption <- poll.winnerOptionId.fold(DBIO.failed(new IllegalStateException("No winner selected?")))(DBIO.successful)
+      winnerOptionID <- poll.winnerOptionId.fold(DBIO.failed(new IllegalStateException("No winner selected?")))(DBIO.successful)
+      winnerOptionOption <- pollOptionRepository.getByIdAction(winnerOptionID)
+      winnerOption <- winnerOptionOption.fold(DBIO.failed(new IllegalStateException("No winner option in DB?")))(DBIO.successful)
       votes <- pollVoteRepository.getByPollIdAction(pollID)
-      winnersLosers <- DBIO.successful(votes.partition(singleVote => winnerOption == singleVote.optionId))
-      totalAmountWinners <- DBIO.successful(winnersLosers._1.map(_.confidenceAmount))
-      totalAmountLosers <- DBIO.successful(winnersLosers._2.map(_.confidenceAmount))
+      transactions <- DBIO.sequence(votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId)).map{ singleVote =>
+        transferConfidenceVoteStreamer(event, singleVote.userId, -singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05))).toInt)
+      })
+
     }yield{
-      votes == null
+      transactions.forall(_ == true)
     }
   }
+  def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = db.run(spreadPollConfidenceAction(eventID, pollID).transactionally)
 }
