@@ -121,7 +121,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options at once
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      val confidenceRatios = Seq(BigDecimal(1.0), BigDecimal(2.0), BigDecimal(3.0))
       val createdF = repository.createMultiple(testPollId, optionTexts, confidenceRatios)
       
       val created = Await.result(createdF, 5.seconds)
@@ -167,7 +167,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options for the same poll
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      val confidenceRatios = Seq(BigDecimal(1.0), BigDecimal(2.0), BigDecimal(3.0))
       Await.result(repository.createMultiple(testPollId, optionTexts, confidenceRatios), 5.seconds)
       
       // Get all options for the poll
@@ -256,7 +256,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options for the same poll
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      val confidenceRatios = Seq(BigDecimal(1.0), BigDecimal(2.0), BigDecimal(3.0))
       Await.result(repository.createMultiple(testPollId, optionTexts, confidenceRatios), 5.seconds)
       
       // Verify options exist before deletion

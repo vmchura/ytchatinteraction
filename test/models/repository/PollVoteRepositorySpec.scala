@@ -87,10 +87,10 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
             VALUES (1, 'UC123456789', 'Test Event', 'LIVE', 0, true, CURRENT_TIMESTAMP);
           INSERT INTO event_polls (poll_id, event_id, poll_question) 
             VALUES (1, 1, 'Test question?');
-          INSERT INTO poll_options (option_id, poll_id, option_text) 
-            VALUES (1, 1, 'Option 1');
-          INSERT INTO poll_options (option_id, poll_id, option_text) 
-            VALUES (2, 1, 'Option 2');
+          INSERT INTO poll_options (option_id, poll_id, option_text, confidence_ratio)
+            VALUES (1, 1, 'Option 1', 1.5);
+          INSERT INTO poll_options (option_id, poll_id, option_text, confidence_ratio)
+            VALUES (2, 1, 'Option 2', 1.5);
           """,
           """
           --- !Downs

@@ -132,11 +132,11 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
             VALUES (1, 1, 'Test Poll Question');
 
           -- Create test poll options
-          INSERT INTO poll_options (option_id, poll_id, option_text)
-            VALUES (1, 1, 'Option 1');
+          INSERT INTO poll_options (option_id, poll_id, option_text, confidence_ratio)
+            VALUES (1, 1, 'Option 1', 1.5);
 
-          INSERT INTO poll_options (option_id, poll_id, option_text)
-            VALUES (2, 1, 'Option 2');
+          INSERT INTO poll_options (option_id, poll_id, option_text, confidence_ratio)
+            VALUES (2, 1, 'Option 2', 1.5);
 
           -- Create user-streamer state
           INSERT INTO user_streamer_state (user_id, streamer_channel_id, current_balance_number)
@@ -229,7 +229,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         any[List[PollOption]],
         org.mockito.ArgumentMatchers.eq(s"I choose $testOptionText1 with 50 points")
       )).thenReturn(Future.successful(
-        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1), 50))
+        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1, 1.5), 50))
       ))
 
       when(mockInferUserOptionService.inferencePollResponse(
@@ -243,7 +243,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         any[List[PollOption]],
         org.mockito.ArgumentMatchers.eq(s"I think $testOptionText2 is correct with 30")
       )).thenReturn(Future.successful(
-        Some((PollOption(Some(testOptionId2), testPollId, testOptionText2), 30))
+        Some((PollOption(Some(testOptionId2), testPollId, testOptionText2, 1.5), 30))
       ))
 
       // 4. Create actor instance with real repositories but mocked services
@@ -439,7 +439,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         any[List[PollOption]],
         anyString()
       )).thenReturn(Future.successful(
-        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1), 25))
+        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1, 1.5), 25))
       ))
 
       // 4. Create actor instance
