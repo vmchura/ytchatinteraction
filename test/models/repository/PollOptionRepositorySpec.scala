@@ -105,7 +105,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Create a new option
-      val option = PollOption(None, testPollId, testOptionText1)
+      val option = PollOption(None, testPollId, testOptionText1, 1.0f)
       val createdF = repository.create(option)
       
       val created = Await.result(createdF, 5.seconds)
@@ -121,7 +121,8 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options at once
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      val createdF = repository.createMultiple(testPollId, optionTexts)
+      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      val createdF = repository.createMultiple(testPollId, optionTexts, confidenceRatios)
       
       val created = Await.result(createdF, 5.seconds)
       
@@ -136,7 +137,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Create an option
-      val option = PollOption(None, testPollId, testOptionText1)
+      val option = PollOption(None, testPollId, testOptionText1, 1.0f)
       val created = Await.result(repository.create(option), 5.seconds)
       
       // Get option by ID
@@ -166,7 +167,8 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options for the same poll
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      Await.result(repository.createMultiple(testPollId, optionTexts), 5.seconds)
+      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      Await.result(repository.createMultiple(testPollId, optionTexts, confidenceRatios), 5.seconds)
       
       // Get all options for the poll
       val optionsF = repository.getByPollId(testPollId)
@@ -181,11 +183,11 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Create an option
-      val option = PollOption(None, testPollId, testOptionText1)
+      val option = PollOption(None, testPollId, testOptionText1, 1.0f)
       val created = Await.result(repository.create(option), 5.seconds)
       
-      // Update the option text
-      val updatedOption = created.copy(optionText = "Updated option")
+      // Update the option text and confidence ratio
+      val updatedOption = created.copy(optionText = "Updated option", confidenceRatio = 2.5f)
       val updateResultF = repository.update(updatedOption)
       val updateResult = Await.result(updateResultF, 5.seconds)
       
@@ -198,13 +200,14 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       retrieved must not be None
       retrieved.get.optionText must be("Updated option")
+      retrieved.get.confidenceRatio must be(2.5f)
     }
     
     "handle update for non-existent option" in {
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Update a non-existent option
-      val nonExistentOption = PollOption(Some(999), testPollId, "Non-existent option")
+      val nonExistentOption = PollOption(Some(999), testPollId, "Non-existent option", 1.0f)
       val updateResultF = repository.update(nonExistentOption)
       val updateResult = Await.result(updateResultF, 5.seconds)
       
@@ -216,7 +219,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Create an option
-      val option = PollOption(None, testPollId, testOptionText1)
+      val option = PollOption(None, testPollId, testOptionText1, 1.0f)
       val created = Await.result(repository.create(option), 5.seconds)
       
       // Verify the option exists before deletion
@@ -253,7 +256,8 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Create multiple options for the same poll
       val optionTexts = Seq(testOptionText1, testOptionText2, testOptionText3)
-      Await.result(repository.createMultiple(testPollId, optionTexts), 5.seconds)
+      val confidenceRatios = Seq(1.0f, 2.0f, 3.0f)
+      Await.result(repository.createMultiple(testPollId, optionTexts, confidenceRatios), 5.seconds)
       
       // Verify options exist before deletion
       val existsBeforeF = repository.getByPollId(testPollId)
@@ -288,7 +292,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new PollOptionRepository(dbConfigProvider, eventPollRepository)
       
       // Attempt to update an option without an ID
-      val invalidOption = PollOption(None, testPollId, testOptionText1)
+      val invalidOption = PollOption(None, testPollId, testOptionText1, 1.0f)
       
       // Should throw an exception
       an[IllegalArgumentException] must be thrownBy {

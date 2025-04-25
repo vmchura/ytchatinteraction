@@ -5,7 +5,8 @@ import play.api.libs.json._
 case class PollOption(
   optionId: Option[Int] = None,
   pollId: Int,
-  optionText: String
+  optionText: String,
+  confidenceRatio: BigDecimal
 )
 
 object PollOption {

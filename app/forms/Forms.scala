@@ -15,7 +15,8 @@ case class EventForm(
 // Form for creating a poll with dynamic options
 case class PollForm(
                      pollQuestion: String,
-                     options: List[String]
+                     options: List[String],
+                     ratios: List[BigDecimal]
                    )
 
 // Combined form data for event creation with poll
@@ -49,8 +50,9 @@ object Forms:
   val pollForm = Form(
     mapping(
       "pollQuestion" -> nonEmptyText,
-      "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2)
-    )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options))
+      "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2),
+      "ratios" -> list(bigDecimal).verifying("At least 2 options required", _.size >= 2)
+    )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options, nn.ratios))
   )
 
   val eventWithPollForm = Form(
@@ -64,8 +66,9 @@ object Forms:
       )(EventForm.apply)(nn => Some(nn.channelId, nn.eventName, nn.eventDescription, nn.eventType, nn.startTime)),
       "poll" -> mapping(
         "pollQuestion" -> nonEmptyText,
-        "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2)
-      )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options))
+        "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2),
+        "ratios" -> list(bigDecimal).verifying("At least 2 options required", _.size >= 2)
+      )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options, nn.ratios))
     )(EventWithPollForm.apply)(nn => Some(nn.event, nn.poll))
   )
   

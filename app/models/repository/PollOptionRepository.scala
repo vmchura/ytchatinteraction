@@ -31,8 +31,12 @@ class PollOptionRepository @Inject()(
   /**
    * Create multiple options for a poll in a single transaction
    */
-  def createMultiple(pollId: Int, optionTexts: Seq[String]): Future[Seq[PollOption]] = {
-    val options = optionTexts.map(text => PollOption(None, pollId, text))
+  def createMultiple(pollId: Int, optionTexts: Seq[String], confidenceRatios: Seq[BigDecimal]): Future[Seq[PollOption]] = {
+    require(optionTexts.length == confidenceRatios.length, "Number of option texts must match number of confidence ratios")
+    
+    val options = optionTexts.zip(confidenceRatios).map { 
+      case (text, ratio) => PollOption(None, pollId, text, ratio)
+    }
     
     db.run(
       DBIO.sequence(

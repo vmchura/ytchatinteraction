@@ -115,7 +115,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           createdPoll <- eventPollRepository.create(poll)
 
           // Create the poll options
-          _ <- pollOptionRepository.createMultiple(createdPoll.pollId.get, formData.poll.options)
+          _ <- pollOptionRepository.createMultiple(createdPoll.pollId.get, formData.poll.options, formData.poll.ratios)
 
           // Get updated list of streamers and events for the view
           events <- streamerEventRepository.list()
