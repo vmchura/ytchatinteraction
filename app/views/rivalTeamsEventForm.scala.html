@@ -1,10 +1,10 @@
-@import models.{StreamerEvent, User, YtStreamer}
+@import models.{StreamerEvent, User, YtStreamer, EventPoll, PollOption}
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User, eventPollMap: Map[Int, EventPoll], pollOptionsMap: Map[Int, Seq[PollOption]])(implicit request: RequestHeader, flash: Flash)
 
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
@@ -107,16 +107,42 @@
                   </p>
                 }
                 
-                <div class="event-actions">
+                @if(event.endTime.isEmpty) {
                   @if(event.isActive) {
-                    <a href="@routes.EventController.endEvent(event.eventId.get)"
-                      class="end-event" role="button">Stop New Votes</a>
+                    <div class="event-actions">
+                      <a href="@routes.EventController.endEvent(event.eventId.get)"
+                        class="end-event" role="button">Stop New Votes</a>
+                    </div>
                   }
-                  @if(event.endTime.isEmpty) {
-                    <a href="@routes.EventController.selectWinnerForm(event.eventId.get)"
-                      class="close-event" role="button" data-tooltip="Select winner and close event">Select Winner & Close</a>
-                  }
-                </div>
+                  
+                  <div class="winner-selection">
+                    <h4>Select Winner & Close</h4>
+                    @defining(event.eventId.get) { eventId =>
+                      @defining(eventPollMap.get(eventId)) { pollOpt =>
+                        @for(poll <- pollOpt) {
+                          @defining(pollOptionsMap.getOrElse(poll.pollId.get, Seq.empty)) { options =>
+                            @if(options.nonEmpty) {
+                              <form action="@routes.EventController.setWinnerAndClose(eventId)" method="POST" class="winner-form">
+                                @helper.CSRF.formField
+                                
+                                <select id="optionId" name="optionId" required class="winner-select">
+                                  <option value="" disabled selected>Select winner</option>
+                                  @for(option <- options) {
+                                    <option value="@option.optionId.get">
+                                      @option.optionText (@{(option.confidenceRatio * 100).toInt}% win chance)
+                                    </option>
+                                  }
+                                </select>
+                                
+                                <button type="submit" class="close-event">Close Event with Winner</button>
+                              </form>
+                            }
+                          }
+                        }
+                      }
+                    }
+                  </div>
+                }
               </div>
             }
           </div>
@@ -151,6 +177,8 @@
       border: 1px solid var(--primary);
       border-radius: 0.5rem;
       padding: 1rem;
+      display: flex;
+      flex-direction: column;
     }
     
     .error {
@@ -196,6 +224,37 @@
       justify-content: space-between;
       margin-top: 0.5rem;
       font-size: 0.9rem;
+    }
+    
+    .winner-selection {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--form-element-border-color);
+    }
+    
+    .winner-selection h4 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+    }
+    
+    .winner-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .winner-select {
+      margin-bottom: 0.5rem;
+    }
+    
+    .close-event {
+      background-color: var(--form-element-invalid-active-border-color);
+      border-color: var(--form-element-invalid-active-border-color);
+    }
+    
+    .close-event:hover {
+      background-color: var(--form-element-invalid-hover-border-color);
+      border-color: var(--form-element-invalid-hover-border-color);
     }
   </style>
   
