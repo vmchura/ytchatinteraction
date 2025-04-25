@@ -35,6 +35,7 @@ CREATE TABLE poll_options (
   option_id SERIAL PRIMARY KEY,
   poll_id INTEGER NOT NULL,
   option_text VARCHAR NOT NULL,
+  confidence_ratio DECIMAL(19,4) NOT NULL,
   CONSTRAINT fk_poll_options_poll
     FOREIGN KEY (poll_id)
     REFERENCES event_polls (poll_id)
