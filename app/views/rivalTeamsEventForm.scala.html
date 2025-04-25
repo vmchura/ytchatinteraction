@@ -41,6 +41,17 @@
           <label for="teamsInput">Teams (e.g. "Team A vs Team B")</label>
           <input type="text" id="teamsInput" name="teamsInput" placeholder="Team A vs Team B" required>
           
+          <div class="grid">
+            <div>
+              <label for="confidenceSlider">Team 1 Win Probability</label>
+              <input type="range" id="confidenceSlider" min="0.0" max="1.0" step="0.01" value="0.5">
+              <div class="probabilities-display">
+                <span id="team1Probability">Team 1: 50%</span>
+                <span id="team2Probability">Team 2: 50%</span>
+              </div>
+            </div>
+          </div>
+          
           <!-- Hidden fields that will be auto-populated -->
           <input type="hidden" id="event.eventName" name="event.eventName" value="">
           <input type="hidden" id="event.eventDescription" name="event.eventDescription" value="">
@@ -49,6 +60,8 @@
           <input type="hidden" id="poll.pollQuestion" name="poll.pollQuestion" value="Who will win?">
           <input type="hidden" id="poll.options[0]" name="poll.options[0]" value="">
           <input type="hidden" id="poll.options[1]" name="poll.options[1]" value="">
+          <input type="hidden" id="poll.ratios[0]" name="poll.ratios[0]" value="0.5">
+          <input type="hidden" id="poll.ratios[1]" name="poll.ratios[1]" value="0.5">
           
           <button type="submit">Create Event</button>
         </form>
@@ -177,6 +190,13 @@
       color: var(--form-element-invalid-active-border-color);
       border: 1px solid var(--form-element-invalid-active-border-color);
     }
+    
+    .probabilities-display {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
   </style>
   
   <script>
@@ -188,6 +208,27 @@
       
       // Auto-populate fields based on teams input
       const teamsInput = document.getElementById('teamsInput');
+      const confidenceSlider = document.getElementById('confidenceSlider');
+      const team1ProbabilityElement = document.getElementById('team1Probability');
+      const team2ProbabilityElement = document.getElementById('team2Probability');
+      
+      // Update probabilities display and hidden fields when slider changes
+      confidenceSlider.addEventListener('input', function() {
+        const team1Probability = parseFloat(confidenceSlider.value);
+        const team2Probability = parseFloat((1 - team1Probability).toFixed(2));
+        
+        // Update display
+        const teams = teamsInput.value.trim().split("vs").map(team => team.trim());
+        const team1Name = teams.length >= 1 ? teams[0] : "Team 1";
+        const team2Name = teams.length >= 2 ? teams[1] : "Team 2";
+        
+        team1ProbabilityElement.textContent = `${team1Name}: ${(team1Probability * 100).toFixed(0)}%`;
+        team2ProbabilityElement.textContent = `${team2Name}: ${(team2Probability * 100).toFixed(0)}%`;
+        
+        // Update hidden form fields
+        document.getElementById('poll.ratios[0]').value = team1Probability;
+        document.getElementById('poll.ratios[1]').value = team2Probability;
+      });
       
       teamsInput.addEventListener('input', function() {
         const teamsText = teamsInput.value.trim();
@@ -204,9 +245,19 @@
           if (teams.length >= 2) {
             document.getElementById('poll.options[0]').value = teams[0];
             document.getElementById('poll.options[1]').value = teams[1];
+            
+            // Update probability display with team names
+            const team1Probability = parseFloat(confidenceSlider.value);
+            const team2Probability = parseFloat((1 - team1Probability).toFixed(2));
+            
+            team1ProbabilityElement.textContent = `${teams[0]}: ${(team1Probability * 100).toFixed(0)}%`;
+            team2ProbabilityElement.textContent = `${teams[1]}: ${(team2Probability * 100).toFixed(0)}%`;
           }
         }
       });
+      
+      // Initial update for the slider values
+      confidenceSlider.dispatchEvent(new Event('input'));
     });
   </script>
 }
