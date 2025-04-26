@@ -51,16 +51,16 @@ class ChatService @Inject()(
   def formatVoteMessage(
                          userName: String,
                          message: String,
-                         optionText: String,
-                         confidence: Int,
+                         optionText: Option[String],
+                         confidence: Option[Int],
                          eventId: Int
                        ): String = {
     val messageJson = Json.obj(
       "type" -> "vote_detection",
       "userName" -> userName,
       "message" -> message,
-      "optionText" -> optionText,
-      "confidence" -> confidence,
+      "optionText" -> optionText.getOrElse("No option"),
+      "confidence" -> confidence.map(_.toString).getOrElse(""),
       "eventId" -> eventId,
       "timestamp" -> System.currentTimeMillis()
     )
@@ -71,8 +71,8 @@ class ChatService @Inject()(
   def broadcastVoteDetection(
                               userName: String,
                               message: String,
-                              optionText: String,
-                              confidence: Int,
+                              optionText: Option[String],
+                              confidence: Option[Int],
                               eventId: Int
                             ): Unit = {
     val formattedMessage = formatVoteMessage(userName, message, optionText, confidence, eventId)

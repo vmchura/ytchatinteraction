@@ -293,13 +293,20 @@ object YoutubeLiveChatPollingActor {
             chatService.broadcastVoteDetection(
               displayName,
               messageText,
-              pollVote._1.optionText,
-              pollVote._2,
+              Some(pollVote._1.optionText),
+              Some(pollVote._2),
               pollEvent._1.eventId
             )
           case Success(None) =>
             // No poll response detected, but don't log from here
             chatService.broadcastMessage(s"$displayName: $messageText: [  ]", "youtube", Some(displayName))
+            chatService.broadcastVoteDetection(
+              displayName,
+              messageText,
+              None,
+              None,
+              pollEvent._1.eventId
+            )
           case Failure(ex) =>
             // Just print to console to avoid actor context issues
             println(s"Error processing poll response: ${ex.getMessage}")
