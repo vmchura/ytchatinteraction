@@ -136,11 +136,14 @@ class PollService @Inject()(
       winnerOption <- winnerOptionOption.fold(DBIO.failed(new IllegalStateException("No winner option in DB?")))(DBIO.successful)
       votes <- pollVoteRepository.getByPollIdAction(pollID)
       transactions <- DBIO.sequence(votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId)).map{ singleVote =>
-        transferConfidenceVoteStreamer(event, singleVote.userId, -singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05))).toInt)
+        transferConfidenceVoteStreamer(event, singleVote.userId, -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt).map{
+          _ => s"From ${singleVote.userId} paying: ${-(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt}"
+        }
       })
 
     }yield{
-      transactions.forall(_ == true)
+      transactions.foreach(println)
+      true
     }
   }
   def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = db.run(spreadPollConfidenceAction(eventID, pollID).transactionally)
