@@ -1,0 +1,112 @@
+@import models.{StreamerEvent, EventPoll, PollOption, User}
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+
+@(events: Seq[StreamerEvent], 
+  eventPollMap: Map[Int, EventPoll], 
+  pollOptionsMap: Map[Int, Seq[PollOption]],
+  channelBalanceMap: Map[String, Int],
+  voteForm: Form[VoteFormData],
+  user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("My Events", Some(user)) {
+  <h1>My Active Events</h1>
+  
+  <div class="container">
+    @if(flash.get("error").isDefined) {
+      <div class="error-message">
+        @flash.get("error")
+      </div>
+    }
+    
+    @if(flash.get("success").isDefined) {
+      <div class="success-message">
+        @flash.get("success")
+      </div>
+    }
+    
+    @if(events.isEmpty) {
+      <article>
+        <p>You don't have any active events. Join a stream chat to participate in events!</p>
+      </article>
+    } else {
+      <div class="grid">
+        @for(event <- events) {
+          <div>
+            <article>
+              <header style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>@event.eventName</h3>
+                <p>Your balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</p>
+              </header>
+              
+              @defining(event.eventId.getOrElse(-1)) { eventId =>
+                @defining(eventPollMap.get(eventId)) { pollOpt =>
+                  @for(poll <- pollOpt) {
+                      @defining(poll.pollId.getOrElse(-1)) { pollId =>
+                        @defining(pollOptionsMap.getOrElse(pollId, Seq.empty)) { options =>
+                          @if(options.nonEmpty && event.endTime.isEmpty) {
+                            <form action="@routes.UserEventsController.submitVote()" method="POST">
+                              @helper.CSRF.formField
+                              <input type="hidden" name="eventId" value="@eventId">
+                              <input type="hidden" name="pollId" value="@pollId">
+                              
+                              <fieldset>
+                                @for(option <- options) {
+                                  <div class="radio-option">
+                                    <input
+                                      type="radio"
+                                      id="option-@option.optionId.get"
+                                      name="optionId"
+                                      value="@option.optionId.get"
+                                      required
+                                    />
+                                    <label for="option-@option.optionId.get">
+                                      @option.optionText
+                                    </label>
+                                  </div>
+                                }
+                              </fieldset>
+                              
+                              <div class="confidence-section">
+                                <label for="confidence-@pollId">Confidence (1-@channelBalanceMap.getOrElse(event.channelId, 0)):</label>
+                                <input
+                                  type="number"
+                                  id="confidence-@pollId"
+                                  name="confidence"
+                                  min="1"
+                                  max="@channelBalanceMap.getOrElse(event.channelId, 1000)"
+                                  value="1"
+                                  required
+                                />
+                              </div>
+                              
+                              <button type="submit" class="submit-vote">Submit Vote</button>
+                            </form>
+                          }
+                        }
+                      }
+
+                  }
+                }
+              }
+              
+              <footer>
+                <div class="event-info">
+                  <p>Channel: @event.channelId</p>
+                  <p>Your balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</p>
+                  
+                  @defining(java.time.format.DateTimeFormatter
+                    .ofPattern("yyyy-MM-dd HH:mm")
+                    .withZone(java.time.ZoneId.systemDefault())) { formatter =>
+                    <p>Started: @formatter.format(event.startTime)</p>
+                  }
+                </div>
+              </footer>
+            </article>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+}

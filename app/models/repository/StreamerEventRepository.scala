@@ -55,11 +55,20 @@ class StreamerEventRepository @Inject()(
   }
   
   /**
-   * Get all active events for a streamer
+   * Get all active events for a streamer (isActive = true)
    */
   def getActiveByChannelId(channelId: String): Future[Seq[StreamerEvent]] = db.run {
     streamerEventsTable
       .filter(e => e.channelId === channelId && e.isActive === true)
+      .result
+  }
+  
+  /**
+   * Get all events for a streamer that haven't ended yet (endTime is null)
+   */
+  def getActiveEventsByChannel(channelId: String): Future[Seq[StreamerEvent]] = db.run {
+    streamerEventsTable
+      .filter(e => e.channelId === channelId && e.endTime.isEmpty)
       .result
   }
 

@@ -101,4 +101,8 @@ class UserStreamerStateRepository @Inject()(
       .result
       .headOption
   }
+  
+  def getUserStreamerBalance(userId: Long, streamerChannelId: String): Future[Option[Int]] = db.run {
+    getUserStreamerBalanceAction(userId, streamerChannelId)
+  }
 }
