@@ -4,11 +4,29 @@
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User, eventPollMap: Map[Int, EventPoll], pollOptionsMap: Map[Int, Seq[PollOption]])(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User, eventPollMap: Map[Int, EventPoll], pollOptionsMap: Map[Int, Seq[PollOption]], activeStreamers: Seq[String])(implicit request: RequestHeader, flash: Flash)
 
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
   
+  @if(activeStreamers.nonEmpty) {
+    <div class="active-streams-container">
+      <article>
+        <header>
+          <h2>Current Live Streams Being Monitored</h2>
+        </header>
+        <div class="live-streams-list">
+          @for(streamerTitle <- activeStreamers) {
+            <div class="live-stream-item">
+              <div class="stream-info">
+                <h3>@streamerTitle</h3>
+              </div>
+            </div>
+          }
+        </div>
+      </article>
+    </div>
+  }
 
   
   <div class="grid">
@@ -164,124 +182,7 @@
   <div class="event-actions">
     <a href="@routes.EventController.fullEventForm()" role="button" class="secondary">Create Complete New Event</a>
   </div>
-  <style>
-    .event-actions {
-      margin-bottom: 1rem;
-      display: flex;
-      gap: 0.5rem;
-    }
-    
-    .events-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .event-item .event-actions {
-      margin-top: 0.5rem;
-    }
-    
-    .event-item {
-      border: 1px solid var(--primary);
-      border-radius: 0.5rem;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .error {
-      color: var(--form-element-invalid-active-border-color);
-    }
-    
-    /* Space between poll options */
-    #poll-options input {
-      margin-bottom: 0.5rem;
-    }
-    
-    #add-option {
-      margin-top: 0.5rem;
-    }
-    
-    .badge {
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      display: inline-block;
-      font-size: 0.875rem;
-    }
-    
-    .badge.success {
-      background-color: var(--card-background-color);
-      color: var(--form-element-valid-active-border-color);
-      border: 1px solid var(--form-element-valid-active-border-color);
-    }
-    
-    .badge.warning {
-      background-color: var(--card-background-color);
-      color: var(--card-sectionning-background-color);
-      border: 1px solid var(--card-sectionning-background-color);
-    }
-    
-    .badge.danger {
-      background-color: var(--card-background-color);
-      color: var(--form-element-invalid-active-border-color);
-      border: 1px solid var(--form-element-invalid-active-border-color);
-    }
-    
-    .probabilities-display {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 0.5rem;
-      font-size: 0.9rem;
-    }
-    
-    .winner-selection {
-      margin-top: 1rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid var(--form-element-border-color);
-    }
-    
-    .winner-selection h4 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-    }
-    
-    .winner-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .winner-form fieldset {
-      margin-bottom: 0.75rem;
-      padding: 0.5rem 0.75rem;
-    }
-    
-    .winner-form legend {
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
-    
-    .radio-option {
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-    }
-    
-    .radio-option input[type="radio"] {
-      margin-right: 0.5rem;
-    }
-    
-    .close-event {
-      background-color: var(--form-element-invalid-active-border-color);
-      border-color: var(--form-element-invalid-active-border-color);
-    }
-    
-    .close-event:hover {
-      background-color: var(--form-element-invalid-hover-border-color);
-      border-color: var(--form-element-invalid-hover-border-color);
-    }
-  </style>
+
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {

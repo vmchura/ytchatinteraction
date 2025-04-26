@@ -8,6 +8,7 @@
         @helper.CSRF.formField
         <input type="hidden" name="liveChatId" value="@{liveChat.livechatID}">
         <input type="hidden" name="channelID" value="@{liveChat.channelID}">
+        <input type="hidden" name="title" value="@{liveChat.title}">
         <button type="submit" class="btn btn-primary">Start Monitoring</button>
     </form>
 </article>

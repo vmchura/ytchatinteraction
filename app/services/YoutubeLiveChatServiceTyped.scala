@@ -28,7 +28,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
   pollService: PollService,
   inferUserOptionService: InferUserOptionService,
   chatService: ChatService,
-  pollVoteRepository: PollVoteRepository
+  pollVoteRepository: PollVoteRepository,
+  activeLiveStream: ActiveLiveStream
 )(implicit ec: ExecutionContext) {
   
   // Get API key from configuration
@@ -39,7 +40,7 @@ class YoutubeLiveChatServiceTyped @Inject()(
    * @param streamerChatId The YouTube live chat ID to monitor
    * @return Future that completes when the initial polling is set up
    */
-  def startMonitoringLiveChat(streamerChatId: String, chanelID: String): Future[Boolean] = {
+  def startMonitoringLiveChat(streamerChatId: String, chanelID: String, title: String): Future[Boolean] = {
     // Get current time to filter messages
     val startTime = Instant.now()
     
@@ -63,7 +64,7 @@ class YoutubeLiveChatServiceTyped @Inject()(
     
     // Send the initial message to start polling with 0 retry count
     chatPollingActor ! YoutubeLiveChatPollingActor.PollLiveChat(streamerChatId, chanelID, null, 0)
-    
+    activeLiveStream.addElement(streamerChatId, title)
     // Return a completed future
     Future.successful(true)
   }

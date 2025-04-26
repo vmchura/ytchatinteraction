@@ -15,7 +15,7 @@ import play.api.i18n.I18nSupport
 import play.api.data.*
 import play.api.data.Forms.*
 import forms.Forms.*
-import services.PollService
+import services.{ActiveLiveStream, PollService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -29,9 +29,11 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                 eventPollRepository: EventPollRepository,
                                 pollOptionRepository: PollOptionRepository,
                                 ytStreamerRepository: YtStreamerRepository,
-                                pollService: PollService)
-                               (implicit actorSystem: ActorSystem,
-                                mat: Materializer,
+                                userStreamerStateRepository: UserStreamerStateRepository,
+                                pollService: PollService,
+                                actorSystem: ActorSystem,
+                                activeLiveStream: ActiveLiveStream)
+                               (implicit mat: Materializer,
                                 executionContext: ExecutionContext,
                                 webJarsUtil: org.webjars.play.WebJarsUtil)
   extends SilhouetteController(scc) with RequestMarkerContext {
@@ -60,6 +62,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       pollOptionsMap = polls.flatMap(_.pollId).zip(allPollOptions).toMap
       // Create a map of event ID to poll
       eventPollMap = activeEventIds.zip(polls).toMap
+      
     } yield {
       Ok(views.html.rivalTeamsEventForm(
         eventWithPollForm,
@@ -67,7 +70,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         streamers,
         User(1, "Vicc"),
         eventPollMap,
-        pollOptionsMap
+        pollOptionsMap,
+        activeLiveStream.list()
       ))
     }
   }

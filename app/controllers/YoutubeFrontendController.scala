@@ -1,10 +1,10 @@
 package controllers
 
-import javax.inject._
-import play.api.mvc._
-import play.api.data._
-import play.api.data.Forms._
-import services.YoutubeLiveChatServiceTyped
+import javax.inject.*
+import play.api.mvc.*
+import play.api.data.*
+import play.api.data.Forms.*
+import services.{ActiveLiveStream, YoutubeLiveChatServiceTyped}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -14,7 +14,8 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class YoutubeFrontendController @Inject()(
   cc: MessagesControllerComponents,
-  youtubeLiveChatService: YoutubeLiveChatServiceTyped
+  youtubeLiveChatService: YoutubeLiveChatServiceTyped,
+  activeLiveStreamService: ActiveLiveStream
 )(implicit ec: ExecutionContext) extends MessagesAbstractController(cc) {
 
   // Form for stream ID input
@@ -29,7 +30,8 @@ class YoutubeFrontendController @Inject()(
     mapping(
       "liveChatId" -> nonEmptyText,
       "channelID" -> nonEmptyText,
-    )(LiveChatIdForm.apply)(nn => Some(nn.liveChatId, nn.channelID))
+      "title" -> nonEmptyText,
+    )(LiveChatIdForm.apply)(nn => Some(nn.liveChatId, nn.channelID, nn.title))
   )
 
   /**
@@ -51,9 +53,9 @@ class YoutubeFrontendController @Inject()(
       streamIdData => {
         // Form is valid, retrieve the live chat ID
         youtubeLiveChatService.getLiveChatId(streamIdData.streamId).map {
-          case Some(liveChatId) =>
+          case Some(liveChat) =>
             // Live chat ID found, show the details page
-            Ok(views.html.liveChatDetails(streamIdData.streamId, liveChatId))
+            Ok(views.html.liveChatDetails(streamIdData.streamId, liveChat))
           case None =>
             // No live chat ID found, redisplay the form with an error
             Redirect(routes.YoutubeFrontendController.showStreamIdForm())
@@ -75,7 +77,7 @@ class YoutubeFrontendController @Inject()(
       },
       liveChatData => {
         // Form is valid, start monitoring
-        youtubeLiveChatService.startMonitoringLiveChat(liveChatData.liveChatId, liveChatData.channelID).map { _ =>
+        youtubeLiveChatService.startMonitoringLiveChat(liveChatData.liveChatId, liveChatData.channelID, liveChatData.title).map { _ =>
           Ok(views.html.monitoringStatus(liveChatData.liveChatId))
         }
       }
@@ -100,4 +102,4 @@ case class StreamIdForm(streamId: String)
 /**
  * Form data class for Live Chat ID
  */
-case class LiveChatIdForm(liveChatId: String, channelID: String)
+case class LiveChatIdForm(liveChatId: String, channelID: String, title: String)
