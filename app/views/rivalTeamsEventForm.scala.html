@@ -78,46 +78,16 @@
         @if(events.isEmpty) {
           <p>No active events found.</p>
         } else {
-          <div class="events-list">
+          <div>
             @for(event <- events) {
-              <div class="event-item">
-                <h3>@event.eventName</h3>
-                <p>
-                  <strong>Status:</strong> 
-                  @if(event.isActive) {
-                    <span class="badge success">Voting Active</span>
-                  } else if(event.endTime.isDefined) {
-                    <span class="badge danger">Closed</span>
-                  } else {
-                    <span class="badge warning">Voting Paused</span>
+              <article>
+                <header>@event.eventName
+                  @if(event.isActive && event.endTime.isEmpty) {
+                    <a href="@routes.EventController.endEvent(event.eventId.get)" role="button">Stop New Votes</a>
                   }
-                </p>
-                <p><strong>Type:</strong> @event.eventType</p>
-                @event.eventDescription.map { desc =>
-                  <p>@desc</p>
-                }
-                <p>
-                  <strong>Started:</strong> 
-                  @event.startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                </p>
-                
-                @event.endTime.map { endTime =>
-                  <p>
-                    <strong>Ended:</strong> 
-                    @endTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                  </p>
-                }
-                
+                </header>
+                <footer>
                 @if(event.endTime.isEmpty) {
-                  @if(event.isActive) {
-                    <div class="event-actions">
-                      <a href="@routes.EventController.endEvent(event.eventId.get)"
-                        class="end-event" role="button">Stop New Votes</a>
-                    </div>
-                  }
-                  
-                  <div class="winner-selection">
-                    <h4>Select Winner & Close</h4>
                     @defining(event.eventId.get) { eventId =>
                       @defining(eventPollMap.get(eventId)) { pollOpt =>
                         @for(poll <- pollOpt) {
@@ -127,7 +97,6 @@
                                 @helper.CSRF.formField
                                 
                                 <fieldset>
-                                  <legend>Select the winning team:</legend>
                                   @for(option <- options) {
                                     <div class="radio-option">
                                       <input 
@@ -138,22 +107,22 @@
                                         required 
                                       />
                                       <label for="option-@option.optionId.get">
-                                        @option.optionText (@{(option.confidenceRatio * 100).toInt}% win chance)
+                                        @option.optionText
                                       </label>
                                     </div>
                                   }
                                 </fieldset>
                                 
-                                <button type="submit" class="close-event">Close Event with Winner</button>
+                                <button type="submit" class="close-event">Close Event</button>
                               </form>
                             }
                           }
                         }
                       }
                     }
-                  </div>
                 }
-              </div>
+                </footer>
+              </article>
             }
           </div>
           
