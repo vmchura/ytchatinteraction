@@ -81,7 +81,7 @@
           <div>
             @for(event <- events) {
               <article>
-                <header>@event.eventName
+                <header style="display: flex; justify-content: space-between; align-items: center;">@event.eventName
                   @if(event.isActive && event.endTime.isEmpty) {
                     <a href="@routes.EventController.endEvent(event.eventId.get)" role="button">Stop New Votes</a>
                   }
@@ -95,11 +95,11 @@
                             @if(options.nonEmpty) {
                               <form action="@routes.EventController.setWinnerAndClose(eventId)" method="POST" class="winner-form">
                                 @helper.CSRF.formField
-                                
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <fieldset>
                                   @for(option <- options) {
                                     <div class="radio-option">
-                                      <input 
+                                      <input
                                         type="radio" 
                                         id="option-@option.optionId.get" 
                                         name="optionId" 
@@ -114,6 +114,7 @@
                                 </fieldset>
                                 
                                 <button type="submit" class="close-event">Close Event</button>
+                                </div>
                               </form>
                             }
                           }
