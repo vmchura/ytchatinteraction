@@ -9,24 +9,7 @@
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
   
-  @if(activeStreamers.nonEmpty) {
-    <div class="active-streams-container">
-      <article>
-        <header>
-          <h2>Current Live Streams Being Monitored</h2>
-        </header>
-        <div class="live-streams-list">
-          @for(streamerTitle <- activeStreamers) {
-            <div class="live-stream-item">
-              <div class="stream-info">
-                <h3>@streamerTitle</h3>
-              </div>
-            </div>
-          }
-        </div>
-      </article>
-    </div>
-  }
+
 
   
   <div class="grid">
@@ -182,6 +165,20 @@
   <div class="event-actions">
     <a href="@routes.EventController.fullEventForm()" role="button" class="secondary">Create Complete New Event</a>
   </div>
+@if(activeStreamers.nonEmpty) {
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Streams Monitoring</th>
+    </tr>
+  </thead>
+  <tbody>
+      @for(streamerTitle <- activeStreamers) {
+       <tr> <td> @streamerTitle </td> </tr>
+      }
+  </tbody>
+</table>
+}
 
   
   <script>
