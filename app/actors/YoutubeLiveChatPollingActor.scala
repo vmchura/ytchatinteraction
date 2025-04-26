@@ -271,7 +271,7 @@ object YoutubeLiveChatPollingActor {
                   optionID,
                   user.userId,
                   Some(messageText),
-                  confidenceValue).map(po => Some(po))
+                  confidenceValue).map(_ => Some((po, confidenceValue)))
               }).getOrElse(Future.successful(None))
 
             case None =>
@@ -289,7 +289,14 @@ object YoutubeLiveChatPollingActor {
         voteRegistered.onComplete {
           case Success(Some(pollVote)) =>
             // Successfully processed poll response, but don't log from here
-            chatService.broadcastMessage(s"$displayName: [${pollVote.pollId}]+${pollVote.pollQuestion} ", "youtube", Some(displayName))
+            chatService.broadcastMessage(s"$displayName: [${pollVote._1.pollId}]+${pollVote._1.optionText} ", "youtube", Some(displayName))
+            chatService.broadcastVoteDetection(
+              displayName,
+              messageText,
+              pollVote._1.optionText,
+              pollVote._2,
+              pollEvent._1.eventId
+            )
           case Success(None) =>
             // No poll response detected, but don't log from here
             chatService.broadcastMessage(s"$displayName: $messageText: [  ]", "youtube", Some(displayName))

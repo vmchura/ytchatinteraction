@@ -4,7 +4,7 @@
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User, eventPollMap: Map[Int, EventPoll], pollOptionsMap: Map[Int, Seq[PollOption]], activeStreamers: Seq[String])(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User, eventPollMap: Map[Int, EventPoll], pollOptionsMap: Map[Int, Seq[PollOption]], activeStreamers: Seq[String],webSocketUrl: String)(implicit request: RequestHeader, flash: Flash)
 
 @main("Event Management", Some(user)) {
   <h1>Event Management</h1>
@@ -86,6 +86,20 @@
                     <a href="@routes.EventController.endEvent(event.eventId.get)" role="button">Stop New Votes</a>
                   }
                 </header>
+                <div id="@event.eventId.get">
+                  <table>
+                    <thead>
+                    <tr>
+                      <th scope="col">User Name</th>
+                      <th scope="col">Message</th>
+                      <th scope="col">Option Chosen</th>
+                      <th scope="col">Confidence</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                  </table>
+                </div>
                 <footer>
                 @if(event.endTime.isEmpty) {
                     @defining(event.eventId.get) { eventId =>
@@ -212,4 +226,5 @@
       confidenceSlider.dispatchEvent(new Event('input'));
     });
   </script>
+  <script type='text/javascript' src='@routes.Assets.versioned("javascripts/live_parse_messages.js")' data-url='@webSocketUrl'></script>
 }

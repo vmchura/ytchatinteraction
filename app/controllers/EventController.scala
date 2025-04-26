@@ -15,7 +15,7 @@ import play.api.i18n.I18nSupport
 import play.api.data.*
 import play.api.data.Forms.*
 import forms.Forms.*
-import services.{ActiveLiveStream, PollService}
+import services.{ActiveLiveStream, ChatService, PollService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,7 +32,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                 userStreamerStateRepository: UserStreamerStateRepository,
                                 pollService: PollService,
                                 actorSystem: ActorSystem,
-                                activeLiveStream: ActiveLiveStream)
+                                activeLiveStream: ActiveLiveStream,
+                                chatService: ChatService)
                                (implicit mat: Materializer,
                                 executionContext: ExecutionContext,
                                 webJarsUtil: org.webjars.play.WebJarsUtil)
@@ -47,6 +48,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   // Event management page (now shows the rival teams form by default)
   def eventManagement: Action[AnyContent] = Action.async { implicit request =>
     // Get user's streamers, all events, and poll options for active events
+    val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
     for {
       streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.list()
@@ -71,7 +73,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         User(1, "Vicc"),
         eventPollMap,
         pollOptionsMap,
-        activeLiveStream.list()
+        activeLiveStream.list(),
+        webSocketUrl
       ))
     }
   }
@@ -281,6 +284,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       }
     )
   }
+
 
 
 }

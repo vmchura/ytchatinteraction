@@ -47,6 +47,37 @@ class ChatService @Inject()(
     
     Json.stringify(messageJson)
   }
+
+  def formatVoteMessage(
+                         userName: String,
+                         message: String,
+                         optionText: String,
+                         confidence: Int,
+                         eventId: Int
+                       ): String = {
+    val messageJson = Json.obj(
+      "type" -> "vote_detection",
+      "userName" -> userName,
+      "message" -> message,
+      "optionText" -> optionText,
+      "confidence" -> confidence,
+      "eventId" -> eventId,
+      "timestamp" -> System.currentTimeMillis()
+    )
+
+    Json.stringify(messageJson)
+  }
+
+  def broadcastVoteDetection(
+                              userName: String,
+                              message: String,
+                              optionText: String,
+                              confidence: Int,
+                              eventId: Int
+                            ): Unit = {
+    val formattedMessage = formatVoteMessage(userName, message, optionText, confidence, eventId)
+    chatRoomActor ! ChatRoomActor.Broadcast(formattedMessage)
+  }
   
   /**
    * Broadcast a message to all connected clients
