@@ -57,7 +57,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
         pollService, 
         inferUserOptionService, 
         chatService,
-        pollVoteRepository
+        pollVoteRepository,
+        activeLiveStream
       ),
       s"youtube-chat-polling-${streamerChatId}"
     )

@@ -6,7 +6,7 @@ import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import models.*
 import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
-import services.{ChatService, InferUserOptionService, PollService}
+import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
 
 import java.time.Instant
 import scala.concurrent.{ExecutionContext, Future}
@@ -59,11 +59,12 @@ object YoutubeLiveChatPollingActor {
              pollService: PollService,
              inferUserOptionService: InferUserOptionService,
              chatService: ChatService,
-             pollVoteRepository: PollVoteRepository
+             pollVoteRepository: PollVoteRepository,
+             liveStream: ActiveLiveStream
            ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
       active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository,
-        ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService, pollVoteRepository)
+        ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService, pollVoteRepository, liveStream)
     }
   }
 
@@ -82,7 +83,8 @@ object YoutubeLiveChatPollingActor {
                       pollService: PollService,
                       inferUserOptionService: InferUserOptionService,
                       chatService: ChatService,
-                      pollVoteRepository: PollVoteRepository
+                      pollVoteRepository: PollVoteRepository,
+                      liveStream: ActiveLiveStream
                     ): Behavior[Command] = {
     Behaviors.setup { context =>
       implicit val ec: ExecutionContext = context.executionContext
@@ -153,7 +155,7 @@ object YoutubeLiveChatPollingActor {
               context.log.error(s"Error processing response: ${e.getMessage}")
 
               // Handle retry with the same mechanism as network errors
-              handleRetry(context, timers, liveChatId, channelID, currentPaginationToken, retryCount)
+              handleRetry(context, timers, liveChatId, channelID, currentPaginationToken, retryCount, liveStream)
           }
 
           Behaviors.same
@@ -162,7 +164,7 @@ object YoutubeLiveChatPollingActor {
           context.log.error(s"Error polling live chat $liveChatId: ${error.getMessage}")
 
           // Handle retry logic
-          handleRetry(context, timers, liveChatId, channelID, paginationToken, retryCount)
+          handleRetry(context, timers, liveChatId, channelID, paginationToken, retryCount, liveStream)
 
           Behaviors.same
 
@@ -194,7 +196,8 @@ object YoutubeLiveChatPollingActor {
                            liveChatId: String,
                            channelID: String,
                            paginationToken: String,
-                           retryCount: Int
+                           retryCount: Int,
+                           liveStream: ActiveLiveStream
                          ): Unit = {
     val maxRetries = 3
     val retryDelayMinutes = 3
@@ -207,6 +210,8 @@ object YoutubeLiveChatPollingActor {
         retryDelayMinutes.minutes
       )
     } else {
+
+      liveStream.removeElement(liveChatId)
       context.log.error(s"Maximum retry attempts ($maxRetries) reached for $liveChatId. Stopping polling.")
       // Do not schedule another poll, effectively stopping the polling
     }

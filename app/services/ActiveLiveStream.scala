@@ -11,5 +11,8 @@ class ActiveLiveStream  @Inject()() {
   def getStreamTitle(liveChatID: String): String = {
     activeStreams.getOrElse(liveChatID, "Unknown Title")
   }
+  def removeElement(liveChatID: String): Unit = {
+    activeStreams.remove(liveChatID)
+  }
   def list(): Seq[String] = activeStreams.values.toSeq
 }
