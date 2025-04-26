@@ -52,8 +52,9 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     for {
       streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.list()
+      validEvents = events.filter(_.endTime.isEmpty)
       // Get all active event IDs (events that don't have an end time)
-      activeEventIds = events.filter(_.endTime.isEmpty).flatMap(_.eventId)
+      activeEventIds = validEvents.flatMap(_.eventId)
       // Get polls for all active events
       allPolls <- Future.sequence(activeEventIds.map(eventPollRepository.getByEventId))
       // Flatten the sequence of polls
@@ -68,7 +69,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     } yield {
       Ok(views.html.rivalTeamsEventForm(
         eventWithPollForm,
-        events,
+        validEvents,
         streamers,
         User(1, "Vicc"),
         eventPollMap,
