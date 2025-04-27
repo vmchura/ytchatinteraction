@@ -172,11 +172,12 @@ object YoutubeLiveChatPollingActor {
           context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
 
           // Process each message - this happens within the actor context now
-          messages.foreach { message =>
+          Future.sequence(
+          messages.map { message =>
             processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
               userRepository, ytUserRepository, messageStartTime, pollEvent,
               inferUserOptionService, chatService, context, pollService)
-          }
+          })
 
           Behaviors.same
 
@@ -235,7 +236,7 @@ object YoutubeLiveChatPollingActor {
                                      chatService: ChatService,
                                      context: ActorContext[Command],
                                      pollService: PollService
-                                   )(implicit ec: ExecutionContext): Unit = {
+                                   )(implicit ec: ExecutionContext): Future[Unit] = {
     try {
       // Extract message details
       val messageId = (message \ "id").as[String]
@@ -311,14 +312,17 @@ object YoutubeLiveChatPollingActor {
             // Just print to console to avoid actor context issues
             println(s"Error processing poll response: ${ex.getMessage}")
         }
+        voteRegistered.map(_ => ())
       } else {
         // Message is from before we started monitoring, so skip it
         context.log.debug(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
+        Future.successful(())
       }
     } catch {
       case e: Exception =>
         // Log error and continue
         context.log.error(s"Error processing message: ${e.getMessage}")
+        Future.successful(())
     }
   }
 
