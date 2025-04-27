@@ -94,23 +94,7 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
   }
 
   "YtUserRepository" should {
-    "create a new YouTube user with minimal information" in {
-      val repository = new YtUserRepository(dbConfigProvider, userRepository)
-      
-      // Create a new YouTube user
-      val createdF = repository.create(testChannelId1, testUserId1)
-      val created = Await.result(createdF, 5.seconds)
-      
-      // Verify the result
-      created.userChannelId must be(testChannelId1)
-      created.userId must be(testUserId1)
-      created.displayName must be(None)
-      created.email must be(None)
-      created.profileImageUrl must be(None)
-      created.activated must be(false)
-      created.createdAt must not be null
-      created.updatedAt must not be null
-    }
+    
     
     "create a YouTube user with full information" in {
       val repository = new YtUserRepository(dbConfigProvider, userRepository)

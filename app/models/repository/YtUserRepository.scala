@@ -21,21 +21,7 @@ class YtUserRepository @Inject()(
   import dbConfig.*
   import profile.api.*
   
-  /**
-   * Create a new YouTube user with minimal information
-   */
-  def create(userChannelId: String, userId: Long): Future[YtUser] = db.run {
-    val now = Instant.now()
-    val ytUser = YtUser(
-      userChannelId = userChannelId,
-      userId = userId,
-      createdAt = now,
-      updatedAt = now
-    )
-    (ytUsersTable.map(s => (s.userChannelId, s.userId))
-      += (userChannelId, userId)).map(_ =>
-      YtUser(userChannelId, userId))
-  }
+
 
   /**
    * Create a YouTube user with full information
