@@ -47,4 +47,4 @@ libraryDependencies ++= Seq(
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds"
-Test / javaOptions ++= Seq("-Dconfig.file=conf/test.conf")
+Test / javaOptions += "-Dconfig.file=conf/test.conf"

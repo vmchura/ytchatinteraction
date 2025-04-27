@@ -19,7 +19,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.test.Helpers.*
-import services.{ChatService, InferUserOptionService, PollService}
+import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
 
 import java.time.Instant
 import scala.concurrent.{Await, Future}
@@ -86,6 +86,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
   lazy val pollOptionRepository = app.injector.instanceOf[PollOptionRepository]
   lazy val pollVoteRepository = app.injector.instanceOf[PollVoteRepository]
   lazy val pollService = app.injector.instanceOf[PollService]
+  lazy val liveStream = app.injector.instanceOf[ActiveLiveStream]
   lazy val db = app.injector.instanceOf[DBApi].database("default")
 
   // Create a real service but with mocked dependencies for testing
@@ -258,7 +259,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         pollService,
         mockInferUserOptionService,
         mockChatService,
-        pollVoteRepository
+        pollVoteRepository,
+        liveStream
       ))
 
       // 5. Send PollLiveChat command to start the polling process
@@ -318,7 +320,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         pollService,
         mockInferUserOptionService,
         mockChatService,
-        pollVoteRepository
+        pollVoteRepository,
+        liveStream
       ))
 
       // 4. Send PollLiveChat command to start the polling process
@@ -381,7 +384,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         pollService,
         mockInferUserOptionService,
         mockChatService,
-        pollVoteRepository
+        pollVoteRepository,
+        liveStream
       ))
 
       // 5. Send PollLiveChat command to start the polling process
@@ -454,7 +458,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         pollService,
         mockInferUserOptionService,
         mockChatService,
-        pollVoteRepository
+        pollVoteRepository,
+        liveStream
       ))
 
       // 5. Verify the user doesn't exist before the test
