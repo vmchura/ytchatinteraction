@@ -211,7 +211,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
           Json.obj(
             "id" -> "message-id-3",
             "snippet" -> Json.obj(
-              "displayMessage" -> s"I think $testOptionText2 is correct with 30",
+              "displayMessage" -> s"I think $testOptionText2 is correct with 0",
               "publishedAt" -> now.plusSeconds(30).toString
             ),
             "authorDetails" -> Json.obj(
@@ -242,9 +242,9 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
       when(mockInferUserOptionService.inferencePollResponse(
         any[EventPoll],
         any[List[PollOption]],
-        org.mockito.ArgumentMatchers.eq(s"I think $testOptionText2 is correct with 30")
+        org.mockito.ArgumentMatchers.eq(s"I think $testOptionText2 is correct with 0")
       )).thenReturn(Future.successful(
-        Some((PollOption(Some(testOptionId2), testPollId, testOptionText2, 1.5), 30))
+        Some((PollOption(Some(testOptionId2), testPollId, testOptionText2, 1.5), 0))
       ))
 
       // 4. Create actor instance with real repositories but mocked services
@@ -298,7 +298,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
       val optionTwoVotes = pollVotes.filter(_.optionId == testOptionId2)
 
       optionOneVotes.exists(_.confidenceAmount == 50) must be(true)
-      optionTwoVotes.exists(_.confidenceAmount == 30) must be(true)
+      optionTwoVotes.exists(_.confidenceAmount == 0) must be(true)
     }
 
     "handle API errors gracefully with retry mechanism" in {
@@ -424,7 +424,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
           Json.obj(
             "id" -> "message-id-1",
             "snippet" -> Json.obj(
-              "displayMessage" -> s"I vote for $testOptionText1 with 25 points",
+              "displayMessage" -> s"I vote for $testOptionText1 with 0 points",
               "publishedAt" -> now.plusSeconds(10).toString
             ),
             "authorDetails" -> Json.obj(
@@ -443,7 +443,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         any[List[PollOption]],
         anyString()
       )).thenReturn(Future.successful(
-        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1, 1.5), 25))
+        Some((PollOption(Some(testOptionId1), testPollId, testOptionText1, 1.5), 0))
       ))
 
       // 4. Create actor instance

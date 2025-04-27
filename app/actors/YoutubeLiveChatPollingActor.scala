@@ -255,7 +255,7 @@ object YoutubeLiveChatPollingActor {
         val voteRegistered = for {
           user <- registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
           relationExists <- userStreamerStateRepository.exists(user.userId, channelID)
-          _ <- if (!relationExists) userStreamerStateRepository.create(user.userId, channelID, 1000) else Future.successful(())
+          _ <- if (!relationExists) userStreamerStateRepository.create(user.userId, channelID, 0) else Future.successful(())
           confidence <- inferUserOptionService.inferencePollResponse(
             eventPoll = pollEvent._1,
             options = pollEvent._2,
