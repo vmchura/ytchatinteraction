@@ -35,6 +35,8 @@ GET     /youtube/stop-monitoring/:id controllers.YoutubeFrontendController.stopM
 GET     /currency                   controllers.CurrencyController.showCurrencyForm()
 POST    /currency                   controllers.CurrencyController.addCurrency()
 GET     /currency/:channelId        controllers.CurrencyController.getStreamerBalance(channelId: String)
+GET     /currency/streamer/:channelId/users  controllers.CurrencyController.showStreamerToUserForm(channelId: String)
+POST    /currency/streamer/:channelId/transfer  controllers.CurrencyController.transferCurrencyToUser(channelId: String)
 
 # User Events routes (requires authentication)
 GET     /my-events                  controllers.UserEventsController.userEvents()

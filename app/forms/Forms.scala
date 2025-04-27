@@ -36,6 +36,12 @@ case class CurrencyTransferForm(
                                  amount: Int
                                )
 
+// Form for transferring currency from a streamer to a user
+case class StreamerToUserCurrencyForm(
+                                       userId: Long,
+                                       amount: Int
+                                     )
+
 object Forms:
   val eventForm = Form(
     mapping(
@@ -83,4 +89,11 @@ object Forms:
       "channelId" -> nonEmptyText,
       "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
     )(CurrencyTransferForm.apply)(nn => Some(nn.channelId, nn.amount))
+  )
+  
+  val streamerToUserCurrencyForm = Form(
+    mapping(
+      "userId" -> longNumber,
+      "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
+    )(StreamerToUserCurrencyForm.apply)(nn => Some(nn.userId, nn.amount))
   )

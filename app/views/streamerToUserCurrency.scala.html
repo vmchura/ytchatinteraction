@@ -1,0 +1,118 @@
+@import forms.StreamerToUserCurrencyForm
+@(currencyForm: Form[StreamerToUserCurrencyForm], streamer: models.YtStreamer, users: Seq[(Long, models.User, Int)])(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("Transfer Currency to Users") {
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3>Transfer Currency to Subscribed Users</h3>
+                        <p class="mb-0">
+                            Channel: @streamer.channelTitle.getOrElse(streamer.channelId)
+                            <span class="badge bg-light text-dark ms-2">Balance: @streamer.currentBalanceNumber</span>
+                        </p>
+                    </div>
+                    <div class="card-body">
+                        @if(flash.get("success").isDefined) {
+                            <div class="alert alert-success">
+                                @flash.get("success")
+                            </div>
+                        }
+                        @if(flash.get("error").isDefined) {
+                            <div class="alert alert-danger">
+                                @flash.get("error")
+                            </div>
+                        }
+                        
+                        @if(users.isEmpty) {
+                            <div class="alert alert-info">
+                                No users are subscribed to this channel yet.
+                            </div>
+                        } else {
+                            <div class="table-responsive mb-4">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>User ID</th>
+                                            <th>Username</th>
+                                            <th>Current Balance</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for((userId, user, balance) <- users) {
+                                            <tr>
+                                                <td>@userId</td>
+                                                <td>@user.userName</td>
+                                                <td>@balance</td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-primary" 
+                                                        onclick="prefillForm(@userId, '@user.userName')">
+                                                        Transfer Currency
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h4 id="transfer-form-title">Transfer Currency to User</h4>
+                                </div>
+                                <div class="card-body">
+                                    @helper.form(action = routes.CurrencyController.transferCurrencyToUser(streamer.channelId)) {
+                                        @helper.CSRF.formField
+                                        
+                                        <div class="form-group mb-3">
+                                            <label for="userId">User ID:</label>
+                                            <input type="number" id="userId" name="userId" class="form-control" 
+                                                value="@currencyForm("userId").value" required readonly>
+                                            @if(currencyForm("userId").hasErrors) {
+                                                <div class="text-danger">@currencyForm("userId").errors.map(_.message).mkString(", ")</div>
+                                            }
+                                        </div>
+                                        
+                                        <div class="form-group mb-3">
+                                            <label for="username">Username:</label>
+                                            <input type="text" id="username" class="form-control" readonly>
+                                        </div>
+                                        
+                                        <div class="form-group mb-3">
+                                            <label for="amount">Amount to Transfer:</label>
+                                            <input type="number" id="amount" name="amount" class="form-control" 
+                                                value="@currencyForm("amount").value" min="1" max="@streamer.currentBalanceNumber" required>
+                                            @if(currencyForm("amount").hasErrors) {
+                                                <div class="text-danger">@currencyForm("amount").errors.map(_.message).mkString(", ")</div>
+                                            }
+                                        </div>
+                                        
+                                        <div class="form-group text-center">
+                                            <button type="submit" class="btn btn-primary" id="transferBtn" disabled>Transfer Currency</button>
+                                            <a href="@routes.HomeController.home()" class="btn btn-secondary">Cancel</a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        
+                        <div class="text-center">
+                            <a href="@routes.HomeController.home()" class="btn btn-outline-secondary">Back to Home</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function prefillForm(userId, username) {
+            document.getElementById('userId').value = userId;
+            document.getElementById('username').value = username;
+            document.getElementById('transfer-form-title').innerText = 'Transfer Currency to ' + username;
+            document.getElementById('transferBtn').disabled = false;
+        }
+    </script>
+}

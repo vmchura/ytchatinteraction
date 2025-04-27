@@ -32,12 +32,13 @@ CREATE TABLE user_streamer_state(
     user_id BIGINT NOT NULL,
     streamer_channel_id VARCHAR(24) NOT NULL,
     current_balance_number BIGINT NOT NULL,
-     CONSTRAINT fk_user_streamer_state_with_users
+    CONSTRAINT fk_user_streamer_state_with_users
                    FOREIGN KEY (user_id)
                        REFERENCES users (user_id),
-   CONSTRAINT fk_user_streamer_state_with_streamer
+    CONSTRAINT fk_user_streamer_state_with_streamer
                       FOREIGN KEY (streamer_channel_id)
-                          REFERENCES yt_streamer (channel_id)
+                          REFERENCES yt_streamer (channel_id),
+    CONSTRAINT pk_user_streamer_state PRIMARY KEY (user_id, streamer_channel_id)
 );
 
 -- CREATE TABLE FOR OAUTH2 TOKENS
