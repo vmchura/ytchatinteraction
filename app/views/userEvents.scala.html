@@ -6,12 +6,13 @@
   channelBalanceMap: Map[String, Int],
   voteForm: Form[VoteFormData],
   user: User,
-  extraEvents: Seq[FrontalStreamerEvent])(implicit request: RequestHeader, flash: Flash)
+  extraEvents: Seq[FrontalStreamerEvent],
+  webSocketUrl: String)(implicit request: RequestHeader, flash: Flash)
 
 @main("My Events", Some(user)) {
   <h1>My Active Events</h1>
   
-  <div class="container">
+  <div class="container my-events-container">
     @if(flash.get("error").isDefined) {
       <div class="error-message">
         @flash.get("error")
@@ -31,7 +32,7 @@
     } else {
       <div class="grid">
         @for(event <- events) {
-          <div>
+          <div id="current-@event.eventId">
             <article>
               <header style="display: flex; justify-content: space-between; align-items: center;">
                 <h3>@event.eventName</h3>
@@ -59,7 +60,7 @@
                                 data-option-text="@option.optionText"
                               />
                               <label for="option-@option.optionId">
-                                @option.optionText
+                                @option.optionText: (@option.inverseConfidenceRatio)
                               </label>
                             </div>
                           }
@@ -82,10 +83,8 @@
                         <button type="submit" class="submit-vote" id="submit-vote-@poll.pollId">Submit vote</button>
                       </form>
                     }
-
                 </div>
               }
-
             </article>
           </div>
         }
@@ -93,26 +92,27 @@
     }
   </div>
 
-  @if(extraEvents.nonEmpty) {
+  <div id="extra-events-section" style="@if(extraEvents.isEmpty) {display: none;} else {display: block;}">
     <h2>Extra Events</h2>
-    <p>Participa en los siguientes eventos:</p>
+    <p>Events that you are not currently participating in:</p>
     
-    <div class="extra-events-container">
-      <div class="grid">
+    <div id="extra-events-container">
         @for(event <- extraEvents) {
-          <div>
+          <div id="extra-@event.eventId">
             <article>
-              <header> @event.eventName </header>
+              <header>
+                <h3>@event.eventName</h3>
+                <p>@event.eventDescription</p>
+              </header>
               
-              <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button">
-                Únete
+              <a href="@routes.UserEventsController.joinEvent(event.eventId)" class="join-event-button">
+                Join Event
               </a>
             </article>
           </div>
         }
-      </div>
     </div>
-  }
+  </div>
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -129,7 +129,9 @@
         // Update confidence value and button text when slider changes
         slider.addEventListener('input', function() {
           const confidenceValue = this.value;
-          confidenceValueElement.textContent = confidenceValue;
+          if (confidenceValueElement) {
+            confidenceValueElement.textContent = confidenceValue;
+          }
           updateSubmitButtonText(form, pollId);
         });
         
@@ -157,4 +159,7 @@
       }
     });
   </script>
+  
+  <!-- Add WebSocket for event updates -->
+  <script type='text/javascript' src='@routes.Assets.versioned("javascripts/events_updates.js")' data-url='@webSocketUrl'></script>
 }

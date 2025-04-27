@@ -15,7 +15,7 @@ import play.api.i18n.I18nSupport
 import play.api.data.*
 import play.api.data.Forms.*
 import forms.Forms.*
-import services.{ActiveLiveStream, ChatService, PollService}
+import services.{ActiveLiveStream, ChatService, PollService, EventUpdateService}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -33,7 +33,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                 pollService: PollService,
                                 actorSystem: ActorSystem,
                                 activeLiveStream: ActiveLiveStream,
-                                chatService: ChatService)
+                                chatService: ChatService,
+                                eventUpdateService: EventUpdateService)
                                (implicit mat: Materializer,
                                 executionContext: ExecutionContext,
                                 webJarsUtil: org.webjars.play.WebJarsUtil)
@@ -140,6 +141,9 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
 
           // Create the poll options
           _ <- pollOptionRepository.createMultiple(createdPoll.pollId.get, formData.poll.options, formData.poll.ratios)
+          
+          // Broadcast the event creation to connected clients
+          _ = eventUpdateService.broadcastNewEvent(createdEvent)
 
           // Get updated list of streamers and events for the view
           events <- streamerEventRepository.list()
@@ -272,6 +276,12 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           _ <- eventPollRepository.setWinnerOption(pollId, formData.optionId)
           // Close the event
           _ <- streamerEventRepository.closeEvent(eventId)
+          
+          // Get the updated event to broadcast
+          closedEvent <- streamerEventRepository.getById(eventId)
+          _ = closedEvent.foreach(eventUpdateService.broadcastEventClosed)
+          
+          // Calculate confidence spread
           spread <- pollService.spreadPollConfidence(eventId, pollId)
         } yield {
           Redirect(routes.EventController.eventManagement())

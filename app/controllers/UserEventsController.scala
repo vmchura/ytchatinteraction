@@ -7,7 +7,11 @@ import play.api.data._
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
 import play.api.mvc._
-import services.PollService
+import play.api.Logger
+import services.{PollService, EventUpdateService}
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+import java.net.URI
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -21,9 +25,14 @@ class UserEventsController @Inject()(
   eventPollRepository: EventPollRepository,
   pollOptionRepository: PollOptionRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
-  pollService: PollService
-)(implicit ec: ExecutionContext) 
+  pollService: PollService,
+  eventUpdateService: EventUpdateService
+)(implicit ec: ExecutionContext, 
+  system: ActorSystem,
+  mat: Materializer) 
   extends SilhouetteController(scc) with I18nSupport {
+  
+  private val logger = Logger(getClass)
 
   // Form for voting on a poll option
   val voteForm = Form(
@@ -40,6 +49,9 @@ class UserEventsController @Inject()(
    */
   def userEvents = SecuredAction.async { implicit request =>
     val userId = request.identity.userId
+    
+    // Create WebSocket URL for event updates
+    val webSocketUrl = routes.UserEventsController.eventsUpdates.webSocketURL()
     
     for {
       // Get the channel IDs the user has a relationship with
@@ -72,8 +84,52 @@ class UserEventsController @Inject()(
         channelBalanceMap,
         voteForm,
         request.identity,
-        extraActiveEventsWithFrontal
+        extraActiveEventsWithFrontal,
+        webSocketUrl
       ))
+    }
+  }
+
+  /**
+   * WebSocket endpoint for event updates
+   */
+  def eventsUpdates: WebSocket = WebSocket.acceptOrResult[String, String] { request =>
+    Future.successful {
+      if (sameOriginCheck(request)) {
+        Right(eventUpdateService.eventsFlow())
+      } else {
+        Left(Forbidden("Forbidden"))
+      }
+    }
+  }
+  
+  /**
+   * Checks that the WebSocket comes from the same origin.
+   */
+  private def sameOriginCheck(implicit rh: RequestHeader): Boolean = {
+    rh.headers.get("Origin") match {
+      case Some(originValue) if originMatches(originValue) =>
+        logger.debug(s"originCheck: originValue = $originValue")
+        true
+      case Some(badOrigin) =>
+        logger.error(s"originCheck: rejecting request because Origin header value $badOrigin is not in the same origin")
+        false
+      case None =>
+        logger.error("originCheck: rejecting request because no Origin header found")
+        false
+    }
+  }
+  
+  /**
+   * Returns true if the value of the Origin header contains an acceptable value.
+   */
+  private def originMatches(origin: String): Boolean = {
+    try {
+      val url = new URI(origin)
+      url.getHost == "localhost" &&
+        (url.getPort match { case 9000 | 19001 => true; case _ => false })
+    } catch {
+      case e: Exception => false
     }
   }
   
