@@ -1,6 +1,6 @@
 package services
 
-import models.{EventPoll, PollOption, PollVote, StreamerEvent}
+import models.{EventPoll, FrontalPoll, FrontalPollOption, FrontalStreamerEvent, PollOption, PollVote, StreamerEvent}
 import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateRepository}
 import org.apache.pekko.event.EventStream
 import play.api.db.slick.DatabaseConfigProvider
@@ -147,4 +147,18 @@ class PollService @Inject()(
     }
   }
   def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = db.run(spreadPollConfidenceAction(eventID, pollID).transactionally)
+  def completeFrontalPoll(frontalStreamerEvent: FrontalStreamerEvent): Future[FrontalStreamerEvent] = {
+
+    for {
+      sequencePoll <- eventPollRepository.getByEventId(frontalStreamerEvent.eventId)
+      pollWithOptions: Seq[Seq[PollOption]] <- Future.sequence(sequencePoll.map(eventPoll => eventPoll.pollId.fold(Future.successful(Nil))(pollID => pollOptionRepository.getByPollId(pollID))))
+    }yield{
+      val frontalPoll = sequencePoll.zip(pollWithOptions).flatMap{ case (eventPoll, seqOptions) =>
+        eventPoll.pollId.map{ pollID =>
+          FrontalPoll(pollID, eventPoll.pollQuestion, seqOptions.flatMap(pollOption => pollOption.optionId.map(optionID => FrontalPollOption(optionID, pollOption.optionText, pollOption.confidenceRatio))))  
+        }
+      }
+      frontalStreamerEvent.copy(frontalPoll = frontalPoll)
+    }
+  }
 }

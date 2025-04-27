@@ -2,9 +2,7 @@
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
 
-@(events: Seq[StreamerEvent], 
-  eventPollMap: Map[Int, EventPoll], 
-  pollOptionsMap: Map[Int, Seq[PollOption]],
+@(events: Seq[FrontalStreamerEvent],
   channelBalanceMap: Map[String, Int],
   voteForm: Form[VoteFormData],
   user: User)(implicit request: RequestHeader, flash: Flash)
@@ -38,70 +36,55 @@
                 <h3>@event.eventName</h3>
                 <p>Your balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</p>
               </header>
-              
-              @defining(event.eventId.getOrElse(-1)) { eventId =>
-                @defining(eventPollMap.get(eventId)) { pollOpt =>
-                  @for(poll <- pollOpt) {
-                      @defining(poll.pollId.getOrElse(-1)) { pollId =>
-                        @defining(pollOptionsMap.getOrElse(pollId, Seq.empty)) { options =>
-                          @if(options.nonEmpty && event.endTime.isEmpty) {
-                            <form action="@routes.UserEventsController.submitVote()" method="POST">
-                              @helper.CSRF.formField
-                              <input type="hidden" name="eventId" value="@eventId">
-                              <input type="hidden" name="pollId" value="@pollId">
-                              
-                              <fieldset>
-                                @for(option <- options) {
-                                  <div class="radio-option">
-                                    <input
-                                      type="radio"
-                                      id="option-@option.optionId.get"
-                                      name="optionId"
-                                      value="@option.optionId.get"
-                                      required
-                                    />
-                                    <label for="option-@option.optionId.get">
-                                      @option.optionText
-                                    </label>
-                                  </div>
-                                }
-                              </fieldset>
-                              
-                              <div class="confidence-section">
-                                <label for="confidence-@pollId">Confidence (1-@channelBalanceMap.getOrElse(event.channelId, 0)):</label>
-                                <input
-                                  type="number"
-                                  id="confidence-@pollId"
-                                  name="confidence"
-                                  min="1"
-                                  max="@channelBalanceMap.getOrElse(event.channelId, 1000)"
-                                  value="1"
-                                  required
-                                />
-                              </div>
-                              
-                              <button type="submit" class="submit-vote">Submit Vote</button>
-                            </form>
-                          }
-                        }
-                      }
 
-                  }
-                }
-              }
-              
-              <footer>
-                <div class="event-info">
-                  <p>Channel: @event.channelId</p>
-                  <p>Your balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</p>
-                  
-                  @defining(java.time.format.DateTimeFormatter
-                    .ofPattern("yyyy-MM-dd HH:mm")
-                    .withZone(java.time.ZoneId.systemDefault())) { formatter =>
-                    <p>Started: @formatter.format(event.startTime)</p>
-                  }
+              @for(poll <- event.frontalPoll) {
+                <div class="poll-section">
+                    @if(poll.options.nonEmpty && event.endTime.isEmpty) {
+                      <form action="@routes.UserEventsController.submitVote()" method="POST" id="vote-form-@poll.pollId">
+                        @helper.CSRF.formField
+                        <input type="hidden" name="eventId" value="@event.eventId">
+                        <input type="hidden" name="pollId" value="@poll.pollId">
+
+                        <fieldset>
+                          @for(option <- poll.options) {
+                            <div class="radio-option">
+                              <input
+                                type="radio"
+                                id="option-@option.optionId"
+                                name="optionId"
+                                value="@option.optionId"
+                                required
+                                class="option-radio"
+                                data-option-text="@option.optionText"
+                              />
+                              <label for="option-@option.optionId">
+                                @option.optionText
+                              </label>
+                            </div>
+                          }
+                        </fieldset>
+
+                        <div class="confidence-section">
+                          <input
+                            type="range"
+                            id="confidence-@poll.pollId"
+                            name="confidence"
+                            min="1"
+                            max="@channelBalanceMap.getOrElse(event.channelId, 0)"
+                            value="1"
+                            class="confidence-slider"
+                            data-poll-id="@poll.pollId"
+                            required
+                          />
+                        </div>
+
+                        <button type="submit" class="submit-vote" id="submit-vote-@poll.pollId">Submit vote</button>
+                      </form>
+                    }
+
                 </div>
-              </footer>
+              }
+
             </article>
           </div>
         }
@@ -109,4 +92,48 @@
     }
   </div>
 
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get all confidence sliders
+      const sliders = document.querySelectorAll('.confidence-slider');
+      
+      // Add event listeners to each slider
+      sliders.forEach(slider => {
+        const pollId = slider.dataset.pollId;
+        const confidenceValueElement = document.getElementById(`confidence-value-${pollId}`);
+        const submitButton = document.getElementById(`submit-vote-${pollId}`);
+        const form = document.getElementById(`vote-form-${pollId}`);
+        
+        // Update confidence value and button text when slider changes
+        slider.addEventListener('input', function() {
+          const confidenceValue = this.value;
+          confidenceValueElement.textContent = confidenceValue;
+          updateSubmitButtonText(form, pollId);
+        });
+        
+        // Add event listeners to radio buttons
+        const radioButtons = form.querySelectorAll('.option-radio');
+        radioButtons.forEach(radio => {
+          radio.addEventListener('change', function() {
+            updateSubmitButtonText(form, pollId);
+          });
+        });
+      });
+      
+      // Function to update submit button text
+      function updateSubmitButtonText(form, pollId) {
+        const submitButton = document.getElementById(`submit-vote-${pollId}`);
+        const confidenceValue = document.getElementById(`confidence-${pollId}`).value;
+        const selectedOption = form.querySelector('input[name="optionId"]:checked');
+        
+        if (selectedOption) {
+          const optionText = selectedOption.dataset.optionText;
+          submitButton.textContent = `${confidenceValue} points for ${optionText}`;
+        } else {
+          submitButton.textContent = `Submit vote`;
+        }
+      }
+    });
+  </script>
 }

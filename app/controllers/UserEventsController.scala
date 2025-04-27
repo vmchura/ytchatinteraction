@@ -49,20 +49,9 @@ class UserEventsController @Inject()(
       // Get active events for these channels
       events <- Future.sequence(channelIds.map(streamerEventRepository.getActiveEventsByChannel))
       flatEvents = events.flatten
-      
+      frontalEvents = flatEvents.flatMap(FrontalStreamerEvent.apply)
+      frontalEventsComplete <- Future.sequence(frontalEvents.map(pollService.completeFrontalPoll))
       // Get polls for these events
-      allPolls <- Future.sequence(flatEvents.flatMap(_.eventId).map(eventPollRepository.getByEventId))
-      polls = allPolls.flatten
-      
-      // Create a map of event ID to poll
-      eventPollMap = flatEvents.flatMap(_.eventId).zip(polls).toMap
-      
-      // Get poll options for all polls
-      allPollOptions <- Future.sequence(polls.flatMap(_.pollId).map(pollOptionRepository.getByPollId))
-      
-      // Create a map of poll ID to options
-      pollOptionsMap = polls.flatMap(_.pollId).zip(allPollOptions).toMap
-      
       // Get user balances for all channel IDs
       userBalances <- Future.sequence(channelIds.map(channelId => 
                          userStreamerStateRepository.getUserStreamerBalance(userId, channelId)))
@@ -72,9 +61,7 @@ class UserEventsController @Inject()(
       
     } yield {
       Ok(views.html.userEvents(
-        flatEvents, 
-        eventPollMap, 
-        pollOptionsMap, 
+        frontalEventsComplete,
         channelBalanceMap,
         voteForm,
         request.identity
