@@ -36,7 +36,7 @@ class UserEventsController @Inject()(
   )
 
   /**
-   * Display all active events the user has a relationship with
+   * Display all active events the user has a relationship with and also other available events
    */
   def userEvents = SecuredAction.async { implicit request =>
     val userId = request.identity.userId
@@ -51,7 +51,7 @@ class UserEventsController @Inject()(
       flatEvents = events.flatten
       frontalEvents = flatEvents.flatMap(FrontalStreamerEvent.apply)
       frontalEventsComplete <- Future.sequence(frontalEvents.map(pollService.completeFrontalPoll))
-      // Get polls for these events
+      
       // Get user balances for all channel IDs
       userBalances <- Future.sequence(channelIds.map(channelId => 
                          userStreamerStateRepository.getUserStreamerBalance(userId, channelId)))
@@ -59,12 +59,20 @@ class UserEventsController @Inject()(
       // Create a map of channel ID to user balance
       channelBalanceMap = channelIds.zip(userBalances.flatten).toMap
       
+      // Get all active events the user is not participating in
+      allActiveEvents <- streamerEventRepository.getAllActiveEvents()
+      userEventIds = flatEvents.flatMap(_.eventId).toSet
+      extraActiveEvents = allActiveEvents.filter(event => 
+        event.eventId.isDefined && !userEventIds.contains(event.eventId.get))
+      extraActiveEventsWithFrontal = extraActiveEvents.flatMap(FrontalStreamerEvent.apply)
+      
     } yield {
       Ok(views.html.userEvents(
         frontalEventsComplete,
         channelBalanceMap,
         voteForm,
-        request.identity
+        request.identity,
+        extraActiveEventsWithFrontal
       ))
     }
   }
@@ -121,6 +129,51 @@ class UserEventsController @Inject()(
         }
       }
     )
+  }
+  
+  /**
+   * Join a new event
+   */
+  def joinEvent(eventId: Int) = SecuredAction.async { implicit request =>
+    val userId = request.identity.userId
+    
+    (for {
+      // Get the event
+      eventOpt <- streamerEventRepository.getById(eventId)
+      
+      result <- eventOpt match {
+        case Some(event)  =>
+          // Check if user already has a relationship with this channel
+          userStreamerStateRepository.getUserStreamerBalance(userId, event.channelId).flatMap { 
+            existingBalance =>
+              // If user doesn't have a relationship, create one with 0 balance
+              if (existingBalance.isEmpty) {
+                userStreamerStateRepository.create(userId, event.channelId, 0).map { _ =>
+                  Redirect(routes.UserEventsController.userEvents())
+                    .flashing("success" -> s"Te uniste al evento: ${event.eventName}")
+                }
+              } else {
+                // User already has a relationship
+                Future.successful(
+                  Redirect(routes.UserEventsController.userEvents())
+                    .flashing("info" -> "Ya eras parte del evento")
+                )
+              }
+          }
+
+          
+        case None =>
+          // Event not found
+          Future.successful(
+            Redirect(routes.UserEventsController.userEvents())
+              .flashing("error" -> "Event not found")
+          )
+      }
+    } yield result).recover {
+      case e: Exception =>
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("error" -> s"Error joining event: ${e.getMessage}")
+    }
   }
 }
 

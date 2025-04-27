@@ -5,7 +5,8 @@
 @(events: Seq[FrontalStreamerEvent],
   channelBalanceMap: Map[String, Int],
   voteForm: Form[VoteFormData],
-  user: User)(implicit request: RequestHeader, flash: Flash)
+  user: User,
+  extraEvents: Seq[FrontalStreamerEvent])(implicit request: RequestHeader, flash: Flash)
 
 @main("My Events", Some(user)) {
   <h1>My Active Events</h1>
@@ -92,6 +93,26 @@
     }
   </div>
 
+  @if(extraEvents.nonEmpty) {
+    <h2>Extra Events</h2>
+    <p>Participa en los siguientes eventos:</p>
+    
+    <div class="extra-events-container">
+      <div class="grid">
+        @for(event <- extraEvents) {
+          <div>
+            <article>
+              <header> @event.eventName </header>
+              
+              <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button">
+                Únete
+              </a>
+            </article>
+          </div>
+        }
+      </div>
+    </div>
+  }
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {

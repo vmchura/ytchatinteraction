@@ -78,6 +78,15 @@ class StreamerEventRepository @Inject()(
   def list(): Future[Seq[StreamerEvent]] = db.run {
     streamerEventsTable.result
   }.map(_.sortBy(_.createdAt).reverse)
+  
+  /**
+   * Get all active events (isActive = true and endTime is null)
+   */
+  def getAllActiveEvents(): Future[Seq[StreamerEvent]] = db.run {
+    streamerEventsTable
+      .filter(e => e.isActive === true && e.endTime.isEmpty)
+      .result
+  }
   /**
    * Update an event
    */
