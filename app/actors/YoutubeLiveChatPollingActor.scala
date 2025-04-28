@@ -5,7 +5,7 @@ import org.apache.pekko.actor.typed.scaladsl.{ActorContext, Behaviors, TimerSche
 import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import models.*
-import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
+import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YoutubeChatMessageRepository, YtStreamerRepository, YtUserRepository}
 import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
 
 import java.time.Instant
@@ -60,11 +60,12 @@ object YoutubeLiveChatPollingActor {
              inferUserOptionService: InferUserOptionService,
              chatService: ChatService,
              pollVoteRepository: PollVoteRepository,
-             liveStream: ActiveLiveStream
+             liveStream: ActiveLiveStream,
+             youtubeChatMessageRepository: YoutubeChatMessageRepository
            ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
       active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository,
-        ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService, pollVoteRepository, liveStream)
+        ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService, pollVoteRepository, liveStream, youtubeChatMessageRepository)
     }
   }
 
@@ -84,7 +85,8 @@ object YoutubeLiveChatPollingActor {
                       inferUserOptionService: InferUserOptionService,
                       chatService: ChatService,
                       pollVoteRepository: PollVoteRepository,
-                      liveStream: ActiveLiveStream
+                      liveStream: ActiveLiveStream,
+                      youtubeChatMessageRepository: YoutubeChatMessageRepository
                     ): Behavior[Command] = {
     Behaviors.setup { context =>
       implicit val ec: ExecutionContext = context.executionContext
@@ -122,6 +124,41 @@ object YoutubeLiveChatPollingActor {
             // Process messages - only those published after our start time
             val items = (response \ "items").as[JsArray].value
             context.log.info(s"Received ${items.size} messages, filtering for those after ${startTime}")
+            
+            // Save chat messages to PostgreSQL
+            val chatMessages = items.map { item =>
+              try {
+                val messageId = (item \ "id").as[String]
+                val authorChannelId = (item \ "authorDetails" \ "channelId").as[String]
+                val displayName = (item \ "authorDetails" \ "displayName").as[String]
+                val messageText = (item \ "snippet" \ "displayMessage").as[String]
+                val publishedAtStr = (item \ "snippet" \ "publishedAt").as[String]
+                val publishedAt = Instant.parse(publishedAtStr)
+
+                YoutubeChatMessage(
+                  messageId = None, // Auto-generated
+                  liveChatId = liveChatId,
+                  channelId = channelID,
+                  rawMessage = item.toString, // Store the entire JSON
+                  authorChannelId = authorChannelId,
+                  authorDisplayName = displayName,
+                  messageText = messageText,
+                  publishedAt = publishedAt
+                )
+              } catch {
+                case e: Exception =>
+                  context.log.error(s"Error parsing message: ${e.getMessage}")
+                  null
+              }
+            }.filterNot(_ == null)
+
+            // Store messages in batches
+            if (chatMessages.nonEmpty) {
+              youtubeChatMessageRepository.createBatch(chatMessages.toSeq).onComplete {
+                case Success(_) => println(s"Successfully saved ${chatMessages.size} chat messages to PostgreSQL")
+                case Failure(ex) => println(s"Failed to save chat messages: ${ex.getMessage}")
+              }
+            }
 
             // Get the event poll, but handle the result in the actor context
             // Use pipeTo pattern to send the result back to self

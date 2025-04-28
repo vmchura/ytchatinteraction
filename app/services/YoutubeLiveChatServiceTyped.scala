@@ -6,7 +6,7 @@ import org.apache.pekko.actor.typed.scaladsl.adapter.*
 import play.api.libs.ws.WSClient
 import play.api.Configuration
 import models.*
-import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YtStreamerRepository, YtUserRepository}
+import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YoutubeChatMessageRepository, YtStreamerRepository, YtUserRepository}
 import actors.YoutubeLiveChatPollingActor
 
 import java.time.Instant
@@ -29,7 +29,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
   inferUserOptionService: InferUserOptionService,
   chatService: ChatService,
   pollVoteRepository: PollVoteRepository,
-  activeLiveStream: ActiveLiveStream
+  activeLiveStream: ActiveLiveStream,
+  youtubeChatMessageRepository: YoutubeChatMessageRepository
 )(implicit ec: ExecutionContext) {
   
   // Get API key from configuration
@@ -58,7 +59,8 @@ class YoutubeLiveChatServiceTyped @Inject()(
         inferUserOptionService, 
         chatService,
         pollVoteRepository,
-        activeLiveStream
+        activeLiveStream,
+        youtubeChatMessageRepository
       ),
       s"youtube-chat-polling-${streamerChatId}"
     )

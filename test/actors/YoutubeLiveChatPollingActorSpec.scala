@@ -91,6 +91,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
 
   // Create a real service but with mocked dependencies for testing
   lazy val inferUserOptionService = new InferUserOptionService(mockWsClient)(ExecutionContext.global)
+  lazy val youtubeChatMessageRepository = app.injector.instanceOf[YoutubeChatMessageRepository]
 
   // Setup before each test
   override def beforeEach(): Unit = {
@@ -260,7 +261,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         mockInferUserOptionService,
         mockChatService,
         pollVoteRepository,
-        liveStream
+        liveStream,
+        youtubeChatMessageRepository
       ))
 
       // 5. Send PollLiveChat command to start the polling process
@@ -321,7 +323,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         mockInferUserOptionService,
         mockChatService,
         pollVoteRepository,
-        liveStream
+        liveStream,
+        youtubeChatMessageRepository
       ))
 
       // 4. Send PollLiveChat command to start the polling process
@@ -385,7 +388,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         mockInferUserOptionService,
         mockChatService,
         pollVoteRepository,
-        liveStream
+        liveStream,
+        youtubeChatMessageRepository
       ))
 
       // 5. Send PollLiveChat command to start the polling process
@@ -459,7 +463,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         mockInferUserOptionService,
         mockChatService,
         pollVoteRepository,
-        liveStream
+        liveStream,
+        youtubeChatMessageRepository
       ))
 
       // 5. Verify the user doesn't exist before the test

@@ -42,7 +42,9 @@ libraryDependencies ++= Seq(
   specs2 % Test,
   "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9",
   "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models-spanish",
-  "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models"
+  "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models",
+  "com.github.tminglei" %% "slick-pg" % "0.23.0",
+  "com.github.tminglei" %% "slick-pg_play-json" % "0.23.0"
 )
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
