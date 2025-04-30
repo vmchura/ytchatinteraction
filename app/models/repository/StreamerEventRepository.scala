@@ -168,6 +168,21 @@ class StreamerEventRepository @Inject()(
     }
   }
 
+  def incrementCurrentConfidenceAmount(eventId: Int, amount: Int): DBIO[Int] = {
+    val streamerFilter = streamerEventsTable.filter(_.eventId === eventId).map(_.currentConfidenceAmount)
+    for {
+      current_amount <- streamerFilter.result.headOption
+      new_amount <- current_amount.fold(DBIO.failed(new IllegalStateException("Not balance found for event")))(r => {
+        if (r + amount >= 0) {
+          DBIO.successful(r + amount)
+        } else {
+          DBIO.failed(new IllegalStateException("Negative balance for event"))
+        }
+      })
+      updated_value <- streamerFilter.update(new_amount)
+    } yield updated_value
+  }
+
   def getCurrentConfidenceAmountAction(eventID: Int): DBIO[Option[Int]] = {
     streamerEventsTable
       .filter(s => s.eventId === eventID)

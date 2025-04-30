@@ -100,15 +100,22 @@ class YtStreamerRepository @Inject()(
     updateBalanceAction(channelId, newBalance)
   }
   
-  def incrementBalanceAction(channelId: String, amount: Int = 1): DBIO[Int] = {
+  def incrementBalanceAction(channelId: String, amount: Int): DBIO[Int] = {
     val streamerFilter = ytStreamersTable.filter(_.channelId === channelId).map(_.currentBalanceNumber)
     for {
       current_amount <- streamerFilter.result.headOption
-      updated_value <- streamerFilter.update(current_amount.getOrElse(0) + amount)
+      new_amount <- current_amount.fold(DBIO.failed(new IllegalStateException("Not balance found for increment")))(r => {
+        if(r + amount >= 0) {
+          DBIO.successful(r + amount)
+        }else{
+          DBIO.failed(new IllegalStateException("Negative balance for channel"))
+        }
+      })
+      updated_value <- streamerFilter.update(new_amount)
     } yield updated_value
   }
   
-  def incrementBalance(channelId: String, amount: Int = 1): Future[Int] = {
+  def incrementBalance(channelId: String, amount: Int): Future[Int] = {
     db.run(incrementBalanceAction(channelId, amount).transactionally)
   }
   

@@ -2,7 +2,7 @@ package services
 
 import forms.PollForm
 import models.{EventPoll, FrontalPoll, FrontalPollOption, FrontalStreamerEvent, PollOption, PollVote, StreamerEvent, UserStreamerStateLog}
-import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateLogRepository, UserStreamerStateRepository}
+import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateLogRepository, UserStreamerStateRepository, YtStreamerRepository}
 import org.apache.pekko.event.EventStream
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -21,7 +21,8 @@ class PollService @Inject()(
   userStreamerStateRepository: UserStreamerStateRepository,
   dbConfigProvider: DatabaseConfigProvider,
   userStreamerStateLogRepository: UserStreamerStateLogRepository,
-  streamerEventRepository: StreamerEventRepository
+  streamerEventRepository: StreamerEventRepository,
+  ytStreamerRepository: YtStreamerRepository
 )(implicit ec: ExecutionContext) {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   protected val profile = dbConfig.profile
@@ -146,7 +147,10 @@ class PollService @Inject()(
           _ => s"From ${singleVote.userId} paying: ${-(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt}"
         }
       })
-
+      currentBalanceEventOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
+      currentBalanceEvent <- currentBalanceEventOption.fold(DBIO.failed(new IllegalStateException("No event at closing?")))(r => DBIO.successful(r))
+      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), eventID, currentBalanceEvent, "RECOVER"))
+      _ <- transferFromChannelToEvent(event.channelId, eventID, -currentBalanceEvent)
     }yield{
       transactions.foreach(println)
       true
@@ -169,7 +173,7 @@ class PollService @Inject()(
   }
   def createEventAction(event: StreamerEvent, pollForm: PollForm): DBIO[StreamerEvent] = {
     for {
-      createdEvent <- streamerEventRepository.createAction(event)
+      createdEvent <- streamerEventRepository.createAction(event.copy(currentConfidenceAmount = 0))
       poll = EventPoll(
         eventId = createdEvent.eventId.get,
         pollQuestion = pollForm.pollQuestion
@@ -177,6 +181,7 @@ class PollService @Inject()(
       createdPoll <- eventPollRepository.createAction(poll)
       _ <- pollOptionRepository.createMultipleAction(createdPoll.pollId.get, pollForm.options, pollForm.ratios)
       _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), createdEvent.eventId.get, event.currentConfidenceAmount, "CREATE"))
+      _ <- transferFromChannelToEvent(event.channelId, createdEvent.eventId.get, event.currentConfidenceAmount)
     }yield{
       createdEvent
     }
@@ -184,5 +189,13 @@ class PollService @Inject()(
 
   def createEvent(event: StreamerEvent, pollForm: PollForm): Future[StreamerEvent] = {
     db.run(createEventAction(event, pollForm).transactionally)
+  }
+  def transferFromChannelToEvent(channelID: String, eventID: Int, amount: Int): DBIO[Boolean] = {
+    for{
+      newBalanceChannel <- ytStreamerRepository.incrementBalanceAction(channelID, -amount)
+      newBalanceEvent <- streamerEventRepository.incrementCurrentConfidenceAmount(eventID, amount)
+    }yield {
+      newBalanceChannel >= 0 && newBalanceEvent >=0
+    }
   }
 }
