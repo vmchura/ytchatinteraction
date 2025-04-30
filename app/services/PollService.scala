@@ -1,7 +1,7 @@
 package services
 
-import models.{EventPoll, FrontalPoll, FrontalPollOption, FrontalStreamerEvent, PollOption, PollVote, StreamerEvent}
-import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateRepository}
+import models.{EventPoll, FrontalPoll, FrontalPollOption, FrontalStreamerEvent, PollOption, PollVote, StreamerEvent, UserStreamerStateLog}
+import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateLogRepository, UserStreamerStateRepository}
 import org.apache.pekko.event.EventStream
 import play.api.db.slick.DatabaseConfigProvider
 
@@ -18,7 +18,8 @@ class PollService @Inject()(
   pollOptionRepository: PollOptionRepository,
   pollVoteRepository: PollVoteRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
-  dbConfigProvider: DatabaseConfigProvider
+  dbConfigProvider: DatabaseConfigProvider,
+  userStreamerStateLogRepository: UserStreamerStateLogRepository
 )(implicit ec: ExecutionContext) {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   protected val profile = dbConfig.profile
@@ -102,13 +103,13 @@ class PollService @Inject()(
       eventPoll <- eventPollOption.fold(DBIO.failed(new IllegalStateException("No poll found by pollID")))(e => DBIO.successful(e))
       eventOption <- eventPollRepository.getEventByIdAction(eventPoll.eventId)
       event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event found by eventId")))(e => DBIO.successful(e))
-      _ <- transferConfidenceVoteStreamer(event, userId, confidenceAmount)
+      _ <- transferConfidenceVoteStreamer(event, userId, confidenceAmount, "VOTE")
     }yield{
       eventPoll
     }
   }
 
-  def transferConfidenceVoteStreamer(event: StreamerEvent, userID: Long, amount: Int): DBIO[Boolean] = {
+  def transferConfidenceVoteStreamer(event: StreamerEvent, userID: Long, amount: Int, logType: String): DBIO[Boolean] = {
     for {
       eventID <- event.eventId.fold(DBIO.failed(new IllegalStateException("Event with no ID?")))(e => DBIO.successful(e))
       eventCurrentBalanceOption <- eventPollRepository.getCurrentConfidenceAmountAction(eventID)
@@ -121,6 +122,7 @@ class PollService @Inject()(
       rows_update_user_stream <- if(userChannelBalance - actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative amount for user balance"))
       else userStreamerStateRepository.updateStreamerBalanceAction(userID, event.channelId, userChannelBalance - actualTransferAmount)
       operation_complete <- if(rows_update_event == 1 && rows_update_user_stream == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
+      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, userID, eventID, amount, logType))
     }yield{
       operation_complete
     }
@@ -136,7 +138,7 @@ class PollService @Inject()(
       winnerOption <- winnerOptionOption.fold(DBIO.failed(new IllegalStateException("No winner option in DB?")))(DBIO.successful)
       votes <- pollVoteRepository.getByPollIdAction(pollID)
       transactions <- DBIO.sequence(votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId)).map{ singleVote =>
-        transferConfidenceVoteStreamer(event, singleVote.userId, -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt).map{
+        transferConfidenceVoteStreamer(event, singleVote.userId, -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt, "PAY").map{
           _ => s"From ${singleVote.userId} paying: ${-(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt}"
         }
       })
