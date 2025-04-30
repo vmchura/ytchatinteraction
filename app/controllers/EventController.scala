@@ -130,23 +130,9 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         // Process the event and poll creation
         (for {
           // Create the event
-          createdEvent <- streamerEventRepository.create(event)
-
-          // Create the poll
-          poll = EventPoll(
-            eventId = createdEvent.eventId.get,
-            pollQuestion = formData.poll.pollQuestion
-          )
-          createdPoll <- eventPollRepository.create(poll)
-
-          // Create the poll options
-          _ <- pollOptionRepository.createMultiple(createdPoll.pollId.get, formData.poll.options, formData.poll.ratios)
-          
+          createdEvent <- pollService.createEvent(event, formData.poll)
           // Broadcast the event creation to connected clients
           _ = eventUpdateService.broadcastNewEvent(createdEvent)
-
-          // Get updated list of streamers and events for the view
-          events <- streamerEventRepository.list()
         } yield {
           Redirect(routes.EventController.eventManagement())
             .flashing("success" -> "Event created successfully")

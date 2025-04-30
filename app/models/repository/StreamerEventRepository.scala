@@ -25,17 +25,18 @@ class StreamerEventRepository @Inject()(
    * Create a new streamer event
    */
   def create(streamerEvent: StreamerEvent): Future[StreamerEvent] = {
+    db.run(createAction(streamerEvent))
+  }
+  def createAction(streamerEvent: StreamerEvent): DBIO[StreamerEvent] = {
     val now = Instant.now()
     val eventWithTimestamps = streamerEvent.copy(
       createdAt = Some(now),
       updatedAt = Some(now)
     )
-    
-    db.run(
-      (streamerEventsTable returning streamerEventsTable.map(_.eventId)
-        into ((event, id) => event.copy(eventId = Some(id)))
+
+    (streamerEventsTable returning streamerEventsTable.map(_.eventId)
+      into ((event, id) => event.copy(eventId = Some(id)))
       ) += eventWithTimestamps
-    )
   }
 
   def getByIdAction(eventId: Int): DBIO[Option[StreamerEvent]] =

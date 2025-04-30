@@ -1,5 +1,6 @@
 package services
 
+import forms.PollForm
 import models.{EventPoll, FrontalPoll, FrontalPollOption, FrontalStreamerEvent, PollOption, PollVote, StreamerEvent, UserStreamerStateLog}
 import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateLogRepository, UserStreamerStateRepository}
 import org.apache.pekko.event.EventStream
@@ -19,7 +20,8 @@ class PollService @Inject()(
   pollVoteRepository: PollVoteRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
   dbConfigProvider: DatabaseConfigProvider,
-  userStreamerStateLogRepository: UserStreamerStateLogRepository
+  userStreamerStateLogRepository: UserStreamerStateLogRepository,
+  streamerEventRepository: StreamerEventRepository
 )(implicit ec: ExecutionContext) {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   protected val profile = dbConfig.profile
@@ -124,7 +126,7 @@ class PollService @Inject()(
       rows_update_user_stream <- if(userChannelBalance - actualTransferAmount < 0) DBIO.failed(new IllegalStateException("Negative amount for user balance"))
       else userStreamerStateRepository.updateStreamerBalanceAction(userID, event.channelId, userChannelBalance - actualTransferAmount)
       operation_complete <- if(rows_update_event == 1 && rows_update_user_stream == 1) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not updated done"))
-      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, userID, eventID, amount, logType))
+      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, Some(userID), None, eventID, amount, logType))
     }yield{
       operation_complete
     }
@@ -164,5 +166,23 @@ class PollService @Inject()(
       }
       frontalStreamerEvent.copy(frontalPoll = frontalPoll)
     }
+  }
+  def createEventAction(event: StreamerEvent, pollForm: PollForm): DBIO[StreamerEvent] = {
+    for {
+      createdEvent <- streamerEventRepository.createAction(event)
+      poll = EventPoll(
+        eventId = createdEvent.eventId.get,
+        pollQuestion = pollForm.pollQuestion
+      )
+      createdPoll <- eventPollRepository.createAction(poll)
+      _ <- pollOptionRepository.createMultipleAction(createdPoll.pollId.get, pollForm.options, pollForm.ratios)
+      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), createdEvent.eventId.get, event.currentConfidenceAmount, "CREATE"))
+    }yield{
+      createdEvent
+    }
+  }
+
+  def createEvent(event: StreamerEvent, pollForm: PollForm): Future[StreamerEvent] = {
+    db.run(createEventAction(event, pollForm).transactionally)
   }
 }

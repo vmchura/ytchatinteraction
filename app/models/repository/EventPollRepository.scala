@@ -23,9 +23,13 @@ class EventPollRepository @Inject()(
    * Create a new poll for an event
    */
   def create(eventPoll: EventPoll): Future[EventPoll] = db.run {
+    createAction(eventPoll)
+  }
+
+  def createAction(eventPoll: EventPoll): DBIO[EventPoll] =  {
     (eventPollsTable returning eventPollsTable.map(_.pollId)
       into ((poll, id) => poll.copy(pollId = Some(id)))
-    ) += eventPoll
+      ) += eventPoll
   }
   def getByIdAction(pollId: Int): DBIO[Option[EventPoll]] =
     eventPollsTable.filter(_.pollId === pollId).result.headOption

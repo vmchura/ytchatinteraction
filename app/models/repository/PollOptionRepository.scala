@@ -33,20 +33,23 @@ class PollOptionRepository @Inject()(
    */
   def createMultiple(pollId: Int, optionTexts: Seq[String], confidenceRatios: Seq[BigDecimal]): Future[Seq[PollOption]] = {
     require(optionTexts.length == confidenceRatios.length, "Number of option texts must match number of confidence ratios")
-    
-    val options = optionTexts.zip(confidenceRatios).map { 
+    db.run(createMultipleAction(pollId, optionTexts, confidenceRatios))
+  }
+
+  def createMultipleAction(pollId: Int, optionTexts: Seq[String], confidenceRatios: Seq[BigDecimal]): DBIO[Seq[PollOption]] = {
+    require(optionTexts.length == confidenceRatios.length, "Number of option texts must match number of confidence ratios")
+
+    val options = optionTexts.zip(confidenceRatios).map {
       case (text, ratio) => PollOption(None, pollId, text, ratio)
     }
-    
-    db.run(
+
       DBIO.sequence(
-        options.map(option => 
+        options.map(option =>
           (pollOptionsTable returning pollOptionsTable.map(_.optionId)
             into ((opt, id) => opt.copy(optionId = Some(id)))
-          ) += option
+            ) += option
         )
       ).transactionally
-    )
   }
   
   /**

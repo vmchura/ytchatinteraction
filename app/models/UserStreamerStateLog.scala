@@ -4,7 +4,8 @@ import java.time.Instant
 
 case class UserStreamerStateLog(
   logId: Option[Int] = None,
-  userId: Long,
+  userId: Option[Long],
+  channelID: Option[String],
   eventID: Int,
   amountTransferred: Int,
   logType: String,
