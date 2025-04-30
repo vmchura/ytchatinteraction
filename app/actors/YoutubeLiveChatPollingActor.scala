@@ -309,7 +309,7 @@ object YoutubeLiveChatPollingActor {
                   optionID,
                   user.userId,
                   Some(messageText),
-                  confidenceValue).map(_ => Some((po, confidenceValue)))
+                  confidenceValue, channelID).map(_ => Some((po, confidenceValue)))
               }).getOrElse(Future.successful(None))
 
             case None =>

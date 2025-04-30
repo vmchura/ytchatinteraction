@@ -89,16 +89,18 @@ class PollService @Inject()(
                        optionId: Int,
                        userId: Long,
                        messageByChatOpt: Option[String],
-                       confidenceAmount: Int): Future[EventPoll] = {
-    db.run(registerPollVoteAction(pollId, optionId, userId, messageByChatOpt, confidenceAmount).transactionally)
+                       confidenceAmount: Int,
+                       authorChannelId: String): Future[EventPoll] = {
+    db.run(registerPollVoteAction(pollId, optionId, userId, messageByChatOpt, confidenceAmount, authorChannelId).transactionally)
   }
   def registerPollVoteAction(pollId: Int,
                        optionId: Int,
                        userId: Long,
                        messageByChatOpt: Option[String],
-                       confidenceAmount: Int): DBIO[EventPoll] = {
+                       confidenceAmount: Int,
+                             authorChannelId: String): DBIO[EventPoll] = {
     for{
-      _ <- pollVoteRepository.addVoteAction(PollVote(None, pollId, optionId, userId, messageByChatOpt, confidenceAmount))
+      _ <- pollVoteRepository.addVoteAction(PollVote(None, pollId, optionId, userId, messageByChatOpt, confidenceAmount), authorChannelId)
       eventPollOption <- eventPollRepository.getByIdAction(pollId)
       eventPoll <- eventPollOption.fold(DBIO.failed(new IllegalStateException("No poll found by pollID")))(e => DBIO.successful(e))
       eventOption <- eventPollRepository.getEventByIdAction(eventPoll.eventId)

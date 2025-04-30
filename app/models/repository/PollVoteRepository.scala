@@ -25,25 +25,44 @@ class PollVoteRepository @Inject()(
   import profile.api._
   
   
-  def addVoteAction(pollVote: PollVote): DBIO[PollVote] = {
-    val voteWithTimestamp = pollVote.copy(
-      createdAt = Some(Instant.now())
-    )
-    val addVoteAction = (pollVotesTable returning pollVotesTable.map(_.voteId)
-      into ((vote, id) => vote.copy(voteId = Some(id)))
-      ) += voteWithTimestamp
-    addVoteAction
+  def addVoteAction(pollVote: PollVote, authorChannelId: String): DBIO[PollVote] = {
+    val maximum_vote = if(pollVote.confidenceAmount == Int.MaxValue) {
+      for {
+        currentBalanceOption <- userStreamerStateTable
+          .filter(s => s.userId === pollVote.userId && s.streamerChannelId === authorChannelId)
+          .map(_.currentBalanceNumber)
+          .result
+          .headOption
+        currentBalance <- currentBalanceOption.fold(DBIO.failed(new IllegalStateException("Balance not found when all in")))(r => DBIO.successful(r))
+      } yield {
+        currentBalance
+      }
+
+    } else DBIO.successful(pollVote.confidenceAmount)
+
+    for {
+      max_vote <- maximum_vote
+      voteWithTimestamp = pollVote.copy(
+        createdAt = Some(Instant.now()),
+        confidenceAmount=max_vote
+      )
+      voteAction <- (pollVotesTable returning pollVotesTable.map(_.voteId)
+        into ((vote, id) => vote.copy(voteId = Some(id)))
+        ) += voteWithTimestamp
+    }yield{
+      voteAction
+    }
   }
   /**
    * Create a new vote for a poll option and update the event's confidence amount
    */
-  def create(pollVote: PollVote): Future[PollVote] = {
+  def create(pollVote: PollVote, streamerChannelID: String): Future[PollVote] = {
   
     
     // Transaction to add vote and update event confidence amount
     val transactionAction = for {
       // Add the vote
-      savedVote <- addVoteAction(pollVote)
+      savedVote <- addVoteAction(pollVote, streamerChannelID)
       
       // Get the event ID for this poll
       eventPollOpt <- eventPollsTable.filter(_.pollId === pollVote.pollId).result.headOption

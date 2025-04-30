@@ -9,7 +9,8 @@ case class EventForm(
                       eventName: String,
                       eventDescription: Option[String],
                       eventType: String,
-                      startTime: String
+                      startTime: String,
+                      currentConfidenceAmount: Int
                     )
 
 // Form for creating a poll with dynamic options
@@ -49,8 +50,9 @@ object Forms:
       "eventName" -> nonEmptyText,
       "eventDescription" -> optional(text),
       "eventType" -> nonEmptyText,
-      "startTime" -> nonEmptyText
-    )(EventForm.apply)(nn => Some(nn.channelId, nn.eventName, nn.eventDescription, nn.eventType, nn.startTime))
+      "startTime" -> nonEmptyText,
+      "currentConfidenceAmount" -> number
+    )(EventForm.apply)(nn => Some(nn.channelId, nn.eventName, nn.eventDescription, nn.eventType, nn.startTime, nn.currentConfidenceAmount))
   )
 
   val pollForm = Form(
@@ -68,8 +70,9 @@ object Forms:
         "eventName" -> nonEmptyText,
         "eventDescription" -> optional(text),
         "eventType" -> nonEmptyText,
-        "startTime" -> nonEmptyText
-      )(EventForm.apply)(nn => Some(nn.channelId, nn.eventName, nn.eventDescription, nn.eventType, nn.startTime)),
+        "startTime" -> nonEmptyText,
+        "currentConfidenceAmount" -> number
+      )(EventForm.apply)(nn => Some(nn.channelId, nn.eventName, nn.eventDescription, nn.eventType, nn.startTime, nn.currentConfidenceAmount)),
       "poll" -> mapping(
         "pollQuestion" -> nonEmptyText,
         "options" -> list(nonEmptyText).verifying("At least 2 options required", _.size >= 2),

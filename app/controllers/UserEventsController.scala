@@ -158,7 +158,8 @@ class UserEventsController @Inject()(
                 voteData.optionId,
                 userId,
                 None, // No message for this type of vote
-                voteData.confidence
+                voteData.confidence,
+                evt.channelId
               ).map(_ => 
                 Redirect(routes.UserEventsController.userEvents())
                   .flashing("success" -> "Vote registered successfully")
