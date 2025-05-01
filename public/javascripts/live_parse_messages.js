@@ -57,9 +57,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
   connection.onclose = function() {
     console.log('WebSocket connection closed');
-    // Try to reconnect after a short delay
-    setTimeout(function() {
-      location.reload();
-    }, 5000);
   };
 });
