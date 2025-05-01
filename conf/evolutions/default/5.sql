@@ -17,7 +17,7 @@ CREATE TABLE user_streamer_state_log (
     REFERENCES streamer_events (event_id),
   CONSTRAINT fk_user_streamer_state_log_channel
     FOREIGN KEY (channel_id)
-    REFERENCES yt_users (user_channel_id)
+    REFERENCES yt_streamer (channel_id)
 );
 
 -- !Downs

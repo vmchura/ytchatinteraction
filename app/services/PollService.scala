@@ -133,7 +133,7 @@ class PollService @Inject()(
     }
   }
   def spreadPollConfidenceAction(eventID: Int, pollID: Int): DBIO[Boolean] = {
-    for{
+    (for{
       eventOption <- eventPollRepository.getEventByIdAction(eventID)
       event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event ID?")))(DBIO.successful)
       pollOption <- eventPollRepository.getByIdAction(pollID)
@@ -142,21 +142,43 @@ class PollService @Inject()(
       winnerOptionOption <- pollOptionRepository.getByIdAction(winnerOptionID)
       winnerOption <- winnerOptionOption.fold(DBIO.failed(new IllegalStateException("No winner option in DB?")))(DBIO.successful)
       votes <- pollVoteRepository.getByPollIdAction(pollID)
-      transactions <- DBIO.sequence(votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId)).map{ singleVote =>
-        transferConfidenceVoteStreamer(event, singleVote.userId, -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt, "PAY").map{
-          _ => s"From ${singleVote.userId} paying: ${-(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt}"
-        }
-      })
+      
+      // Filter the winning votes
+      winningVotes = votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId))
+      
+      // Use foldLeft to process transactions sequentially while maintaining transaction integrity
+      transactionMessages <- winningVotes.foldLeft[DBIO[List[String]]](DBIO.successful(List.empty)) { 
+        case (accDBIO, singleVote) =>
+          for {
+            acc <- accDBIO
+            paymentAmount = -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt
+            result <- transferConfidenceVoteStreamer(event, singleVote.userId, paymentAmount, "PAY")
+            message = s"From ${singleVote.userId} paying: $paymentAmount"
+          } yield acc :+ message
+      }
+      
       currentBalanceEventOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
       currentBalanceEvent <- currentBalanceEventOption.fold(DBIO.failed(new IllegalStateException("No event at closing?")))(r => DBIO.successful(r))
       _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), eventID, currentBalanceEvent, "RECOVER"))
       _ <- transferFromChannelToEvent(event.channelId, eventID, -currentBalanceEvent)
     }yield{
-      transactions.foreach(println)
+      // Logging done outside the yield to avoid potential issues
+      transactionMessages.foreach(println)
       true
-    }
+    })
   }
-  def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = db.run(spreadPollConfidenceAction(eventID, pollID).transactionally)
+  def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = {
+    import slick.jdbc.TransactionIsolation.Serializable
+    db.run(spreadPollConfidenceAction(eventID, pollID)
+      .transactionally
+      .withTransactionIsolation(Serializable))
+      .recoverWith {
+        case e: Exception => 
+          println(s"Transaction failed: ${e.getMessage}")
+          // You might want to add proper logging here
+          Future.failed(e)
+      }
+  }
   def completeFrontalPoll(frontalStreamerEvent: FrontalStreamerEvent): Future[FrontalStreamerEvent] = {
 
     for {

@@ -57,19 +57,13 @@ class UserEventsController @Inject()(
       // Get the channel IDs the user has a relationship with
       userStreamerStates <- userStreamerStateRepository.getByUserId(userId)
       channelIds = userStreamerStates.map(_.streamerChannelId)
-      
+      channelBalanceMap = userStreamerStates.map(uss => uss.streamerChannelId -> uss.currentBalanceNumber).toMap
       // Get active events for these channels
       events <- Future.sequence(channelIds.map(streamerEventRepository.getActiveEventsByChannel))
       flatEvents = events.flatten
       frontalEvents = flatEvents.flatMap(FrontalStreamerEvent.apply)
       frontalEventsComplete <- Future.sequence(frontalEvents.map(pollService.completeFrontalPoll))
-      
-      // Get user balances for all channel IDs
-      userBalances <- Future.sequence(channelIds.map(channelId => 
-                         userStreamerStateRepository.getUserStreamerBalance(userId, channelId)))
-      
-      // Create a map of channel ID to user balance
-      channelBalanceMap = channelIds.zip(userBalances.flatten).toMap
+
       
       // Get all active events the user is not participating in
       allActiveEvents <- streamerEventRepository.getAllActiveEvents()
