@@ -148,8 +148,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
 
   // Stop accepting new votes for an event
   def endEvent(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
-    streamerEventRepository.endEvent(eventId).map { result =>
-      if (result > 0) {
+    pollService.closeEvent(eventId).map { result =>
+      if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
           .flashing("success" -> "Stopped accepting new votes for this event")
       } else {
@@ -166,8 +166,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   
   // Close an event without setting a winner
   def closeEvent(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
-    streamerEventRepository.closeEvent(eventId).map { result =>
-      if (result > 0) {
+    pollService.closeEvent(eventId).map { result =>
+      if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
           .flashing("success" -> "Event closed successfully")
       } else {
@@ -261,7 +261,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           // Set the winner option
           _ <- eventPollRepository.setWinnerOption(pollId, formData.optionId)
           // Close the event
-          _ <- streamerEventRepository.closeEvent(eventId)
+          _ <- pollService.closeEvent(eventId)
           
           // Get the updated event to broadcast
           closedEvent <- streamerEventRepository.getById(eventId)

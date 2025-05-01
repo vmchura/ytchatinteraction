@@ -45,9 +45,11 @@ class EventPollRepository @Inject()(
    * Get all polls for an event
    */
   def getByEventId(eventId: Int): Future[Seq[EventPoll]] = db.run {
-    eventPollsTable.filter(_.eventId === eventId).result
+    getByEventIdAction(eventId)
   }
-  
+  def getByEventIdAction(eventId: Int): DBIO[Seq[EventPoll]] =
+    eventPollsTable.filter(_.eventId === eventId).result
+
   /**
    * Update a poll
    */

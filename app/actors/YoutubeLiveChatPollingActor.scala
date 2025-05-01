@@ -168,7 +168,6 @@ object YoutubeLiveChatPollingActor {
             }.recover {
               case ex =>
                 // Log error but continue with next poll
-                println(s"Error getting poll event: ${ex.getMessage}")
                 NoPollAvailable(liveChatId)
             }.foreach(context.self ! _)
 

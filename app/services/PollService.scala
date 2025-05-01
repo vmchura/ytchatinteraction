@@ -163,7 +163,6 @@ class PollService @Inject()(
       _ <- transferFromChannelToEvent(event.channelId, eventID, -currentBalanceEvent)
     }yield{
       // Logging done outside the yield to avoid potential issues
-      transactionMessages.foreach(println)
       true
     })
   }
@@ -219,5 +218,57 @@ class PollService @Inject()(
     }yield {
       newBalanceChannel >= 0 && newBalanceEvent >=0
     }
+  }
+  def balancePollAction(eventID: Int, pollID: Int): DBIO[Boolean] = {
+    (for{
+      eventOption <- eventPollRepository.getEventByIdAction(eventID)
+      event <- eventOption.fold(DBIO.failed(new IllegalStateException("No event ID?")))(DBIO.successful)
+      pollOption <- eventPollRepository.getByIdAction(pollID)
+      poll <- pollOption.fold(DBIO.failed(new IllegalStateException("No PollID")))(DBIO.successful)
+      pollOptions <- pollOptionRepository.getByPollIdAction(pollID)
+      winnerRatio = pollOptions.flatMap(po => po.optionId.map(oid => oid -> 1.0f/(po.confidenceRatio * (1+0.05)))).toMap
+      sumConfidenceByOption <- pollVoteRepository.sumConfidenceByOption(pollID)
+      votes <- pollVoteRepository.getByPollIdAction(pollID)
+
+      // Filter the winning votes
+
+      // Use foldLeft to process transactions sequentially while maintaining transaction integrity
+      transactionMessages <- votes.foldLeft[DBIO[List[String]]](DBIO.successful(List.empty)) {
+        case (accDBIO, singleVote) =>
+          for {
+            acc <- accDBIO
+            numerator = event.currentConfidenceAmount - sumConfidenceByOption.getOrElse(singleVote.optionId, 0)
+            denominator = sumConfidenceByOption.getOrElse(singleVote.optionId, 0)*(winnerRatio.getOrElse(singleVote.optionId, BigDecimal(1.0)) - 1.0)
+            ratio = numerator*1.0 / denominator
+            newAmount = (ratio*singleVote.confidenceAmount).toInt
+            returnAmount = singleVote.confidenceAmount - newAmount
+            _ <- if(returnAmount>0) transferConfidenceVoteStreamer(event, singleVote.userId, -returnAmount, "BALANCE") >> pollVoteRepository.updateConfidenceAmountAction(singleVote.voteId.get, newAmount) else DBIO.successful(true)
+            //paymentAmount = -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt
+            //result <- transferConfidenceVoteStreamer(event, singleVote.userId, paymentAmount, "PAY")
+            message = s"From ${singleVote.userId} balancing: $returnAmount"
+          } yield acc :+ message
+      }
+    }yield{
+      // Logging done outside the yield to avoid potential issues
+      true
+    })
+  }
+  def closeEvent(eventID: Int): Future[List[Boolean]] = {
+    val completeCloseEvents = for{
+      _ <- streamerEventRepository.closeEventAction(eventID)
+      polls <- eventPollRepository.getByEventIdAction(eventID)
+      transactionMessages <- polls.foldLeft[DBIO[List[Boolean]]](DBIO.successful(List.empty)) {
+        case (accDBIO, singlePoll) =>
+          for {
+            acc <- accDBIO
+            balanced <- singlePoll.pollId.fold(DBIO.successful(true))(pollID =>
+              println(f"balancing PollAction: ${pollID}")
+              {balancePollAction(eventID, pollID)})
+          } yield acc :+ balanced
+      }
+    }yield{
+      transactionMessages
+    }
+    db.run(completeCloseEvents.transactionally)
   }
 }

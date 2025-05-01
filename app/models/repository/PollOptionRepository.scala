@@ -67,9 +67,15 @@ class PollOptionRepository @Inject()(
    * Get all options for a poll
    */
   def getByPollId(pollId: Int): Future[Seq[PollOption]] = db.run {
-    pollOptionsTable.filter(_.pollId === pollId).result
+    getByPollIdAction(pollId)
   }
-  
+
+  /**
+   * Action Get all options for a poll
+   */
+  def getByPollIdAction(pollId: Int): DBIO[Seq[PollOption]] =
+    pollOptionsTable.filter(_.pollId === pollId).result
+
   /**
    * Update an option
    */

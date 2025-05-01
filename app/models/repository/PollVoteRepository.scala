@@ -102,6 +102,13 @@ class PollVoteRepository @Inject()(
   def getById(voteId: Int): Future[Option[PollVote]] = db.run {
     pollVotesTable.filter(_.voteId === voteId).result.headOption
   }
+
+  /**
+   * Get a vote by ID
+   */
+  def updateConfidenceAmountAction(voteId: Int, newConfidenceAmount: Int): DBIO[Int] =
+    pollVotesTable.filter(_.voteId === voteId).map(_.confidenceAmount).update(newConfidenceAmount)
+
   
   /**
    * Get all votes for a poll
@@ -136,105 +143,6 @@ class PollVoteRepository @Inject()(
       .exists
       .result
   }
-  
-  /**
-   * Delete a vote and update the event's confidence amount
-   */
-  def delete(voteId: Int): Future[Int] = {
-    // Transaction to delete vote and update event confidence amount
-    val transactionAction = for {
-      // Get the vote to be deleted
-      voteOpt <- pollVotesTable.filter(_.voteId === voteId).result.headOption
-      
-      // Process if vote exists
-      result <- voteOpt match {
-        case Some(vote) =>
-          for {
-            // Get the associated event poll
-            eventPollOpt <- eventPollsTable.filter(_.pollId === vote.pollId).result.headOption
-            
-            // Delete the vote
-            deleteResult <- pollVotesTable.filter(_.voteId === voteId).delete
-            
-            // Update the event's confidence if poll and event exist
-            updateResult <- eventPollOpt match {
-              case Some(eventPoll) =>
-                // First get the current confidence amount
-                streamerEventsTable
-                  .filter(_.eventId === eventPoll.eventId)
-                  .map(_.currentConfidenceAmount)
-                  .result
-                  .headOption
-                  .flatMap {
-                    case Some(currentAmount) =>
-                      // Then update with the reduced total
-                      val newAmount = math.max(0, currentAmount - vote.confidenceAmount) // Ensure non-negative
-                      streamerEventsTable
-                        .filter(_.eventId === eventPoll.eventId)
-                        .map(e => (e.currentConfidenceAmount, e.updatedAt))
-                        .update((newAmount, Instant.now()))
-                    case None =>
-                      DBIO.successful(0) // No event found
-                  }
-              case None =>
-                DBIO.successful(0) // No poll found
-            }
-          } yield deleteResult
-          
-        case None =>
-          DBIO.successful(0) // Vote not found
-      }
-    } yield result
-    
-    db.run(transactionAction.transactionally)
-  }
-  
-  /**
-   * Delete all votes for a poll and update the event's confidence amount
-   */
-  def deleteByPollId(pollId: Int): Future[Int] = {
-    // Transaction to delete votes and update event confidence amount
-    val transactionAction = for {
-      // Get the sum of confidence amounts to subtract
-      confidenceSum <- pollVotesTable
-        .filter(_.pollId === pollId)
-        .map(_.confidenceAmount)
-        .sum
-        .result
-      
-      // Get the associated event poll
-      eventPollOpt <- eventPollsTable.filter(_.pollId === pollId).result.headOption
-      
-      // Delete all votes for the poll
-      deleteResult <- pollVotesTable.filter(_.pollId === pollId).delete
-      
-      // Update the event's confidence if poll and event exist and there were votes
-      updateResult <- (eventPollOpt, confidenceSum) match {
-        case (Some(eventPoll), Some(sum)) if sum > 0 =>
-          // First get the current confidence amount
-          streamerEventsTable
-            .filter(_.eventId === eventPoll.eventId)
-            .map(_.currentConfidenceAmount)
-            .result
-            .headOption
-            .flatMap {
-              case Some(currentAmount) =>
-                // Then update with the reduced total
-                val newAmount = math.max(0, currentAmount - sum) // Ensure non-negative
-                streamerEventsTable
-                  .filter(_.eventId === eventPoll.eventId)
-                  .map(e => (e.currentConfidenceAmount, e.updatedAt))
-                  .update((newAmount, Instant.now()))
-              case None =>
-                DBIO.successful(0) // No event found
-            }
-        case _ =>
-          DBIO.successful(0) // No poll found or no confidence to subtract
-      }
-    } yield deleteResult
-    
-    db.run(transactionAction.transactionally)
-  }
 
   /**
    * Count votes for each option in a poll
@@ -252,7 +160,7 @@ class PollVoteRepository @Inject()(
    * Sum the confidence amounts for each option in a poll
    * Returns a map of optionId -> total confidence
    */
-  def sumConfidenceByOption(pollId: Int): Future[Map[Int, Int]] = db.run {
+  def sumConfidenceByOption(pollId: Int): DBIO[Map[Int, Int]] =  {
     pollVotesTable
       .filter(_.pollId === pollId)
       .groupBy(_.optionId)

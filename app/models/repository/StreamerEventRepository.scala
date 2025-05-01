@@ -122,15 +122,12 @@ class StreamerEventRepository @Inject()(
   /**
    * Close an event (set end time)
    */
-  def closeEvent(eventId: Int): Future[Int] = {
+  def closeEventAction(eventId: Int): DBIO[Int] = {
     val now = Instant.now()
-    
-    db.run {
       streamerEventsTable
         .filter(e => e.eventId === eventId)
         .map(e => (e.endTime, e.updatedAt))
         .update((Some(now), now))
-    }
   }
   
   /**
