@@ -9,6 +9,7 @@ import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateR
 import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
 
 import java.time.Instant
+import java.time.format.DateTimeFormatter
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
@@ -133,7 +134,8 @@ object YoutubeLiveChatPollingActor {
                 val displayName = (item \ "authorDetails" \ "displayName").as[String]
                 val messageText = (item \ "snippet" \ "displayMessage").as[String]
                 val publishedAtStr = (item \ "snippet" \ "publishedAt").as[String]
-                val publishedAt = Instant.parse(publishedAtStr)
+                val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                val publishedAt = Instant.from(formatter.parse(publishedAtStr))
 
                 YoutubeChatMessage(
                   messageId = None, // Auto-generated
