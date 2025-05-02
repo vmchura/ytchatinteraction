@@ -5,6 +5,7 @@ import play.api.mvc.*
 import play.api.data.*
 import play.api.data.Forms.*
 import services.{ActiveLiveStream, YoutubeLiveChatServiceTyped}
+import play.api.i18n.{I18nSupport, MessagesApi}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -13,38 +14,43 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 @Singleton
 class YoutubeFrontendController @Inject()(
-  cc: MessagesControllerComponents,
+  val scc: SilhouetteControllerComponents,
   youtubeLiveChatService: YoutubeLiveChatServiceTyped,
   activeLiveStreamService: ActiveLiveStream
-)(implicit ec: ExecutionContext) extends MessagesAbstractController(cc) {
+)(implicit ec: ExecutionContext) extends SilhouetteController(scc) with I18nSupport with RequestMarkerContext {
 
   // Form for stream ID input
-  val streamIdForm = Form(
+  val streamIdForm: Form[StreamIdForm] = Form(
     mapping(
       "streamId" -> nonEmptyText
     )(StreamIdForm.apply)(nn => Some(nn.streamId))
   )
   
   // Form for direct live chat ID input
-  val liveChatIdForm = Form(
+  private val liveChatIdForm: Form[LiveChatIdForm] = Form(
     mapping(
       "liveChatId" -> nonEmptyText,
       "channelID" -> nonEmptyText,
       "title" -> nonEmptyText,
-    )(LiveChatIdForm.apply)(nn => Some(nn.liveChatId, nn.channelID, nn.title))
+    )(LiveChatIdForm.apply)(nn => Some((nn.liveChatId, nn.channelID, nn.title)))
   )
 
   /**
    * Show the form to enter a YouTube Stream ID
    */
-  def showStreamIdForm(): Action[AnyContent] = Action { implicit request: MessagesRequest[AnyContent] =>
+  def showStreamIdForm: Action[AnyContent] = silhouette.SecuredAction { implicit request =>
+    // Create a MessagesRequest from the SecuredRequest
+    implicit val messagesRequest: MessagesRequest[AnyContent] = new MessagesRequest[AnyContent](request, messagesApi)
     Ok(views.html.streamId(streamIdForm))
   }
   
   /**
    * Process the stream ID form and retrieve the live chat ID
    */
-  def getLiveChatId(): Action[AnyContent] = Action.async { implicit request: MessagesRequest[AnyContent] =>
+  def getLiveChatId: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    // Create a MessagesRequest from the SecuredRequest
+    implicit val messagesRequest: MessagesRequest[AnyContent] = new MessagesRequest[AnyContent](request, messagesApi)
+
     streamIdForm.bindFromRequest().fold(
       formWithErrors => {
         // Form has errors, redisplay the form with error messages
@@ -68,7 +74,10 @@ class YoutubeFrontendController @Inject()(
   /**
    * Start monitoring a live chat
    */
-  def startMonitoring(): Action[AnyContent] = Action.async { implicit request: MessagesRequest[AnyContent] =>
+  def startMonitoring: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    // Create a MessagesRequest from the SecuredRequest
+    implicit val messagesRequest: MessagesRequest[AnyContent] = new MessagesRequest[AnyContent](request, messagesApi)
+
     liveChatIdForm.bindFromRequest().fold(
       formWithErrors => {
         // Form has errors, redirect to the input form
@@ -87,7 +96,10 @@ class YoutubeFrontendController @Inject()(
   /**
    * Stop monitoring a live chat
    */
-  def stopMonitoring(liveChatId: String): Action[AnyContent] = Action { implicit request: MessagesRequest[AnyContent] =>
+  def stopMonitoring(liveChatId: String): Action[AnyContent] = silhouette.SecuredAction { implicit request =>
+    // Create a MessagesRequest from the SecuredRequest
+    implicit val messagesRequest: MessagesRequest[AnyContent] = new MessagesRequest[AnyContent](request, messagesApi)
+
     youtubeLiveChatService.stopMonitoringLiveChat(liveChatId)
     Redirect(routes.YoutubeFrontendController.showStreamIdForm())
       .flashing("success" -> s"Stopped monitoring live chat: $liveChatId")
