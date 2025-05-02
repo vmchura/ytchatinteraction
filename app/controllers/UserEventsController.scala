@@ -120,8 +120,8 @@ class UserEventsController @Inject()(
   private def originMatches(origin: String): Boolean = {
     try {
       val url = new URI(origin)
-      (url.getHost == "localhost" || url.getHost == "evolutioncomplete.com") &&
-        (url.getPort match { case 9000 | 19001 => true; case _ => false })
+      (url.getHost == "localhost" || url.getHost == "evolutioncomplete.com" || url.getHost == "91.99.13.219") &&
+        (url.getPort match { case 9000 | 5000 | 19001 => true; case _ => false })
     } catch {
       case e: Exception => false
     }
