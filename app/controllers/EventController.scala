@@ -148,7 +148,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
 
   // Stop accepting new votes for an event
   def endEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    pollService.closeEvent(eventId).map { result =>
+    pollService.endEvent(eventId).map { result =>
       if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
           .flashing("success" -> "Stopped accepting new votes for this event")

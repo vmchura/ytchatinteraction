@@ -3,7 +3,7 @@
 # ~~~~
 
 # Home page
-GET     /                           controllers.HomeController.home()
+GET     /                           controllers.HomeController.index()
 GET     /streamerevents                       controllers.HomeController.streamerevents()
 
 # Event management

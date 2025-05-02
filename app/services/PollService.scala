@@ -271,4 +271,25 @@ class PollService @Inject()(
     }
     db.run(completeCloseEvents.transactionally)
   }
+
+  def endEvent(eventID: Int): Future[List[Boolean]] = {
+    val completeCloseEvents = for {
+      _ <- streamerEventRepository.endEventAction(eventID)
+      polls <- eventPollRepository.getByEventIdAction(eventID)
+      transactionMessages <- polls.foldLeft[DBIO[List[Boolean]]](DBIO.successful(List.empty)) {
+        case (accDBIO, singlePoll) =>
+          for {
+            acc <- accDBIO
+            balanced <- singlePoll.pollId.fold(DBIO.successful(true))(pollID =>
+              println(f"balancing PollAction: ${pollID}")
+              {
+                balancePollAction(eventID, pollID)
+              })
+          } yield acc :+ balanced
+      }
+    } yield {
+      transactionMessages
+    }
+    db.run(completeCloseEvents.transactionally)
+  }
 }

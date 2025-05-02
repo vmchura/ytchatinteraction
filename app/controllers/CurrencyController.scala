@@ -157,7 +157,7 @@ class CurrencyController @Inject()(
               }
             case (None, _) =>
               Future.successful(
-                Redirect(routes.HomeController.home())
+                Redirect(routes.HomeController.index())
                   .flashing("error" -> s"Streamer with channel ID $channelId not found")
               )
             case (_, None) =>

@@ -34,24 +34,16 @@ class HomeController @Inject()(val scc: SilhouetteControllerComponents,
 
   // We're now using ChatService for WebSocket management instead of MergeHub/BroadcastHub
 
-  def index(): Action[AnyContent] = silhouette.UserAwareAction.async { implicit request =>
+  def index(): Action[AnyContent] = silhouette.UserAwareAction { implicit request =>
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
-    Future.successful {
-      request.identity match {
-        case Some(user) => 
-          // User is logged in, show dashboard with user information
-          Ok(views.html.home(webSocketUrl, Some(user)))
-        case None => 
-          // User is not logged in, show welcome/landing page
-          Ok(views.html.index(None))
-      }
+    request.identity match {
+      case Some(user) =>
+        // User is logged in, show dashboard with user information
+        Redirect(routes.UserEventsController.userEvents())
+      case None =>
+        // User is not logged in, show welcome/landing page
+        Ok(views.html.welcome())
     }
-  }
-
-  // Old handler - keeping for backward compatibility if needed
-  def home: Action[AnyContent] = silhouette.UserAwareAction { implicit request =>
-    val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
-    Ok(views.html.home(webSocketUrl, request.identity))
   }
 
   def streamerevents(): WebSocket = {

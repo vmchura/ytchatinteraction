@@ -1,0 +1,29 @@
+@()(implicit messages: Messages, flash: Flash)
+
+@main("Bienvenido a Streamers Evolution Complete", None) {
+    <div class="container">
+        <header>
+            <h1>Bienvenido a Evolution Complete</h1>
+            <p>Conecta con streamers y participa en eventos y encuestas en tiempo real.</p>
+        </header>
+        
+        <section>
+            <article>
+                <h2>¿Qué es Streamers Evolution Complete?</h2>
+                <p>Esta plataforma te permite participar en eventos y encuestas organizados por streamers. Interactúa directamente con tus streamers favoritos a través de esta aplicación.</p>
+                
+                <a href="@routes.AuthController.authenticate("youtube")" role="button" class="primary">Comenzar con YouTube</a>
+            </article>
+            
+            <article>
+                <h2>Características</h2>
+                <ul>
+                    <li>Participación en eventos de streamers</li>
+                    <li>Votación en encuestas en tiempo real</li>
+                    <li>Acumulación de puntos y recompensas</li>
+                    <li>Notificaciones de eventos nuevos</li>
+                </ul>
+            </article>
+        </section>
+    </div>
+}
