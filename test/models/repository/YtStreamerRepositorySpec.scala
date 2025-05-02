@@ -2,7 +2,8 @@ package models.repository
 
 import models.YtStreamer
 import models.repository.{UserRepository, YtStreamerRepository}
-import org.scalatest.BeforeAndAfterEach
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{BeforeAndAfterEach, RecoverMethods}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
 import org.scalatestplus.play.guice.GuiceOneAppPerSuite
@@ -18,7 +19,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
 
-class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injecting with BeforeAndAfterEach with MockitoSugar {
+class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injecting with BeforeAndAfterEach with MockitoSugar with RecoverMethods with ScalaFutures {
 
   // We'll use an in-memory H2 database for testing
   override def fakeApplication(): Application = {
@@ -336,11 +337,12 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       
       // Increment balance for a non-existent streamer
       val incrementBalanceF = repository.incrementBalance("NonExistentChannelId", 5)
-      val incrementBalance = Await.result(incrementBalanceF, 5.seconds)
-      
+
       // Since incrementBalance creates the action transactionally,
       // it should update 0 rows for a non-existent streamer
-      incrementBalance must be(0)
+      recoverToExceptionIf[IllegalStateException] {
+        incrementBalanceF
+      }.futureValue
     }
     
     "handle delete for non-existent YouTube streamer" in {

@@ -1,6 +1,6 @@
 package services
 
-import models.StreamerEvent
+import models.{StreamerEvent, UserStreamerStateLog}
 import models.repository.{EventPollRepository, PollOptionRepository, PollVoteRepository, StreamerEventRepository, UserStreamerStateLogRepository, UserStreamerStateRepository, YtStreamerRepository}
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.*
@@ -65,11 +65,16 @@ class PollServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       mockPollOptionRepository, 
       mockPollVoteRepository,
       mockUserStreamerStateRepository,
-      mockDbConfigProvider
+      mockDbConfigProvider,
+      mockuserStreamerStateLogRepository,
+      mockstreamerEventRepository,
+      mockytStreamerRepository
     )
     when(mockDbConfigProvider.get[JdbcProfile]).thenReturn(mockDbConfig)
     when(mockDbConfig.profile).thenReturn(mockJDBProfile)
     when(mockDbConfig.db).thenReturn(db)
+    when(mockDbConfig.db).thenReturn(db)
+    when(mockuserStreamerStateLogRepository.createAction(any[UserStreamerStateLog])).thenReturn(DBIO.successful(UserStreamerStateLog(Some(1),Some(testUserId), Some(testStreamChannelId), testEventId, 0, "X")))
 
     // Set up the mock repository with the mock database
 

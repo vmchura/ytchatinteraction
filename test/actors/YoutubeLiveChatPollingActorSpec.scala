@@ -148,6 +148,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
           --- !Downs
 
           --- Remove test data
+          DELETE FROM user_streamer_state_log WHERE 1 = 1;
           DELETE FROM user_streamer_state WHERE 1 = 1;
           DELETE FROM yt_streamer WHERE 1 = 1;
           DELETE FROM poll_options WHERE 1=1;
