@@ -14,6 +14,12 @@ server.pid
 *.eml
 /dist/
 .cache
-conf/production.conf
 .idea/
 .bsp/
+
+# Ignore sensitive configuration files
+conf/production.conf
+conf/local.conf
+conf/secrets.conf
+*.env
+.env*
