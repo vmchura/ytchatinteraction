@@ -147,14 +147,14 @@ class PollService @Inject()(
       winningVotes = votes.filter(singleVote => winnerOption.optionId.exists(_ == singleVote.optionId))
       
       // Use foldLeft to process transactions sequentially while maintaining transaction integrity
-      transactionMessages <- winningVotes.foldLeft[DBIO[List[String]]](DBIO.successful(List.empty)) { 
+      transactionMessages <- winningVotes.foldLeft[DBIO[Boolean]](DBIO.successful(true)) {
         case (accDBIO, singleVote) =>
           for {
             acc <- accDBIO
+            _ <- if(acc) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not paying fine"))
             paymentAmount = -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt
             result <- transferConfidenceVoteStreamer(event, singleVote.userId, paymentAmount, "PAY")
-            message = s"From ${singleVote.userId} paying: $paymentAmount"
-          } yield acc :+ message
+          } yield acc && result
       }
       
       currentBalanceEventOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
@@ -163,7 +163,7 @@ class PollService @Inject()(
       _ <- transferFromChannelToEvent(event.channelId, eventID, -currentBalanceEvent)
     }yield{
       // Logging done outside the yield to avoid potential issues
-      true
+      transactionMessages
     })
   }
   def spreadPollConfidence(eventID: Int, pollID: Int): Future[Boolean] = {
