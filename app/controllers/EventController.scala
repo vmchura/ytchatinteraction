@@ -47,7 +47,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
 
   // Event management page (now shows the rival teams form by default)
-  def eventManagement: Action[AnyContent] = Action.async { implicit request =>
+  def eventManagement: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     // Get user's streamers, all events, and poll options for active events
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
     for {
@@ -72,7 +72,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         eventWithPollForm,
         validEvents,
         streamers,
-        User(1, "Vicc"),
+        request.identity,
         eventPollMap,
         pollOptionsMap,
         activeLiveStream.list(),
@@ -82,7 +82,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
   
   // Full event creation form
-  def fullEventForm: Action[AnyContent] = Action.async { implicit request =>
+  def fullEventForm: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     // Get user's streamers and all events
     for {
       streamers <- ytStreamerRepository.getAll()
@@ -92,13 +92,13 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         eventWithPollForm,
         events,
         streamers,
-        User(1, "Vicc")
+        request.identity
       ))
     }
   }
 
   // Create a new event with a poll
-  def createEvent: Action[AnyContent] = Action.async { implicit request =>
+  def createEvent: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     forms.Forms.eventWithPollForm.bindFromRequest().fold(
       formWithErrors => {
         for {
@@ -109,7 +109,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
             formWithErrors,
             events,
             streamers,
-            User(1, "Vicc")
+            request.identity
           ))
         }
       },
@@ -147,7 +147,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
 
   // Stop accepting new votes for an event
-  def endEvent(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
+  def endEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     pollService.closeEvent(eventId).map { result =>
       if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
@@ -165,7 +165,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
   
   // Close an event without setting a winner
-  def closeEvent(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
+  def closeEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     pollService.closeEvent(eventId).map { result =>
       if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
@@ -183,17 +183,17 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
 
   // Get all event history (including ended events)
-  def eventHistory: Action[AnyContent] = Action.async { implicit request =>
+  def eventHistory: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
       // Get all events including those that are not active
       events <- streamerEventRepository.list()
     } yield {
-      Ok(views.html.eventHistory(events, User(1, "Vicc")))
+      Ok(views.html.eventHistory(events, request.identity))
     }
   }
 
   // Show form to select winner and close an event
-  def selectWinnerForm(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
+  def selectWinnerForm(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
       eventOpt <- streamerEventRepository.getById(eventId)
       polls <- eventPollRepository.getByEventId(eventId)
@@ -210,7 +210,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
             event,
             polls.head,
             options,
-            User(1, "Vicc")
+            request.identity
           ))
         case Some(_) =>
           Redirect(routes.EventController.eventManagement())
@@ -223,7 +223,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
   }
 
   // Process winner selection and close the event
-  def setWinnerAndClose(eventId: Int): Action[AnyContent] = Action.async { implicit request =>
+  def setWinnerAndClose(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     forms.Forms.setWinnerForm.bindFromRequest().fold(
       formWithErrors => {
         for {
@@ -242,7 +242,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                 event,
                 polls.head,
                 options,
-                User(1, "Vicc")
+                request.identity
               ))
             case _ =>
               Redirect(routes.EventController.eventManagement())
