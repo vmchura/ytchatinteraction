@@ -301,7 +301,7 @@ object YoutubeLiveChatPollingActor {
       // Extract the published time
       val publishedAtStr = (message \ "snippet" \ "publishedAt").as[String]
       val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
-      val publishedAt = Instant.parse(publishedAtStr)
+      val publishedAt = Instant.from(formatter.parse(publishedAtStr))
 
       // Only process messages that were published after we started monitoring
       if (publishedAt.isAfter(startTime)) {
