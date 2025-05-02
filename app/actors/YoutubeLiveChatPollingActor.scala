@@ -159,15 +159,31 @@ object YoutubeLiveChatPollingActor {
                 case Failure(ex) => println(s"Failed to save chat messages: ${ex.getMessage}")
               }
             }
+            val touchUser = chatMessages.foldLeft[Future[List[YtUser]]](Future.successful(List.empty)) {
+              case (accFuture, singleMessage) =>
+                for {
+                  acc <- accFuture
+                  registeredUser <- registerChatUser(singleMessage.authorChannelId, singleMessage.authorDisplayName, userRepository, ytUserRepository)
+                  relationExists <- userStreamerStateRepository.exists(registeredUser.userId, channelID)
+                  _ <- if (!relationExists) userStreamerStateRepository.create(registeredUser.userId, channelID, 0) else Future.successful(())
+                } yield acc :+ registeredUser
+            }
+
 
             // Get the event poll, but handle the result in the actor context
             // Use pipeTo pattern to send the result back to self
-            pollService.getPollForRecentEvent(channelID).map {
-              case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, channelID, startTime, eventPoll)
-              case None => NoPollAvailable(liveChatId)
-            }.recover {
+            val commandByMessage = for {
+              _ <- touchUser
+              recentPoll <- pollService.getPollForRecentEvent(channelID)
+            }yield{
+              recentPoll match {
+                case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, channelID, startTime, eventPoll)
+                case None => NoPollAvailable(liveChatId)
+              }
+            }
+
+            commandByMessage.recover {
               case ex =>
-                // Log error but continue with next poll
                 NoPollAvailable(liveChatId)
             }.foreach(context.self ! _)
 
