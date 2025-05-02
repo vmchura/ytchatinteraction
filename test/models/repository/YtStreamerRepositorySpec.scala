@@ -232,7 +232,7 @@ class YtStreamerRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       Await.result(repository.create(testChannelId1, Some(testUserId1), initialBalance), 5.seconds)
       
       // Increment the balance by default amount (1)
-      val incrementResultF = repository.incrementBalance(testChannelId1)
+      val incrementResultF = repository.incrementBalance(testChannelId1, 1)
       val incrementResult = Await.result(incrementResultF, 5.seconds)
       
       // Verify the increment worked

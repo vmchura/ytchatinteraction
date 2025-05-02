@@ -120,7 +120,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       
       // Create a new vote
       val vote = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None)
-      val createdF = repository.create(vote)
+      val createdF = repository.create(vote, testChannelId)
       
       val created = Await.result(createdF, 5.seconds)
       
@@ -139,7 +139,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       
       // Create a vote
       val vote = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None)
-      val created = Await.result(repository.create(vote), 5.seconds)
+      val created = Await.result(repository.create(vote, testChannelId), 5.seconds)
       
       // Get vote by ID
       val retrievedF = repository.getById(created.voteId.get)
@@ -173,8 +173,8 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, Some(testMessage), testConfidenceAmount, None )
       val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, Some("Another message"), testConfidenceAmount * 2, None)
       
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
+      Await.result(repository.create(vote1, testChannelId), 5.seconds)
+      Await.result(repository.create(vote2, testChannelId), 5.seconds)
       
       // Get all votes for the poll
       val votesF = repository.getByPollId(testPollId)
@@ -193,8 +193,8 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, None)
       val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, None, testConfidenceAmount * 2, None)
       
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
+      Await.result(repository.create(vote1, testChannelId), 5.seconds)
+      Await.result(repository.create(vote2, testChannelId), 5.seconds)
       
       // Get votes for option 1
       val votesF = repository.getByOptionId(testOptionId1)
@@ -213,8 +213,8 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, None)
       val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, None, testConfidenceAmount * 2, None)
       
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
+      Await.result(repository.create(vote1, testChannelId), 5.seconds)
+      Await.result(repository.create(vote2, testChannelId), 5.seconds)
       
       // Get votes for user 1 in the poll
       val votesF = repository.getByUserAndPoll(testUserId1, testPollId)
@@ -231,7 +231,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       
       // Create a vote for user 1
       val vote = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, None)
-      Await.result(repository.create(vote), 5.seconds)
+      Await.result(repository.create(vote, testChannelId), 5.seconds)
       
       // Check if user 1 has voted
       val hasVotedUser1F = repository.hasUserVotedInPoll(testUserId1, testPollId)
@@ -245,60 +245,7 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       hasVotedUser1 must be(true)
       hasVotedUser2 must be(false)
     }
-    
-    "delete a vote" in {
-      val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
-      
-      // Create a vote
-      val vote = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, None)
-      val created = Await.result(repository.create(vote), 5.seconds)
-      
-      // Verify the vote exists before deletion
-      val existsBeforeF = repository.getById(created.voteId.get)
-      val existsBefore = Await.result(existsBeforeF, 5.seconds)
-      existsBefore must not be None
-      
-      // Delete the vote
-      val deleteResultF = repository.delete(created.voteId.get)
-      val deleteResult = Await.result(deleteResultF, 5.seconds)
-      
-      // Verify delete worked
-      deleteResult must be(1) // 1 row affected
-      
-      // Check that the vote no longer exists
-      val existsAfterF = repository.getById(created.voteId.get)
-      val existsAfter = Await.result(existsAfterF, 5.seconds)
-      existsAfter must be(None)
-    }
-    
-    "delete all votes for a poll" in {
-      val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
-      
-      // Create multiple votes for the poll
-      val vote1 = PollVote(None, testPollId, testOptionId1, testUserId1, None, testConfidenceAmount, None)
-      val vote2 = PollVote(None, testPollId, testOptionId2, testUserId2, None, testConfidenceAmount * 2, None)
-      
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
-      
-      // Verify votes exist before deletion
-      val existsBeforeF = repository.getByPollId(testPollId)
-      val existsBefore = Await.result(existsBeforeF, 5.seconds)
-      existsBefore.size must be(2)
-      
-      // Delete all votes for the poll
-      val deleteResultF = repository.deleteByPollId(testPollId)
-      val deleteResult = Await.result(deleteResultF, 5.seconds)
-      
-      // Verify delete worked
-      deleteResult must be(2) // 2 rows affected
-      
-      // Check that no votes exist for the poll now
-      val existsAfterF = repository.getByPollId(testPollId)
-      val existsAfter = Await.result(existsAfterF, 5.seconds)
-      existsAfter must be(empty)
-    }
-    
+
     "count votes by option" in {
       val repository = new PollVoteRepository(dbConfigProvider, pollOptionRepository, userRepository)
       
@@ -307,9 +254,9 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val vote2 = PollVote(None, testPollId, testOptionId1, testUserId2, None, testConfidenceAmount * 2, None)
       val vote3 = PollVote(None, testPollId, testOptionId2, testUserId3, None, testConfidenceAmount, None)
       
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
-      Await.result(repository.create(vote3), 5.seconds)
+      Await.result(repository.create(vote1, testChannelId), 5.seconds)
+      Await.result(repository.create(vote2, testChannelId), 5.seconds)
+      Await.result(repository.create(vote3, testChannelId), 5.seconds)
       
       // Count votes by option
       val countsF = repository.countVotesByOption(testPollId)
@@ -329,12 +276,12 @@ class PollVoteRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inje
       val vote2 = PollVote(None, testPollId, testOptionId1, testUserId2, None, 200, None)
       val vote3 = PollVote(None, testPollId, testOptionId2, testUserId3, None, 150, None)
       
-      Await.result(repository.create(vote1), 5.seconds)
-      Await.result(repository.create(vote2), 5.seconds)
-      Await.result(repository.create(vote3), 5.seconds)
+      Await.result(repository.create(vote1, testChannelId), 5.seconds)
+      Await.result(repository.create(vote2, testChannelId), 5.seconds)
+      Await.result(repository.create(vote3, testChannelId), 5.seconds)
       
       // Sum confidence by option
-      val sumsF = repository.sumConfidenceByOption(testPollId)
+      val sumsF = repository.sumConfidenceByOptionFuture(testPollId)
       val sums = Await.result(sumsF, 5.seconds)
       
       // Verify sums

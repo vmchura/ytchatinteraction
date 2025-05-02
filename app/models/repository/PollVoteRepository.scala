@@ -168,6 +168,8 @@ class PollVoteRepository @Inject()(
       .result
   }.map(_.collect { case (optionId, Some(sum)) => optionId -> sum }.toMap)
 
+  def sumConfidenceByOptionFuture(pollId: Int): Future[Map[Int, Int]] = db.run(sumConfidenceByOption(pollId))
+
   // Get table query for use by other repositories
   def getTableQuery = pollVotesTable
   
