@@ -31,47 +31,5 @@
     </footer>
   </div>
 
-  <style>
-    .chat-container {
-      height: 60vh;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    
-    .chat-messages {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    
-    .chat-messages li {
-      margin-bottom: 0.75rem;
-      padding: 0.5rem 1rem;
-      border-radius: var(--border-radius);
-    }
-    
-    .chat-messages li.bg-info {
-      background-color: var(--primary-focus);
-      color: var(--primary-inverse);
-    }
-    
-    .chat-input {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      padding: 1rem;
-      background-color: var(--background-color);
-      border-top: 1px solid var(--border-color);
-    }
-    
-    main {
-      margin-bottom: 6rem; /* Make room for the fixed footer */
-    }
-  </style>
-
   <script type='text/javascript' src='@routes.Assets.versioned("javascripts/app.js")' data-url='@webSocketUrl'></script>
 }
