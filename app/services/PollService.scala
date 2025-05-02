@@ -159,7 +159,7 @@ class PollService @Inject()(
       
       currentBalanceEventOption <- streamerEventRepository.getCurrentConfidenceAmountAction(eventID)
       currentBalanceEvent <- currentBalanceEventOption.fold(DBIO.failed(new IllegalStateException("No event at closing?")))(r => DBIO.successful(r))
-      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), eventID, currentBalanceEvent, "RECOVER"))
+      _ <- userStreamerStateLogRepository.createAction(UserStreamerStateLog(None, None, Some(event.channelId), eventID, -currentBalanceEvent, "RECOVER"))
       _ <- transferFromChannelToEvent(event.channelId, eventID, -currentBalanceEvent)
     }yield{
       // Logging done outside the yield to avoid potential issues
