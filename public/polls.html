@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Polls</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .poll-box {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .poll-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .vs-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .option-left {
+            text-align: right;
+            width: 40%;
+            font-weight: bold;
+        }
+        
+        .vs {
+            width: 20%;
+            text-align: center;
+            font-weight: bold;
+            color: #ff4500;
+        }
+        
+        .option-right {
+            text-align: left;
+            width: 40%;
+            font-weight: bold;
+        }
+        
+        .confidence-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .confidence-left {
+            text-align: right;
+            width: 40%;
+        }
+        
+        .confidence-middle {
+            width: 20%;
+        }
+        
+        .confidence-right {
+            text-align: left;
+            width: 40%;
+        }
+        
+        .status-dot {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .active {
+            background-color: #4caf50;
+        }
+        
+        .inactive {
+            background-color: #f44336;
+        }
+        
+        .countdown {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+        
+        .no-polls {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="polls-container">
+            <!-- Polls will be inserted here -->
+        </div>
+        <div class="countdown">
+            Refreshing in <span id="timer">15</span> seconds
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch and display polls
+        function fetchAndDisplayPolls() {
+            fetch('/api/polls/recent')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('polls-container');
+                    container.innerHTML = '';
+                    
+                    // Filter polls with exactly 2 options
+                    const validPolls = data.filter(poll => poll.options.length === 2);
+                    
+                    if (validPolls.length === 0) {
+                        container.innerHTML = '<div class="no-polls">No polls with exactly 2 options available.</div>';
+                        return;
+                    }
+                    
+                    validPolls.forEach(poll => {
+                        const pollBox = document.createElement('div');
+                        pollBox.className = 'poll-box';
+                        
+                        // Status indicator
+                        const statusDot = document.createElement('div');
+                        statusDot.className = 'status-dot ' + (poll.isActive ? 'active' : 'inactive');
+                        pollBox.appendChild(statusDot);
+                        
+                        // Poll title
+
+                        
+                        // VS row (option texts)
+                        const vsRow = document.createElement('div');
+                        vsRow.className = 'vs-row';
+                        
+                        const optionLeft = document.createElement('div');
+                        optionLeft.className = 'option-left';
+                        optionLeft.textContent = poll.options[0].optionText;
+                        
+                        const vs = document.createElement('div');
+                        vs.className = 'vs';
+                        vs.textContent = 'VS';
+                        
+                        const optionRight = document.createElement('div');
+                        optionRight.className = 'option-right';
+                        optionRight.textContent = poll.options[1].optionText;
+                        
+                        vsRow.appendChild(optionLeft);
+                        vsRow.appendChild(vs);
+                        vsRow.appendChild(optionRight);
+                        pollBox.appendChild(vsRow);
+                        
+                        // Confidence row
+                        const confidenceRow = document.createElement('div');
+                        confidenceRow.className = 'confidence-row';
+                        
+                        const confidenceLeft = document.createElement('div');
+                        confidenceLeft.className = 'confidence-left';
+                        confidenceLeft.textContent = poll.options[0].totalConfidence;
+                        
+                        const confidenceMiddle = document.createElement('div');
+                        confidenceMiddle.className = 'confidence-middle';
+                        
+                        const confidenceRight = document.createElement('div');
+                        confidenceRight.className = 'confidence-right';
+                        confidenceRight.textContent = poll.options[1].totalConfidence;
+                        
+                        confidenceRow.appendChild(confidenceLeft);
+                        confidenceRow.appendChild(confidenceMiddle);
+                        confidenceRow.appendChild(confidenceRight);
+                        pollBox.appendChild(confidenceRow);
+                        
+                        container.appendChild(pollBox);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching polls:', error);
+                    document.getElementById('polls-container').innerHTML = 
+                        '<div class="no-polls">Error loading polls. Please try again later.</div>';
+                });
+        }
+        
+        // Initial fetch
+        fetchAndDisplayPolls();
+        
+        // Set up countdown and periodic refresh
+        let seconds = 15;
+        const timerElement = document.getElementById('timer');
+        
+        setInterval(() => {
+            seconds--;
+            timerElement.textContent = seconds;
+            
+            if (seconds <= 0) {
+                fetchAndDisplayPolls();
+                seconds = 15;
+                timerElement.textContent = seconds;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
