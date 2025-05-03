@@ -17,7 +17,7 @@ class InferUserOptionService @Inject()(ws: WSClient)(implicit ec: ExecutionConte
 
   def inferencePollResponse(eventPoll: EventPoll, options: List[PollOption], response: String): Future[Option[(PollOption, Int)]] = {
     Future.successful(inferPollResponseWithNLP(eventPoll.pollQuestion, options.map(_.optionText), response)).map{ r =>
-      println(s"${eventPoll.pollQuestion}[${options.map(_.optionText).mkString(",")}]: $r")
+      println(s"${eventPoll.pollQuestion}[${options.map(_.optionText).mkString(",")}]: ${response} => $r")
       r
     }.map{
       case Some((responseOption, confidence)) => options.find(_.optionText.equals(responseOption)).map(po => (po, confidence))
