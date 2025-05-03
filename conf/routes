@@ -15,6 +15,7 @@ GET     /events/:id/select-winner   controllers.EventController.selectWinnerForm
 POST    /events/:id/select-winner   controllers.EventController.setWinnerAndClose(id: Int)
 GET     /events/history             controllers.EventController.eventHistory()
 GET     /events/full-form           controllers.EventController.fullEventForm()
+GET     /api/polls/recent           controllers.EventController.recentPolls()
 
 
 # Authentication routes

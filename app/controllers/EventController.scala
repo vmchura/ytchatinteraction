@@ -2,6 +2,7 @@ package controllers
 
 import java.net.URI
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.*
 import models.*
 import models.repository.*
@@ -15,6 +16,7 @@ import play.api.i18n.I18nSupport
 import play.api.data.*
 import play.api.data.Forms.*
 import forms.Forms.*
+import play.api.libs.json._
 import services.{ActiveLiveStream, ChatService, PollService, EventUpdateService}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,7 +36,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                 actorSystem: ActorSystem,
                                 activeLiveStream: ActiveLiveStream,
                                 chatService: ChatService,
-                                eventUpdateService: EventUpdateService)
+                                eventUpdateService: EventUpdateService,
+                                pollVoteRepository: PollVoteRepository)
                                (implicit mat: Materializer,
                                 executionContext: ExecutionContext,
                                 webJarsUtil: org.webjars.play.WebJarsUtil)
@@ -282,6 +285,90 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     )
   }
 
-
-
+  /**
+   * API endpoint that returns all current polls and polls from the past 24 hours
+   * in a JSON format with only essential data.
+   */
+  def recentPolls: Action[AnyContent] = Action.async { implicit request =>
+    // Define the cutoff time (24 hours ago)
+    val cutoffTime = Instant.now().minus(24, ChronoUnit.HOURS)
+    
+    // Get all active events and events in the last 24 hours
+    val eventsQuery = for {
+      // Get all events
+      allEvents <- streamerEventRepository.list()
+      
+      // Filter to get only active events or those created in last 24 hours
+      recentEvents = allEvents.filter(event => 
+        (event.createdAt.isDefined && event.createdAt.get.isAfter(cutoffTime))
+      )
+      
+      // For each event, get its poll and options
+      eventPollsWithOptions <- Future.sequence(
+        recentEvents.flatMap(_.eventId).map { eventId =>
+          for {
+            // Get polls for this event
+            polls <- eventPollRepository.getByEventId(eventId)
+            
+            // For each poll, get its options and votes
+            pollsWithOptions <- Future.sequence(
+              polls.flatMap(_.pollId).map { pollId =>
+                for {
+                  options <- pollOptionRepository.getByPollId(pollId)
+                  votes <- pollVoteRepository.getByPollId(pollId)
+                  
+                  // Group votes by option and sum confidence
+                  votesByOption = votes.groupBy(_.optionId)
+                  confidenceSumByOption = votesByOption.map { 
+                    case (optionId, votes) => 
+                      optionId -> votes.map(_.confidenceAmount).sum 
+                  }
+                  
+                  // Combine options with their total confidence
+                  optionsWithConfidence = options.map { option =>
+                    option.optionId.map { optionId =>
+                      PollOptionData(
+                        optionText = option.optionText,
+                        optionProbability = option.confidenceRatio,
+                        totalConfidence = confidenceSumByOption.getOrElse(optionId, 0)
+                      )
+                    }.getOrElse(
+                      PollOptionData(
+                        optionText = option.optionText,
+                        optionProbability = option.confidenceRatio,
+                        totalConfidence = 0
+                      )
+                    )
+                  }
+                } yield (pollId, polls, optionsWithConfidence)
+              }
+            )
+            
+            // Map event to a list of poll data objects
+            eventData = polls.flatMap { poll =>
+              pollsWithOptions.find(_._1 == poll.pollId.getOrElse(-1)).map { 
+                case (_, pollList, options) =>
+                  val matchingEvent = recentEvents.find(_.eventId.contains(eventId)).get
+                  PollData(
+                    title = matchingEvent.eventName,
+                    isActive = matchingEvent.isActive,
+                    hasNoEndTime = matchingEvent.endTime.isEmpty,
+                    options = options
+                  )
+              }
+            }
+          } yield eventData
+        }
+      )
+    } yield eventPollsWithOptions.flatten
+    
+    // Return as JSON
+    eventsQuery.map { pollDataList =>
+      Ok(Json.toJson(pollDataList))
+    }.recover {
+      case e: Exception =>
+        logger.error("Error retrieving recent polls", e)
+        InternalServerError(Json.obj("error" -> s"Error retrieving polls: ${e.getMessage}"))
+    }
+  }
 }
