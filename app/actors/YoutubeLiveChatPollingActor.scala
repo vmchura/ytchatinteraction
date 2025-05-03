@@ -191,7 +191,7 @@ object YoutubeLiveChatPollingActor {
 
             // Schedule next poll based on YouTube's recommended interval
             if (nextPageToken.isDefined) {
-              val delay = math.max(pollingIntervalMs, 60000) // Minimum 1 minute to avoid rate limits
+              val delay = math.max(pollingIntervalMs, 20000) // Minimum 1 minute to avoid rate limits
               context.log.info(s"Scheduling next poll in ${delay}ms")
 
               // Reset retry count since we had a successful call
