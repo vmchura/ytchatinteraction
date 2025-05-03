@@ -152,7 +152,7 @@ class PollService @Inject()(
           for {
             acc <- accDBIO
             _ <- if(acc) DBIO.successful(true) else DBIO.failed(new IllegalStateException("Not paying fine"))
-            paymentAmount = -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt
+            paymentAmount = -(singleVote.confidenceAmount*PollOption.fromProbabilityWinRate(winnerOption.confidenceRatio)).toInt
             result <- transferConfidenceVoteStreamer(event, singleVote.userId, paymentAmount, "PAY")
           } yield acc && result
       }
@@ -226,7 +226,7 @@ class PollService @Inject()(
       pollOption <- eventPollRepository.getByIdAction(pollID)
       poll <- pollOption.fold(DBIO.failed(new IllegalStateException("No PollID")))(DBIO.successful)
       pollOptions <- pollOptionRepository.getByPollIdAction(pollID)
-      winnerRatio = pollOptions.flatMap(po => po.optionId.map(oid => oid -> 1.0f/(po.confidenceRatio * (1+0.05)))).toMap
+      winnerRatio = pollOptions.flatMap(po => po.optionId.map(oid => oid -> PollOption.fromProbabilityWinRate(po.confidenceRatio))).toMap
       sumConfidenceByOption <- pollVoteRepository.sumConfidenceByOption(pollID)
       votes <- pollVoteRepository.getByPollIdAction(pollID)
 
@@ -243,8 +243,6 @@ class PollService @Inject()(
             newAmount = (ratio*singleVote.confidenceAmount).toInt
             returnAmount = singleVote.confidenceAmount - newAmount
             _ <- if(returnAmount>0) transferConfidenceVoteStreamer(event, singleVote.userId, -returnAmount, "BALANCE") >> pollVoteRepository.updateConfidenceAmountAction(singleVote.voteId.get, newAmount) else DBIO.successful(true)
-            //paymentAmount = -(singleVote.confidenceAmount*(1.0f/(winnerOption.confidenceRatio*(1+0.05)))).toInt
-            //result <- transferConfidenceVoteStreamer(event, singleVote.userId, paymentAmount, "PAY")
             message = s"From ${singleVote.userId} balancing: $returnAmount"
           } yield acc :+ message
       }

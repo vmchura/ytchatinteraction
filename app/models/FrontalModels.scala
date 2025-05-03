@@ -29,7 +29,7 @@ case class FrontalPollOption(optionId: Int,
                        optionText: String,
                        confidenceRatio: BigDecimal
                      ) {
-  def inverseConfidenceRatio: BigDecimal =  ((1.0f/(confidenceRatio*(1+0.05)))*100.0).toInt/100.0
+  def inverseConfidenceRatio: BigDecimal =  PollOption.fromProbabilityWinRate(confidenceRatio)
 }
 case class FrontalPoll(pollId: Int,
                        pollQuestion: String,
