@@ -13,6 +13,6 @@ class PollsViewController @Inject()(cc: ControllerComponents) extends AbstractCo
    * Redirects to the static polls HTML page
    */
   def viewPolls: Action[AnyContent] = Action { implicit request =>
-    Redirect(controllers.routes.Assets.versioned("polls.html"))
+    Redirect(controllers.routes.Assets.versioned("polls_obs.html"))
   }
 }
