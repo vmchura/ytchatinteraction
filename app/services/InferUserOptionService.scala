@@ -20,7 +20,7 @@ class InferUserOptionService @Inject()(ws: WSClient)(implicit ec: ExecutionConte
       println(s"${eventPoll.pollQuestion}[${options.map(_.optionText).mkString(",")}]: $response => $r")
       r
     }.map{
-      case Some((responseOption, confidence)) => options.find(_.optionText.equals(responseOption)).map(po => (po, confidence))
+      case Some((responseOption, confidence)) => options.find(_.optionText.toLowerCase.equals(responseOption)).map(po => (po, confidence))
       case _ => None
     }
   }
