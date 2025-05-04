@@ -223,15 +223,20 @@ object YoutubeLiveChatPollingActor {
           Behaviors.same
 
         case ProcessMessages(messages, liveChatId, channelID, messageStartTime, pollEvent) =>
-          context.log.info(s"Processing ${messages.size} messages for live chat $liveChatId")
+          println(s"Processing ${messages.size} messages for live chat $liveChatId")
 
           // Process each message - this happens within the actor context now
           Future.sequence(
           messages.map { message =>
-            processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
+            val f = processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
               userRepository, ytUserRepository, messageStartTime, pollEvent,
               inferUserOptionService, chatService, context, pollService)
-          })
+            f.onComplete{
+              case Success(u) => println(s"Saved $u")
+              case Failure(ex) => println(s"Error saving $message: ${ex.getMessage}")
+            }
+            f
+          }).map(_.foreach(println))
 
           Behaviors.same
 
@@ -319,6 +324,7 @@ object YoutubeLiveChatPollingActor {
           )
           voteRegistered <- confidence match {
             case Some((po, confidenceValue)) =>
+              println(s"$po: $confidenceValue")
               (for {
                 pollID <- pollEvent._1.pollId
                 optionID <- po.optionId
@@ -327,7 +333,9 @@ object YoutubeLiveChatPollingActor {
                   optionID,
                   user.userId,
                   Some(messageText),
-                  confidenceValue, channelID).map(_ => Some((po, confidenceValue)))
+                  confidenceValue, channelID).map(e =>{
+                  println(s"Register vote: $e")
+                  Some((po, confidenceValue))})
               }).getOrElse(Future.successful(None))
 
             case None =>
@@ -345,24 +353,10 @@ object YoutubeLiveChatPollingActor {
         voteRegistered.onComplete {
           case Success(Some(pollVote)) =>
             // Successfully processed poll response, but don't log from here
-            chatService.broadcastMessage(s"$displayName: [${pollVote._1.pollId}]+${pollVote._1.optionText} ", "youtube", Some(displayName))
-            chatService.broadcastVoteDetection(
-              displayName,
-              messageText,
-              Some(pollVote._1.optionText),
-              Some(pollVote._2),
-              pollEvent._1.eventId
-            )
+            println(pollVote)
           case Success(None) =>
             // No poll response detected, but don't log from here
-            chatService.broadcastMessage(s"$displayName: $messageText: [  ]", "youtube", Some(displayName))
-            chatService.broadcastVoteDetection(
-              displayName,
-              messageText,
-              None,
-              None,
-              pollEvent._1.eventId
-            )
+            println("Success but None")
           case Failure(ex) =>
             // Just print to console to avoid actor context issues
             println(s"Error processing poll response: ${ex.getMessage}")
