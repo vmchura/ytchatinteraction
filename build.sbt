@@ -44,7 +44,8 @@ libraryDependencies ++= Seq(
   "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models-spanish",
   "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models",
   "com.github.tminglei" %% "slick-pg" % "0.23.0",
-  "com.github.tminglei" %% "slick-pg_play-json" % "0.23.0"
+  "com.github.tminglei" %% "slick-pg_play-json" % "0.23.0",
+  "io.cequence" %% "openai-scala-client" % "1.2.0"
 )
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
