@@ -40,6 +40,14 @@ object YoutubeLiveChatPollingActor {
                                     pollEvent: (EventPoll, List[PollOption])
                                   ) extends Command
 
+  // Command to process messages when no poll is available
+  final case class ProcessMessagesWithoutPoll(
+                                               messages: Seq[JsValue],
+                                               liveChatId: String,
+                                               channelID: String,
+                                               startTime: Instant
+                                             ) extends Command
+
   // Command for when no poll is available
   final case class NoPollAvailable(liveChatId: String) extends Command
 
@@ -180,13 +188,15 @@ object YoutubeLiveChatPollingActor {
             }yield{
               recentPoll match {
                 case Some(eventPoll) => ProcessMessages(items.toSeq, liveChatId, channelID, startTime, eventPoll)
-                case None => NoPollAvailable(liveChatId)
+                case None => 
+                  // No poll available, but still process messages for broadcasting
+                  ProcessMessagesWithoutPoll(items.toSeq, liveChatId, channelID, startTime)
               }
             }
 
             commandByMessage.recover {
               case ex =>
-                NoPollAvailable(liveChatId)
+                ProcessMessagesWithoutPoll(items.toSeq, liveChatId, channelID, startTime)
             }.foreach(context.self ! _)
 
             // Schedule next poll based on YouTube's recommended interval
@@ -237,6 +247,24 @@ object YoutubeLiveChatPollingActor {
             }
             f
           }).map(_.foreach(println))
+
+          Behaviors.same
+
+        case ProcessMessagesWithoutPoll(messages, liveChatId, channelID, messageStartTime) =>
+          println(s"Processing ${messages.size} messages without poll for live chat $liveChatId")
+
+          // Process each message without poll functionality - just broadcast them
+          Future.sequence(
+            messages.map { message =>
+              val f = processMessageWithoutPoll(message, liveChatId, channelID, userRepository, ytUserRepository,
+                userStreamerStateRepository, messageStartTime, chatService, context)
+              f.onComplete{
+                case Success(u) => println(s"Broadcasted message: $u")
+                case Failure(ex) => println(s"Error broadcasting message: ${ex.getMessage}")
+              }
+              f
+            }
+          )
 
           Behaviors.same
 
@@ -357,7 +385,7 @@ object YoutubeLiveChatPollingActor {
               chatService.broadcastVoteDetection(displayName, messageText, Some(optionText), Some(confidence), eventId)
             case None =>
               // No poll response detected, still broadcast the message
-              chatService.broadcastMessage(s"[$displayName] $messageText", "youtube", Some(displayName))
+              chatService.broadcastMessage(s"[  ] $messageText", "youtube", Some(displayName))
           }
         }
 
@@ -383,6 +411,61 @@ object YoutubeLiveChatPollingActor {
       case e: Exception =>
         // Log error and continue
         context.log.error(s"Error processing message: ${e.getMessage}")
+        Future.successful(())
+    }
+  }
+
+  /**
+   * Process a single message from the live chat when there's no poll available
+   */
+  private def processMessageWithoutPoll(
+                                         message: JsValue,
+                                         liveChatId: String,
+                                         channelID: String,
+                                         userRepository: UserRepository,
+                                         ytUserRepository: YtUserRepository,
+                                         userStreamerStateRepository: UserStreamerStateRepository,
+                                         startTime: Instant,
+                                         chatService: ChatService,
+                                         context: ActorContext[Command]
+                                       )(implicit ec: ExecutionContext): Future[Unit] = {
+    try {
+      // Extract message details
+      val messageId = (message \ "id").as[String]
+      val authorChannelId = (message \ "authorDetails" \ "channelId").as[String]
+      val displayName = (message \ "authorDetails" \ "displayName").as[String]
+      val messageText = (message \ "snippet" \ "displayMessage").as[String]
+
+      // Extract the published time
+      val publishedAtStr = (message \ "snippet" \ "publishedAt").as[String]
+      val formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+      val publishedAt = Instant.from(formatter.parse(publishedAtStr))
+
+      // Only process messages that were published after we started monitoring
+      if (publishedAt.isAfter(startTime)) {
+        context.log.info(s"Processing message from $displayName published at $publishedAt (no poll)")
+
+        // Register the message author as a user if they don't already exist
+        val messageProcessed = for {
+          user <- registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
+          relationExists <- userStreamerStateRepository.exists(user.userId, channelID)
+          _ <- if (!relationExists) userStreamerStateRepository.create(user.userId, channelID, 0) else Future.successful(())
+        } yield {
+          // Broadcast the message without poll information
+          chatService.broadcastMessage(s"[  ] $messageText", "youtube", Some(displayName))
+          ()
+        }
+
+        messageProcessed
+      } else {
+        // Message is from before we started monitoring, so skip it
+        context.log.debug(s"Skipping message from $displayName published at $publishedAt (before $startTime)")
+        Future.successful(())
+      }
+    } catch {
+      case e: Exception =>
+        // Log error and continue
+        context.log.error(s"Error processing message without poll: ${e.getMessage}")
         Future.successful(())
     }
   }
