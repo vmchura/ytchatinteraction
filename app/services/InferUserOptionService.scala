@@ -11,11 +11,12 @@ import edu.stanford.nlp.util.*
 import models.{EventPoll, PollOption}
 
 import scala.jdk.CollectionConverters.*
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import io.cequence.openaiscala.domain.*
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.OpenAIChatCompletionServiceFactory
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.stream.Materializer
+// Temporarily commented out LLM dependencies due to Akka/Pekko conflicts
+// import io.cequence.openaiscala.domain.*
+// import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+// import io.cequence.openaiscala.service.OpenAIChatCompletionServiceFactory
 import play.api.libs.json
 import play.api.libs.json.Json
 
@@ -26,43 +27,14 @@ import scala.util.Try
 
 @Singleton
 class InferUserOptionService @Inject()(ws: WSClient)(implicit ec: ExecutionContext, materializer: Materializer) {
-  val service = OpenAIChatCompletionServiceFactory(
-    coreUrl = "http://localhost:11434/v1/"
-  )
+  // Temporarily disable LLM service to avoid Akka/Pekko conflicts
+  // val service = OpenAIChatCompletionServiceFactory(
+  //   coreUrl = "http://localhost:11434/v1/"
+  // )
+  
   def fromLLM(eventPoll: EventPoll, options: List[PollOption], response: String): Future[Option[(PollOption, Int)]] = {
-    val optionMessages = options.zipWithIndex.map{case (po, i) => s"|Option ${i+1}: ${po.optionText}"}.mkString("\n")
-    val messages = Seq(
-      SystemMessage("Extract the most likely chosen option and the amount of coins or currency bet. in JSON format \n" +
-        "Consider misspelling and short answers. If the option chose is found correctly: {'option': Option_chose, 'currency': Integer}\n" +
-        "If the option or currency could not be determined: {'error': 'No message detected'}"),
-
-      UserMessage(
-        s"""Poll Question: ${eventPoll.pollQuestion}
-          $optionMessages
-          |""".stripMargin),
-      UserMessage(response)
-    )
-    service.createChatCompletion(messages, CreateChatCompletionSettings(model = "qwen3:1.7b")).map { _.choices.headOption.map(choiceInfo => choiceInfo.message.content)
-    }.map{ _.flatMap { responseString =>
-        val indexThink = responseString.indexOf("</think>")
-        Option.when(indexThink >=0){
-          val jsonStringResponse = responseString.substring(indexThink + 9).trim
-          println(jsonStringResponse)
-          Try {
-            val jsonResponse = Json.parse(jsonStringResponse)
-            for{
-              option <- (jsonResponse \ "option").asOpt[String]
-              currency <- (jsonResponse \ "currency").asOpt[Int]
-            }yield{
-              options.find(_.optionText.toLowerCase.equals(option.toLowerCase)).map{ optionChose =>
-                (optionChose, currency)
-              }
-            }
-          }.toOption.flatten.flatten
-        }.flatten
-
-      }
-    }
+    // Temporarily disabled LLM functionality - always return None to fall back to NLP
+    Future.successful(None)
   }
   def inferencePollResponse(eventPoll: EventPoll, options: List[PollOption], response: String): Future[Option[(PollOption, Int)]] = {
     fromLLM(eventPoll, options, response).recover{

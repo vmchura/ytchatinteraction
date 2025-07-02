@@ -4,6 +4,7 @@ import models.*
 import models.repository.*
 import org.apache.pekko.actor.testkit.typed.scaladsl.{ActorTestKit, TestProbe}
 import org.apache.pekko.actor.typed.ActorRef
+import org.apache.pekko.stream.Materializer
 import org.mockito.Mockito.*
 import org.mockito.ArgumentMatchers.*
 import org.scalatest.BeforeAndAfterAll
@@ -90,7 +91,8 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
   lazy val db = app.injector.instanceOf[DBApi].database("default")
 
   // Create a real service but with mocked dependencies for testing
-  lazy val inferUserOptionService = new InferUserOptionService(mockWsClient)(ExecutionContext.global)
+  implicit val materializer: org.apache.pekko.stream.Materializer = org.apache.pekko.stream.Materializer(testKit.system)
+  lazy val inferUserOptionService = new InferUserOptionService(mockWsClient)(ExecutionContext.global, materializer)
   lazy val youtubeChatMessageRepository = app.injector.instanceOf[YoutubeChatMessageRepository]
 
   // Setup before each test
