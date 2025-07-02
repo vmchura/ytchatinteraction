@@ -348,6 +348,18 @@ object YoutubeLiveChatPollingActor {
 
         // Broadcast the message to all connected WebSocket clients
         // Format the message to show who sent it
+        voteRegistered.foreach { voteResult =>
+          voteResult match {
+            case Some((pollOption, confidence)) =>
+              // Successfully processed poll response
+              val optionText = pollOption.optionText
+              val eventId = pollEvent._1.eventId
+              chatService.broadcastVoteDetection(displayName, messageText, Some(optionText), Some(confidence), eventId)
+            case None =>
+              // No poll response detected, still broadcast the message
+              chatService.broadcastMessage(s"[$displayName] $messageText", "youtube", Some(displayName))
+          }
+        }
 
         // Process the message for poll responses - don't use context logger here
         voteRegistered.onComplete {
