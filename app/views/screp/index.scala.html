@@ -1,0 +1,159 @@
+@(uploadForm: Form[controllers.ReplayUploadForm])(implicit request: RequestHeader, messages: Messages)
+
+@import helper._
+
+@main("SCREP - StarCraft Replay Parser") {
+    <div class="container">
+        <h1>SCREP - StarCraft Replay Parser</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <p class="lead">
+                    Upload your StarCraft: Brood War replay files (.rep) to parse and analyze them.
+                    This tool supports both modern (1.18+) and legacy (pre-1.18) replay formats.
+                </p>
+                
+                @if(uploadForm.hasGlobalErrors) {
+                    <div class="alert alert-danger">
+                        @for(error <- uploadForm.globalErrors) {
+                            @error.message
+                        }
+                    </div>
+                }
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title">Upload Replay File</h5>
+                    </div>
+                    <div class="card-body">
+                        @form(routes.ScrepController.parseAndShow, 'enctype -> "multipart/form-data", 'class -> "needs-validation", 'novalidate -> "true") {
+                            <div class="mb-3">
+                                <label for="replay" class="form-label">Replay File (.rep)</label>
+                                <input type="file" class="form-control" id="replay" name="replay" accept=".rep" required>
+                                <div class="form-text">
+                                    Select a StarCraft: Brood War replay file to parse.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    @checkbox(uploadForm("includeMap"), 'class -> "form-check-input", 'id -> "includeMap")
+                                    <label class="form-check-label" for="includeMap">
+                                        Include Map Data
+                                    </label>
+                                    <div class="form-text">
+                                        Include detailed map information in the output.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    @checkbox(uploadForm("includeCommands"), 'class -> "form-check-input", 'id -> "includeCommands")
+                                    <label class="form-check-label" for="includeCommands">
+                                        Include Commands
+                                    </label>
+                                    <div class="form-text">
+                                        Include player commands and actions in the output.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    @checkbox(uploadForm("includeComputed"), 'class -> "form-check-input", 'id -> "includeComputed")
+                                    <label class="form-check-label" for="includeComputed">
+                                        Include Computed Data
+                                    </label>
+                                    <div class="form-text">
+                                        Include computed statistics and derived data.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-chart-line"></i> Parse Replay
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-lg" onclick="submitOverview()">
+                                    <i class="fas fa-eye"></i> Get Overview
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">About SCREP</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            SCREP is a StarCraft: Brood War replay parser that extracts detailed 
+                            information from replay files.
+                        </p>
+                        
+                        <h6>Supported Features:</h6>
+                        <ul>
+                            <li>Player information</li>
+                            <li>Game settings</li>
+                            <li>Map details</li>
+                            <li>Commands and actions</li>
+                            <li>Game statistics</li>
+                            <li>Both modern and legacy formats</li>
+                        </ul>
+                        
+                        <h6>Output Formats:</h6>
+                        <ul>
+                            <li><strong>Full Parse:</strong> Complete JSON data</li>
+                            <li><strong>Overview:</strong> Human-readable summary</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title">API Access</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>You can also access SCREP programmatically:</p>
+                        <ul>
+                            <li><code>POST /screp/api/parse</code> - Parse replay</li>
+                            <li><code>POST /screp/api/overview</code> - Get overview</li>
+                            <li><code>GET /screp/health</code> - Health check</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function submitOverview() {
+            const form = document.querySelector('form');
+            const originalAction = form.action;
+            form.action = '@routes.ScrepController.overviewAndShow';
+            form.submit();
+            form.action = originalAction;
+        }
+        
+        // Form validation
+        (function() {
+            'use strict';
+            window.addEventListener('load', function() {
+                var forms = document.getElementsByClassName('needs-validation');
+                var validation = Array.prototype.filter.call(forms, function(form) {
+                    form.addEventListener('submit', function(event) {
+                        if (form.checkValidity() === false) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                        }
+                        form.classList.add('was-validated');
+                    }, false);
+                });
+            }, false);
+        })();
+    </script>
+}
