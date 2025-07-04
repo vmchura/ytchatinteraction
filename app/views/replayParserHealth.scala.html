@@ -1,0 +1,306 @@
+@import models.User
+@import play.api.libs.json.JsValue
+@(user: Option[User], healthData: Option[JsValue] = None)(implicit flash: Flash)
+
+@main("Replay Parser Health", user) {
+    <div id="health-container">
+        <header>
+            <h1>Replay Parser Service Health</h1>
+            <p>Monitor the status of the StarCraft replay parsing microservice</p>
+        </header>
+
+        <section>
+            <div class="grid">
+                <div>
+                    <article id="health-status" class="loading">
+                        <header>
+                            <h3>Service Status</h3>
+                        </header>
+                        <div id="status-content">
+                            <div aria-busy="true">Loading health status...</div>
+                        </div>
+                    </article>
+                </div>
+                
+                <div>
+                    <article id="service-info">
+                        <header>
+                            <h3>Service Information</h3>
+                        </header>
+                        <div id="info-content">
+                            <div aria-busy="true">Loading service info...</div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <details>
+                <summary>Manual Actions</summary>
+                <div class="grid">
+                    <button id="refresh-health" class="secondary">Refresh Health Check</button>
+                    <button id="test-parse" class="outline">Test Parser Endpoint</button>
+                </div>
+            </details>
+        </section>
+
+        <section>
+            <details>
+                <summary>Service Endpoints</summary>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/health</code></td>
+                            <td>GET</td>
+                            <td>Health check endpoint</td>
+                        </tr>
+                        <tr>
+                            <td><code>/parse-replay</code></td>
+                            <td>POST</td>
+                            <td>Parse StarCraft replay file</td>
+                        </tr>
+                        <tr>
+                            <td><code>/</code></td>
+                            <td>GET</td>
+                            <td>Service information</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </details>
+        </section>
+    </div>
+
+    <style>
+        .status-healthy {
+            border-left: 4px solid var(--pico-color-green-500);
+            background-color: var(--pico-color-green-100);
+        }
+        
+        .status-unhealthy {
+            border-left: 4px solid var(--pico-color-red-500);
+            background-color: var(--pico-color-red-100);
+        }
+        
+        .status-unreachable {
+            border-left: 4px solid var(--pico-color-orange-500);
+            background-color: var(--pico-color-orange-100);
+        }
+        
+        .loading {
+            border-left: 4px solid var(--pico-color-blue-500);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.healthy {
+            background-color: var(--pico-color-green-500);
+        }
+        
+        .status-indicator.unhealthy {
+            background-color: var(--pico-color-red-500);
+        }
+        
+        .status-indicator.unreachable {
+            background-color: var(--pico-color-orange-500);
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+        }
+        
+        .metric strong {
+            color: var(--pico-color);
+        }
+        
+        code {
+            background-color: var(--pico-color-slate-100);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        @@media (prefers-color-scheme: dark) {
+            .status-healthy {
+                background-color: var(--pico-color-green-900);
+            }
+            
+            .status-unhealthy {
+                background-color: var(--pico-color-red-900);
+            }
+            
+            .status-unreachable {
+                background-color: var(--pico-color-orange-900);
+            }
+            
+            code {
+                background-color: var(--pico-color-slate-800);
+            }
+        }
+    </style>
+
+    <script>
+        // Auto-refresh health status every 30 seconds
+        let healthInterval;
+        
+        function updateHealthStatus() {
+            fetch('/api/replay-parser/status', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusContent = document.getElementById('status-content');
+                const statusArticle = document.getElementById('health-status');
+                
+                // Remove loading state
+                statusArticle.classList.remove('loading');
+                
+                // Update status styling
+                statusArticle.className = 'status-' + data.status;
+                
+                // Build status content
+                const statusIndicator = data.reachable 
+                    ? (data.status === 'healthy' ? 'healthy' : 'unhealthy')
+                    : 'unreachable';
+                
+                statusContent.innerHTML = `
+                    <div class="metric">
+                        <span><span class="status-indicator ${statusIndicator}"></span>Status:</span>
+                        <strong>${data.status.charAt(0).toUpperCase() + data.status.slice(1)}</strong>
+                    </div>
+                    <div class="metric">
+                        <span>URL:</span>
+                        <code>${data.url}</code>
+                    </div>
+                    <div class="metric">
+                        <span>Response Time:</span>
+                        <strong>${data.responseTime}ms</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Last Check:</span>
+                        <strong>${new Date(data.timestamp).toLocaleTimeString()}</strong>
+                    </div>
+                    ${data.error ? `
+                        <div class="metric">
+                            <span>Error:</span>
+                            <strong style="color: var(--pico-color-red-500);">${data.error}</strong>
+                        </div>
+                    ` : ''}
+                `;
+                
+                // Update service info
+                const infoContent = document.getElementById('info-content');
+                if (data.serviceInfo && Object.keys(data.serviceInfo).length > 0) {
+                    const serviceInfo = data.serviceInfo;
+                    infoContent.innerHTML = `
+                        <div class="metric">
+                            <span>Service:</span>
+                            <strong>${serviceInfo.service || 'Unknown'}</strong>
+                        </div>
+                        <div class="metric">
+                            <span>Version:</span>
+                            <strong>${serviceInfo.version || 'Unknown'}</strong>
+                        </div>
+                        ${serviceInfo.endpoints ? `
+                            <div style="margin-top: 1rem;">
+                                <small><strong>Available Endpoints:</strong></small>
+                                <ul>
+                                    ${Object.entries(serviceInfo.endpoints).map(([key, value]) => 
+                                        `<li><code>${key}</code>: ${value}</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    `;
+                } else {
+                    infoContent.innerHTML = '<p>Service information not available</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching health status:', error);
+                const statusContent = document.getElementById('status-content');
+                const statusArticle = document.getElementById('health-status');
+                
+                statusArticle.className = 'status-unreachable';
+                statusContent.innerHTML = `
+                    <div class="metric">
+                        <span><span class="status-indicator unreachable"></span>Status:</span>
+                        <strong>Connection Error</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Error:</span>
+                        <strong style="color: var(--pico-color-red-500);">${error.message}</strong>
+                    </div>
+                `;
+            });
+        }
+        
+        function startHealthMonitoring() {
+            updateHealthStatus(); // Initial check
+            healthInterval = setInterval(updateHealthStatus, 30000); // Every 30 seconds
+        }
+        
+        function stopHealthMonitoring() {
+            if (healthInterval) {
+                clearInterval(healthInterval);
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('refresh-health').addEventListener('click', updateHealthStatus);
+        
+        document.getElementById('test-parse').addEventListener('click', function() {
+            // Simple test to see if the parse endpoint is reachable
+            fetch('/api/replay-parser/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ test: true })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Parse endpoint is reachable (test call successful)');
+                } else {
+                    alert(`Parse endpoint returned error: ${response.status}`);
+                }
+            })
+            .catch(error => {
+                alert(`Parse endpoint is unreachable: ${error.message}`);
+            });
+        });
+        
+        // Start monitoring when page loads
+        document.addEventListener('DOMContentLoaded', startHealthMonitoring);
+        
+        // Stop monitoring when page unloads
+        window.addEventListener('beforeunload', stopHealthMonitoring);
+        
+        // Handle visibility changes (pause when tab is hidden)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopHealthMonitoring();
+            } else {
+                startHealthMonitoring();
+            }
+        });
+    </script>
+}

@@ -45,6 +45,12 @@ POST    /my-events/vote             controllers.UserEventsController.submitVote(
 GET     /my-events/join/:eventId    controllers.UserEventsController.joinEvent(eventId: Int)
 GET     /my-events/ws               controllers.UserEventsController.eventsUpdates
 
+# Replay Parser Health Check routes
+GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
+GET     /api/replay-parser/health   controllers.ReplayParserHealthController.health()
+GET     /api/replay-parser/status   controllers.ReplayParserHealthController.status()
+POST    /api/replay-parser/test     controllers.ReplayParserHealthController.testParse()
+
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()
 
