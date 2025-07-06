@@ -21,7 +21,6 @@ case class FileProcessResult(
                               processedAt: String,
                               success: Boolean,
                               errorMessage: Option[String] = None,
-                              base64Preview: Option[String] = None,
                               gameInfo: Option[GameInfo] = None
                             )
 
@@ -198,7 +197,6 @@ class DefaultParseReplayFileService @Inject()(
               processedAt = java.time.Instant.now().toString,
               success = true,
               errorMessage = None,
-              base64Preview = Some(responseBody.take(500)), // First 500 chars of the parsed result
               gameInfo = gameInfo
             )
           } else {
