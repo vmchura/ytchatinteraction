@@ -1,5 +1,6 @@
 @import models.User
-@(user: Option[User])(implicit request: RequestHeader, flash: Flash)
+@import controllers.{FileProcessResult, MultiFileUploadResult}
+@(user: Option[User], resultOption: Option[MultiFileUploadResult]=None, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
 
 @main("File Upload", user) {
     <div id="file-upload-container">
@@ -55,7 +56,168 @@
             </div>
         </section>
     </div>
+    @resultOption.map{result =>
+        <div id="file-upload-results-container">
+            <header>
+                <h1>File Upload Results</h1>
+                <p>Processing completed for @result.totalFiles file(s)</p>
+            </header>
 
+            @if(errorMessage.isDefined) {
+            <section>
+                <article style="background-color: #fee; border-left: 4px solid #d32f2f;">
+                    <h3 style="color: #d32f2f;">Upload Error</h3>
+                    <p>@errorMessage.get</p>
+                    <a href="/upload" role="button" class="secondary">Try Again</a>
+                </article>
+            </section>
+            } else {
+            <!-- Summary Section -->
+            <section>
+                <div class="grid">
+                    <div>
+                        <article>
+                            <header>
+                                <h3>Upload Summary</h3>
+                            </header>
+                            <div class="summary-stats">
+                                <div class="stat-item">
+                                    <strong>Total Files:</strong> @result.totalFiles
+                                </div>
+                                <div class="stat-item" style="color: #2e7d32;">
+                                    <strong>Successful:</strong> @result.totalSuccessful
+                                </div>
+                                @if(result.totalFailed > 0) {
+                                <div class="stat-item" style="color: #d32f2f;">
+                                    <strong>Failed:</strong> @result.totalFailed
+                                </div>
+                                }
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Successful Files Section -->
+            @if(result.successfulFiles.nonEmpty) {
+            <section>
+                <article>
+                    <header>
+                        <h3 style="color: #2e7d32;">Successfully Processed Files (@result.totalSuccessful)</h3>
+                    </header>
+                    <div class="table-container">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                            <tr style="background-color: #e8f5e8;">
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">File Name</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Size</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Type</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Processed At</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Preview</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @for(file <- result.successfulFiles) {
+                            <tr>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    <strong>@file.fileName</strong>
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @{
+                                    val sizeInKB = file.originalSize / 1024.0
+                                    if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
+                                    else f"${sizeInKB / 1024}%.2f MB"
+                                    }
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @file.contentType
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @{
+                                    java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
+                                    }
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @if(file.base64Preview.isDefined) {
+                                    <code style="font-size: 0.8em; color: #666;">
+                                        @file.base64Preview.get...
+                                    </code>
+                                    } else {
+                                    <em>No preview available</em>
+                                    }
+                                </td>
+                            </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+            }
+
+            <!-- Failed Files Section -->
+            @if(result.failedFiles.nonEmpty) {
+            <section>
+                <article>
+                    <header>
+                        <h3 style="color: #d32f2f;">Failed Files (@result.totalFailed)</h3>
+                    </header>
+                    <div class="table-container">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                            <tr style="background-color: #ffeaea;">
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">File Name</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Size</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Error</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Attempted At</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @for(file <- result.failedFiles) {
+                            <tr>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    <strong>@file.fileName</strong>
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @{
+                                    val sizeInKB = file.originalSize / 1024.0
+                                    if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
+                                    else f"${sizeInKB / 1024}%.2f MB"
+                                    }
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd; color: #d32f2f;">
+                                    @file.errorMessage.getOrElse("Unknown error")
+                                </td>
+                                <td style="padding: 12px; border: 1px solid #ddd;">
+                                    @{
+                                    java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
+                                    }
+                                </td>
+                            </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </section>
+            }
+
+            <!-- Action Buttons -->
+            <section>
+                <div class="grid">
+                    <div>
+                        <a href="/upload" role="button" class="secondary">Upload More Files</a>
+                    </div>
+                    @if(result.totalSuccessful > 0) {
+                    <div>
+                        <button onclick="downloadResults()" class="outline">Download Results Summary</button>
+                    </div>
+                    }
+                </div>
+            </section>
+            }
+        </div>
+    }
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const uploadFileInput = document.getElementById('uploadFileInput');

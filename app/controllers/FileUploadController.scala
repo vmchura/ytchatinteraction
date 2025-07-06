@@ -15,6 +15,24 @@ case class FileUploadState(
   uploadType: String
 )
 
+case class FileProcessResult(
+  fileName: String,
+  originalSize: Long,
+  contentType: String,
+  processedAt: String,
+  success: Boolean,
+  errorMessage: Option[String] = None,
+  base64Preview: Option[String] = None
+)
+
+case class MultiFileUploadResult(
+  totalFiles: Int,
+  successfulFiles: List[FileProcessResult],
+  failedFiles: List[FileProcessResult],
+  totalSuccessful: Int,
+  totalFailed: Int
+)
+
 sealed trait FileUploadError
 case object FileIsNotOne extends FileUploadError
 case object FileSelectedNotSmallSize extends FileUploadError  
@@ -49,61 +67,90 @@ class FileUploadController @Inject()(
   }
 
   /**
-   * Handle file upload and processing
+   * Handle multiple file upload and processing - returns HTML view
    */
   def uploadFile(): Action[MultipartFormData[TemporaryFile]] = silhouette.UserAwareAction.async(parse.multipartFormData) { implicit request =>
     
-    request.body.file("upload_file") match {
-      case Some(file) =>
-        validateAndProcessFile(file).map { result =>
-          result match {
-            case Right(successData) =>
-              Ok(Json.obj(
-                "status" -> "success",
-                "message" -> "File uploaded and processed successfully",
-                "data" -> successData
-              ))
-            case Left(error) =>
-              BadRequest(Json.obj(
-                "status" -> "error", 
-                "message" -> getErrorMessage(error)
-              ))
-          }
-        }
-        
-      case None =>
-        Future.successful(BadRequest(Json.obj(
-          "status" -> "error",
-          "message" -> "No file provided"
-        )))
-    }
-  }
-
-  private def validateAndProcessFile(file: MultipartFormData.FilePart[TemporaryFile]): Future[Either[FileUploadError, JsValue]] = {
-    Future {
-      val validation = for {
-        validatedFile <- validateFileCount(file)
-        _ <- validateFileSize(validatedFile)
-        _ <- validateFileType(validatedFile)
-      } yield validatedFile
-
-      validation match {
-        case Right(validFile) =>
-          processFile(validFile)
-        case Left(error) =>
-          Left(error)
+    val uploadedFiles = request.body.files.filter(_.key == "upload_file")
+    
+    if (uploadedFiles.isEmpty) {
+      Future.successful(
+        BadRequest(views.html.fileUpload(
+          request.identity,
+          Some(MultiFileUploadResult(
+            totalFiles = 0,
+            successfulFiles = List.empty,
+            failedFiles = List.empty,
+            totalSuccessful = 0,
+            totalFailed = 0
+          )),
+          Some("No files were uploaded")
+        ))
+      )
+    } else {
+      processMultipleFiles(uploadedFiles).map { result =>
+        Ok(views.html.fileUpload(request.identity, Some(result)))
       }
     }
   }
 
-  private def validateFileCount(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
-    // In this context, we always have exactly one file, so this always succeeds
-    Right(file)
+  /**
+   * Process multiple files and return comprehensive results
+   */
+  private def processMultipleFiles(files: Seq[MultipartFormData.FilePart[TemporaryFile]]): Future[MultiFileUploadResult] = {
+    Future {
+      val results = files.map { file =>
+        validateAndProcessSingleFile(file)
+      }.toList
+
+      val successful = results.filter(_.success)
+      val failed = results.filter(!_.success)
+
+      MultiFileUploadResult(
+        totalFiles = files.length,
+        successfulFiles = successful,
+        failedFiles = failed,
+        totalSuccessful = successful.length,
+        totalFailed = failed.length
+      )
+    }
+  }
+
+  /**
+   * Process a single file and return result
+   */
+  private def validateAndProcessSingleFile(file: MultipartFormData.FilePart[TemporaryFile]): FileProcessResult = {
+    val validation = for {
+      _ <- validateFileSize(file)
+      _ <- validateFileType(file)
+    } yield file
+
+    validation match {
+      case Right(validFile) =>
+        processFileToResult(validFile)
+      case Left(error) =>
+        FileProcessResult(
+          fileName = file.filename,
+          originalSize = tryGetFileSize(file),
+          contentType = file.contentType.getOrElse("unknown"),
+          processedAt = java.time.Instant.now().toString,
+          success = false,
+          errorMessage = Some(getErrorMessage(error))
+        )
+    }
+  }
+
+  private def tryGetFileSize(file: MultipartFormData.FilePart[TemporaryFile]): Long = {
+    try {
+      Files.size(file.ref.path)
+    } catch {
+      case _: Exception => 0L
+    }
   }
 
   private def validateFileSize(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
     val maxSizeBytes = 1 * 1024 * 1024 // 1MB limit
-    val fileSize = Files.size(file.ref.path)
+    val fileSize = tryGetFileSize(file)
     
     if (fileSize > maxSizeBytes) {
       Left(FileSelectedNotSmallSize)
@@ -113,7 +160,7 @@ class FileUploadController @Inject()(
   }
 
   private def validateFileType(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
-    val allowedExtensions = Seq(".rep", ".txt", ".json", ".csv") // Add your allowed extensions
+    val allowedExtensions = Seq(".rep") // Add your allowed extensions
     val fileName = file.filename
     
     if (allowedExtensions.exists(ext => fileName.toLowerCase.endsWith(ext))) {
@@ -123,50 +170,59 @@ class FileUploadController @Inject()(
     }
   }
 
-  private def processFile(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, JsValue] = {
+  private def processFileToResult(file: MultipartFormData.FilePart[TemporaryFile]): FileProcessResult = {
     try {
       val fileBytes = Files.readAllBytes(file.ref.path)
       val base64Content = Base64.getEncoder.encodeToString(fileBytes)
       val fileName = file.filename
       
-      logger.info(s"Processing file: $fileName, size: ${fileBytes.length} bytes")
+      logger.info(s"Successfully processed file: $fileName, size: ${fileBytes.length} bytes")
       
       // Here you would integrate with your actual file processing logic
-      // For now, we'll return a success response with file metadata
-      val result = Json.obj(
-        "filename" -> fileName,
-        "size" -> fileBytes.length,
-        "contentType" -> file.contentType.getOrElse("unknown"),
-        "processedAt" -> java.time.Instant.now().toString,
-        "base64Preview" -> base64Content.take(100) // First 100 chars for preview
-      )
+      // For now, we'll simulate successful processing
       
-      Right(result)
+      FileProcessResult(
+        fileName = fileName,
+        originalSize = fileBytes.length,
+        contentType = file.contentType.getOrElse("unknown"),
+        processedAt = java.time.Instant.now().toString,
+        success = true,
+        errorMessage = None,
+        base64Preview = Some(base64Content.take(100)) // First 100 chars for preview
+      )
       
     } catch {
       case ex: Exception =>
-        logger.error(s"Error processing file: ${ex.getMessage}", ex)
-        Left(FileErrorReceivingParse(ex.getMessage))
+        logger.error(s"Error processing file ${file.filename}: ${ex.getMessage}", ex)
+        FileProcessResult(
+          fileName = file.filename,
+          originalSize = tryGetFileSize(file),
+          contentType = file.contentType.getOrElse("unknown"),
+          processedAt = java.time.Instant.now().toString,
+          success = false,
+          errorMessage = Some(s"Processing error: ${ex.getMessage}")
+        )
     }
   }
 
   private def getErrorMessage(error: FileUploadError): String = error match {
     case FileIsNotOne => "Please select exactly one file"
     case FileSelectedNotSmallSize => "File size must be less than 1MB"
-    case FileSelectedWrongType => "File type not supported. Allowed types: .rep, .txt, .json, .csv"
+    case FileSelectedWrongType => "File type not supported. Allowed types: .rep"
     case FileErrorReceivingParse(message) => s"Error processing file: $message"
     case ErrorByServerParsing(message) => s"Server error: $message"
   }
 
   /**
-   * API endpoint to get upload status
+   * API endpoint to get upload status (kept for compatibility)
    */
   def uploadStatus(): Action[AnyContent] = silhouette.UserAwareAction { implicit request =>
     // This could be enhanced to track upload progress in a real implementation
     Ok(Json.obj(
       "status" -> "ready",
       "maxFileSize" -> "1MB",
-      "allowedTypes" -> Json.arr(".rep", ".txt", ".json", ".csv")
+      "allowedTypes" -> Json.arr(".rep"),
+      "multipleFilesSupported" -> true
     ))
   }
 }
