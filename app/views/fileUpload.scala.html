@@ -4,410 +4,364 @@
 @(user: Option[User], resultOption: Option[MultiFileUploadResult]=None, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
 
 @main("File Upload", user) {
-    <style>
-        .game-info {
-            font-size: 0.9em;
-            line-height: 1.3;
-        }
-        .game-info div {
-            margin-bottom: 2px;
-        }
-        .stat-item {
-            margin-bottom: 0.5rem;
-        }
-        .table-container {
-            overflow-x: auto;
-        }
-        .summary-stats {
-            display: grid;
-            gap: 0.5rem;
-        }
-        details summary {
-            cursor: pointer;
-            font-size: 0.8em;
-            color: #666;
-        }
-        details[open] summary {
-            margin-bottom: 0.5rem;
-        }
-    </style>
-    <div id="file-upload-container">
-        <header>
-            <h1>File Upload</h1>
-            <p>Upload and analyze files automatically (.rep)</p>
-        </header>
+<div id="file-upload-container">
+    <header>
+        <h1>File Upload</h1>
+        <p>Upload and analyze files automatically (.rep)</p>
+    </header>
 
-        <section>
-            <div class="grid">
-                <div>
-                    <article>
-                        <header>
-                            <h3>Select Files for Analysis</h3>
-                        </header>
-                        <form id="upload-form" enctype="multipart/form-data" method="post" action="/upload">
-                            @helper.CSRF.formField
-                            <div id="file-input-container">
-                                <input 
+    <section>
+        <div class="grid">
+            <div>
+                <article>
+                    <header>
+                        <h3>Select Files for Analysis</h3>
+                    </header>
+                    <form id="upload-form" enctype="multipart/form-data" method="post" action="/upload">
+                        @helper.CSRF.formField
+                        <div id="file-input-container">
+                            <input
                                     id="uploadFileInput"
-                                    type="file" 
+                                    type="file"
                                     name="upload_file"
                                     accept=".rep"
                                     multiple
-                                />
-                                <small>Archivos .rep de máximo 1MB cada uno</small>
-                            </div>
-                            
-                            <div id="file-info" style="margin-top: 1rem; display: none;">
-                                <strong>Selected files:</strong> <span id="selected-files-count">0</span> file(s)
-                            </div>
+                            />
+                            <small>Archivos .rep de máximo 1MB cada uno</small>
+                        </div>
 
-                            <div id="validation-errors" style="margin-top: 1rem; display: none;">
-                                <h4>Validation Problems:</h4>
-                                <table id="error-table" style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
-                                    <thead>
-                                        <tr style="background-color: #f5f5f5;">
-                                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">File Name</th>
-                                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Problem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="error-table-body">
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <button type="submit" id="submit-btn" style="margin-top: 1rem;" disabled>
-                                Upload Files
-                            </button>
-                        </form>
-                    </article>
-                </div>
+                        <div id="file-info">
+                            <strong>Selected files:</strong> <span id="selected-files-count">0</span> file(s)
+                        </div>
+
+                        <div id="validation-errors">
+                            <h4>Validation Problems:</h4>
+                            <table id="error-table">
+                                <thead>
+                                <tr>
+                                    <th>File Name</th>
+                                    <th>Problem</th>
+                                </tr>
+                                </thead>
+                                <tbody id="error-table-body">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <button type="submit" id="submit-btn" disabled>
+                            Upload Files
+                        </button>
+                    </form>
+                </article>
             </div>
-        </section>
-    </div>
-    @resultOption.map{result =>
-        <div id="file-upload-results-container">
+        </div>
+    </section>
+</div>
+@resultOption.map{result =>
+<div id="file-upload-results-container">
+    <header>
+        <h1>File Upload Results</h1>
+        <p>Processing completed for @result.totalFiles file(s)</p>
+    </header>
+
+    @if(errorMessage.isDefined) {
+    <section>
+        <article>
+            <h3>Upload Error</h3>
+            <p>@errorMessage.get</p>
+            <a href="/upload" role="button" class="secondary">Try Again</a>
+        </article>
+    </section>
+    } else {
+    <!-- Summary Section -->
+    <section>
+        <div class="grid">
+            <div>
+                <article>
+                    <header>
+                        <h3>Upload Summary</h3>
+                    </header>
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <strong>Total Files:</strong> @result.totalFiles
+                        </div>
+                        <div class="stat-item">
+                            <strong>Successful:</strong> @result.totalSuccessful
+                        </div>
+                        @if(result.totalFailed > 0) {
+                        <div class="stat-item">
+                            <strong>Failed:</strong> @result.totalFailed
+                        </div>
+                        }
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Successful Files Section -->
+    @if(result.successfulFiles.nonEmpty) {
+    <section>
+        <article>
             <header>
-                <h1>File Upload Results</h1>
-                <p>Processing completed for @result.totalFiles file(s)</p>
+                <h3>Successfully Processed Files (@result.totalSuccessful)</h3>
             </header>
-
-            @if(errorMessage.isDefined) {
-            <section>
-                <article style="background-color: #fee; border-left: 4px solid #d32f2f;">
-                    <h3 style="color: #d32f2f;">Upload Error</h3>
-                    <p>@errorMessage.get</p>
-                    <a href="/upload" role="button" class="secondary">Try Again</a>
-                </article>
-            </section>
-            } else {
-            <!-- Summary Section -->
-            <section>
-                <div class="grid">
-                    <div>
-                        <article>
-                            <header>
-                                <h3>Upload Summary</h3>
-                            </header>
-                            <div class="summary-stats">
-                                <div class="stat-item">
-                                    <strong>Total Files:</strong> @result.totalFiles
-                                </div>
-                                <div class="stat-item" style="color: #2e7d32;">
-                                    <strong>Successful:</strong> @result.totalSuccessful
-                                </div>
-                                @if(result.totalFailed > 0) {
-                                <div class="stat-item" style="color: #d32f2f;">
-                                    <strong>Failed:</strong> @result.totalFailed
-                                </div>
-                                }
-                            </div>
-                        </article>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Successful Files Section -->
-            @if(result.successfulFiles.nonEmpty) {
-            <section>
-                <article>
-                    <header>
-                        <h3 style="color: #2e7d32;">Successfully Processed Files (@result.totalSuccessful)</h3>
-                    </header>
-                    <div class="table-container">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                            <tr style="background-color: #e8f5e8;">
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">File Name</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Size</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Game Info</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Processed At</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @for(file <- result.successfulFiles) {
-                            <tr>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    <strong>@file.fileName</strong>
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @{
-                                    val sizeInKB = file.originalSize / 1024.0
-                                    if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
-                                    else f"${sizeInKB / 1024}%.2f MB"
-                                    }
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @file.gameInfo match {
-                                        case Some(replayParsed: ReplayParsed) => {
-                                            <div class="game-info">
-                                                <div><strong>Map:</strong> @replayParsed.mapName.getOrElse("Unknown")</div>
-                                                <div><strong>Mode:</strong> @{
-                                                    replayParsed.gameMode match {
-                                                        case TopVsBottom => "Top vs Bottom"
-                                                        case Melee => "Melee"
-                                                        case OneVsOneMode => "1v1"
-                                                        case DangerMode => "FFA/UMS"
-                                                        case UnknownMode => "Unknown"
-                                                    }
-                                                }</div>
-                                                <div><strong>Teams:</strong> @replayParsed.teams.length</div>
-                                                @if(replayParsed.teams.nonEmpty) {
-                                                    <div><strong>Players:</strong>
-                                                        @for((team, teamIndex) <- replayParsed.teams.zipWithIndex) {
-                                                            @if(teamIndex > 0) {<br/>}
-                                                            <span style="@if(team.index == replayParsed.winnerTeamIndex) {color: #2e7d32; font-weight: bold;} else {color: #666;}">
-                                                                Team @{team.index + 1}@if(team.index == replayParsed.winnerTeamIndex) { (Winner)}: 
-                                                                @for((player, playerIndex) <- team.participants.zipWithIndex) {
-                                                                    @if(playerIndex > 0) {, }
-                                                                    @player.name (@{
-                                                                        player.race match {
-                                                                            case Zerg => "Z"
-                                                                            case Terran => "T"
-                                                                            case Protoss => "P"
-                                                                        }
-                                                                    })
-                                                                }
-                                                            </span>
-                                                        }
-                                                    </div>
-                                                }
-                                                @replayParsed.startTime.map { startTime =>
-                                                    <div><strong>Started:</strong> @startTime</div>
-                                                }
-                                            </div>
-                                        }
-                                        case Some(ImpossibleToParse) => {
-                                            <span style="color: #ff9800;">Could not parse game data</span>
-                                        }
-                                        case None => {
-                                            <span style="color: #666;">No game info available</span>
-                                        }
-                                    }
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @{
-                                    java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
-                                    }
-                                </td>
-                            </tr>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Map</th>
+                        <th>Jugador 1</th>
+                        <th>Jugador 2</th>
+                        <th>Hora inicio</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @for(file <- result.successfulFiles) {
+                    <tr>
+                        @file.gameInfo match {
+                        case Some(replayParsed: ReplayParsed) => {
+                        <td>@replayParsed.mapName.getOrElse("Unknown")</td>
+                        <td>
+                            @if(replayParsed.teams.nonEmpty && replayParsed.teams.head.participants.nonEmpty) {
+                            @defining(replayParsed.teams.head.participants.head) { player =>
+                            @player.name (@{
+                            player.race match {
+                            case Zerg => "Z"
+                            case Terran => "T"
+                            case Protoss => "P"
                             }
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-            </section>
-            }
-
-            <!-- Failed Files Section -->
-            @if(result.failedFiles.nonEmpty) {
-            <section>
-                <article>
-                    <header>
-                        <h3 style="color: #d32f2f;">Failed Files (@result.totalFailed)</h3>
-                    </header>
-                    <div class="table-container">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                            <tr style="background-color: #ffeaea;">
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">File Name</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Size</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Error</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Attempted At</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @for(file <- result.failedFiles) {
-                            <tr>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    <strong>@file.fileName</strong>
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @{
-                                    val sizeInKB = file.originalSize / 1024.0
-                                    if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
-                                    else f"${sizeInKB / 1024}%.2f MB"
-                                    }
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd; color: #d32f2f;">
-                                    @file.errorMessage.getOrElse("Unknown error")
-                                </td>
-                                <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @{
-                                    java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
-                                    }
-                                </td>
-                            </tr>
+                            })
                             }
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-            </section>
-            }
-
-            <!-- Action Buttons -->
-            <section>
-                <div class="grid">
-                    <div>
-                        <a href="/upload" role="button" class="secondary">Upload More Files</a>
-                    </div>
-                    @if(result.totalSuccessful > 0) {
-                    <div>
-                        <button onclick="downloadResults()" class="outline">Download Results Summary</button>
-                    </div>
+                            } else {
+                            Unknown Player
+                            }
+                        </td>
+                        <td>
+                            @if(replayParsed.teams.length > 1 && replayParsed.teams(1).participants.nonEmpty) {
+                            @defining(replayParsed.teams(1).participants.head) { player =>
+                            @player.name (@{
+                            player.race match {
+                            case Zerg => "Z"
+                            case Terran => "T"
+                            case Protoss => "P"
+                            }
+                            })
+                            }
+                            } else {
+                            Unknown Player
+                            }
+                        </td>
+                        <td>
+                            @replayParsed.startTime.getOrElse("Unknown")
+                        </td>
+                        }
+                        case Some(ImpossibleToParse) | None => {
+                        <td>?</td>
+                        <td>?</td>
+                        <td>?</td>
+                        <td>?</td>
+                        }
+                        }
+                    </tr>
                     }
-                </div>
-            </section>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+    }
+
+    <!-- Failed Files Section -->
+    @if(result.failedFiles.nonEmpty) {
+    <section>
+        <article>
+            <header>
+                <h3>Failed Files (@result.totalFailed)</h3>
+            </header>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Size</th>
+                        <th>Error</th>
+                        <th>Attempted At</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @for(file <- result.failedFiles) {
+                    <tr>
+                        <td>
+                            <strong>@file.fileName</strong>
+                        </td>
+                        <td>
+                            @{
+                            val sizeInKB = file.originalSize / 1024.0
+                            if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
+                            else f"${sizeInKB / 1024}%.2f MB"
+                            }
+                        </td>
+                        <td>
+                            @file.errorMessage.getOrElse("Unknown error")
+                        </td>
+                        <td>
+                            @{
+                            java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
+                            }
+                        </td>
+                    </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+    }
+
+    <!-- Action Buttons -->
+    <section>
+        <div class="grid">
+            <div>
+                <a href="/upload" role="button" class="secondary">Upload More Files</a>
+            </div>
+            @if(result.totalSuccessful > 0) {
+            <div>
+                <button onclick="downloadResults()" class="outline">Download Results Summary</button>
+            </div>
             }
         </div>
+    </section>
     }
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const uploadFileInput = document.getElementById('uploadFileInput');
-            const uploadForm = document.getElementById('upload-form');
-            const fileInfo = document.getElementById('file-info');
-            const selectedFilesCount = document.getElementById('selected-files-count');
-            const validationErrors = document.getElementById('validation-errors');
-            const errorTableBody = document.getElementById('error-table-body');
-            const submitBtn = document.getElementById('submit-btn');
-            
-            let validationResults = [];
-            
-            uploadFileInput.addEventListener('change', function(event) {
-                const files = event.target.files;
-                
-                if (files.length === 0) {
-                    fileInfo.style.display = 'none';
-                    validationErrors.style.display = 'none';
-                    submitBtn.disabled = true;
-                    return;
-                }
-                
-                // Show file info
-                fileInfo.style.display = 'block';
-                selectedFilesCount.textContent = files.length;
-                
-                // Validate files
-                validationResults = validateFiles(files);
-                
-                // Check if all files are valid
-                const hasErrors = validationResults.some(result => result.errors.length > 0);
-                
-                if (hasErrors) {
-                    showValidationErrors(validationResults);
-                    submitBtn.disabled = true;
-                } else {
-                    validationErrors.style.display = 'none';
-                    submitBtn.disabled = false;
-                    // Auto-submit when all files are valid
-                    uploadForm.submit();
-                }
-            });
-            
-            uploadForm.addEventListener('submit', function(event) {
-                const files = uploadFileInput.files;
-                if (files.length === 0) {
-                    event.preventDefault();
-                    alert('Please select at least one file');
-                    return;
-                }
-                
-                // Re-validate before submission
-                validationResults = validateFiles(files);
-                const hasErrors = validationResults.some(result => result.errors.length > 0);
-                
-                if (hasErrors) {
-                    event.preventDefault();
-                    showValidationErrors(validationResults);
-                    return;
-                }
-                
-                // If all files are valid, allow normal form submission
-                // No need to prevent default - let the form submit naturally
-            });
-            
-            function validateFiles(files) {
-                const results = [];
-                const maxSizeBytes = 1 * 1024 * 1024; // 1MB
-                
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const errors = [];
-                    
-                    // Check file extension
-                    if (!file.name.toLowerCase().endsWith('.rep')) {
-                        errors.push('File must have .rep extension');
-                    }
-                    
-                    // Check file size
-                    if (file.size > maxSizeBytes) {
-                        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-                        errors.push(`File size (${sizeInMB}MB) exceeds 1MB limit`);
-                    }
-                    
-                    results.push({
-                        fileName: file.name,
-                        errors: errors
-                    });
-                }
-                
-                return results;
-            }
-            
-            function showValidationErrors(results) {
-                const errorsExist = results.some(result => result.errors.length > 0);
-                
-                if (!errorsExist) {
-                    validationErrors.style.display = 'none';
-                    return;
-                }
-                
-                // Clear previous errors
-                errorTableBody.innerHTML = '';
-                
-                // Add errors to table
-                results.forEach(result => {
-                    if (result.errors.length > 0) {
-                        result.errors.forEach(error => {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td style="padding: 8px; border: 1px solid #ddd;">${escapeHtml(result.fileName)}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd; color: #d32f2f;">${escapeHtml(error)}</td>
-                            `;
-                            errorTableBody.appendChild(row);
-                        });
-                    }
-                });
-                
-                validationErrors.style.display = 'block';
-            }
-            
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
+</div>
+}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploadFileInput = document.getElementById('uploadFileInput');
+        const uploadForm = document.getElementById('upload-form');
+        const fileInfo = document.getElementById('file-info');
+        const selectedFilesCount = document.getElementById('selected-files-count');
+        const validationErrors = document.getElementById('validation-errors');
+        const errorTableBody = document.getElementById('error-table-body');
+        const submitBtn = document.getElementById('submit-btn');
+
+        let validationResults = [];
+
+        uploadFileInput.addEventListener('change', function(event) {
+            const files = event.target.files;
+
+            if (files.length === 0) {
+                fileInfo.style.display = 'none';
+                validationErrors.style.display = 'none';
+                submitBtn.disabled = true;
+                return;
             }
 
+            // Show file info
+            fileInfo.style.display = 'block';
+            selectedFilesCount.textContent = files.length;
+
+            // Validate files
+            validationResults = validateFiles(files);
+
+            // Check if all files are valid
+            const hasErrors = validationResults.some(result => result.errors.length > 0);
+
+            if (hasErrors) {
+                showValidationErrors(validationResults);
+                submitBtn.disabled = true;
+            } else {
+                validationErrors.style.display = 'none';
+                submitBtn.disabled = false;
+                // Auto-submit when all files are valid
+                uploadForm.submit();
+            }
         });
-    </script>
+
+        uploadForm.addEventListener('submit', function(event) {
+            const files = uploadFileInput.files;
+            if (files.length === 0) {
+                event.preventDefault();
+                alert('Please select at least one file');
+                return;
+            }
+
+            // Re-validate before submission
+            validationResults = validateFiles(files);
+            const hasErrors = validationResults.some(result => result.errors.length > 0);
+
+            if (hasErrors) {
+                event.preventDefault();
+                showValidationErrors(validationResults);
+                return;
+            }
+
+            // If all files are valid, allow normal form submission
+            // No need to prevent default - let the form submit naturally
+        });
+
+        function validateFiles(files) {
+            const results = [];
+            const maxSizeBytes = 1 * 1024 * 1024; // 1MB
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const errors = [];
+
+                // Check file extension
+                if (!file.name.toLowerCase().endsWith('.rep')) {
+                    errors.push('File must have .rep extension');
+                }
+
+                // Check file size
+                if (file.size > maxSizeBytes) {
+                    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                    errors.push(`File size (${sizeInMB}MB) exceeds 1MB limit`);
+                }
+
+                results.push({
+                    fileName: file.name,
+                    errors: errors
+                });
+            }
+
+            return results;
+        }
+
+        function showValidationErrors(results) {
+            const errorsExist = results.some(result => result.errors.length > 0);
+
+            if (!errorsExist) {
+                validationErrors.style.display = 'none';
+                return;
+            }
+
+            // Clear previous errors
+            errorTableBody.innerHTML = '';
+
+            // Add errors to table
+            results.forEach(result => {
+                if (result.errors.length > 0) {
+                    result.errors.forEach(error => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td >${escapeHtml(result.fileName)}</td>
+                            <td >${escapeHtml(error)}</td>
+                        `;
+                        errorTableBody.appendChild(row);
+                    });
+                }
+            });
+
+            validationErrors.style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+    });
+</script>
 }
