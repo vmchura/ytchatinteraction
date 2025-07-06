@@ -4,7 +4,7 @@ import services.ParseReplayFileService
 import models.StarCraftModels._
 import java.io.File
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import javax.inject._
 
 /**

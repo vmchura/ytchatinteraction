@@ -1,5 +1,5 @@
 @import models.User
-@import controllers.{FileProcessResult, MultiFileUploadResult}
+@import services.{FileProcessResult, MultiFileUploadResult}
 @import models.StarCraftModels._
 @(user: Option[User], resultOption: Option[MultiFileUploadResult]=None, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
 
