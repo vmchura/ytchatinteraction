@@ -12,6 +12,7 @@ import play.api.Configuration
 import scala.concurrent.{ExecutionContext, Future}
 import java.nio.file.Files
 import java.util.Base64
+import models.StarCraftModels.GameInfo
 
 case class FileUploadState(
                             message: String,
@@ -25,7 +26,8 @@ case class FileProcessResult(
                               processedAt: String,
                               success: Boolean,
                               errorMessage: Option[String] = None,
-                              base64Preview: Option[String] = None
+                              base64Preview: Option[String] = None,
+                              gameInfo: Option[GameInfo] = None
                             )
 
 case class MultiFileUploadResult(
@@ -149,7 +151,8 @@ class FileUploadController @Inject()(
           contentType = file.contentType.getOrElse("unknown"),
           processedAt = java.time.Instant.now().toString,
           success = false,
-          errorMessage = Some(getErrorMessage(error))
+          errorMessage = Some(getErrorMessage(error)),
+          gameInfo = None
         ))
     }
   }
@@ -206,6 +209,16 @@ class FileUploadController @Inject()(
           if (response.status == 200) {
             logger.info(s"Successfully parsed replay file: $fileName")
             val responseBody = response.body[String]
+            
+            // Parse GameInfo from the JSON response
+            val gameInfo = try {
+              Some(GameInfo.parseFromJson(responseBody))
+            } catch {
+              case ex: Exception =>
+                logger.warn(s"Failed to parse GameInfo from response for file $fileName: ${ex.getMessage}")
+                None
+            }
+            
             FileProcessResult(
               fileName = fileName,
               originalSize = fileBytes.length,
@@ -213,7 +226,8 @@ class FileUploadController @Inject()(
               processedAt = java.time.Instant.now().toString,
               success = true,
               errorMessage = None,
-              base64Preview = Some(responseBody.take(500)) // First 500 chars of the parsed result
+              base64Preview = Some(responseBody.take(500)), // First 500 chars of the parsed result
+              gameInfo = gameInfo
             )
           } else {
             logger.error(s"Replay parser service returned error ${response.status}: ${response.body[String]}")
@@ -223,7 +237,8 @@ class FileUploadController @Inject()(
               contentType = file.contentType.getOrElse("unknown"),
               processedAt = java.time.Instant.now().toString,
               success = false,
-              errorMessage = Some(s"Parser service error (${response.status}): ${response.body[String]}")
+              errorMessage = Some(s"Parser service error (${response.status}): ${response.body[String]}"),
+              gameInfo = None
             )
           }
         }
@@ -235,7 +250,8 @@ class FileUploadController @Inject()(
             contentType = file.contentType.getOrElse("unknown"),
             processedAt = java.time.Instant.now().toString,
             success = false,
-            errorMessage = Some(s"Service call failed: ${ex.getMessage}")
+            errorMessage = Some(s"Service call failed: ${ex.getMessage}"),
+            gameInfo = None
           )
         }
 
@@ -248,7 +264,8 @@ class FileUploadController @Inject()(
           contentType = file.contentType.getOrElse("unknown"),
           processedAt = java.time.Instant.now().toString,
           success = false,
-          errorMessage = Some(s"File reading error: ${ex.getMessage}")
+          errorMessage = Some(s"File reading error: ${ex.getMessage}"),
+          gameInfo = None
         ))
     }
   }

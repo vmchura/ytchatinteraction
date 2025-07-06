@@ -1,8 +1,36 @@
 @import models.User
 @import controllers.{FileProcessResult, MultiFileUploadResult}
+@import models.StarCraftModels._
 @(user: Option[User], resultOption: Option[MultiFileUploadResult]=None, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
 
 @main("File Upload", user) {
+    <style>
+        .game-info {
+            font-size: 0.9em;
+            line-height: 1.3;
+        }
+        .game-info div {
+            margin-bottom: 2px;
+        }
+        .stat-item {
+            margin-bottom: 0.5rem;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .summary-stats {
+            display: grid;
+            gap: 0.5rem;
+        }
+        details summary {
+            cursor: pointer;
+            font-size: 0.8em;
+            color: #666;
+        }
+        details[open] summary {
+            margin-bottom: 0.5rem;
+        }
+    </style>
     <div id="file-upload-container">
         <header>
             <h1>File Upload</h1>
@@ -111,7 +139,7 @@
                             <tr style="background-color: #e8f5e8;">
                                 <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">File Name</th>
                                 <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Size</th>
-                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Type</th>
+                                <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Game Info</th>
                                 <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Processed At</th>
                                 <th style="padding: 12px; border: 1px solid #ddd; text-align: left;">Preview</th>
                             </tr>
@@ -130,7 +158,52 @@
                                     }
                                 </td>
                                 <td style="padding: 12px; border: 1px solid #ddd;">
-                                    @file.contentType
+                                    @file.gameInfo match {
+                                        case Some(replayParsed: ReplayParsed) => {
+                                            <div class="game-info">
+                                                <div><strong>Map:</strong> @replayParsed.mapName.getOrElse("Unknown")</div>
+                                                <div><strong>Mode:</strong> @{
+                                                    replayParsed.gameMode match {
+                                                        case TopVsBottom => "Top vs Bottom"
+                                                        case Melee => "Melee"
+                                                        case OneVsOneMode => "1v1"
+                                                        case DangerMode => "FFA/UMS"
+                                                        case UnknownMode => "Unknown"
+                                                    }
+                                                }</div>
+                                                <div><strong>Teams:</strong> @replayParsed.teams.length</div>
+                                                @if(replayParsed.teams.nonEmpty) {
+                                                    <div><strong>Players:</strong>
+                                                        @for((team, teamIndex) <- replayParsed.teams.zipWithIndex) {
+                                                            @if(teamIndex > 0) {<br/>}
+                                                            <span style="@if(team.index == replayParsed.winnerTeamIndex) {color: #2e7d32; font-weight: bold;} else {color: #666;}">
+                                                                Team @{team.index + 1}@if(team.index == replayParsed.winnerTeamIndex) { (Winner)}: 
+                                                                @for((player, playerIndex) <- team.participants.zipWithIndex) {
+                                                                    @if(playerIndex > 0) {, }
+                                                                    @player.name (@{
+                                                                        player.race match {
+                                                                            case Zerg => "Z"
+                                                                            case Terran => "T"
+                                                                            case Protoss => "P"
+                                                                        }
+                                                                    })
+                                                                }
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                }
+                                                @replayParsed.startTime.map { startTime =>
+                                                    <div><strong>Started:</strong> @startTime</div>
+                                                }
+                                            </div>
+                                        }
+                                        case Some(ImpossibleToParse) => {
+                                            <span style="color: #ff9800;">Could not parse game data</span>
+                                        }
+                                        case None => {
+                                            <span style="color: #666;">No game info available</span>
+                                        }
+                                    }
                                 </td>
                                 <td style="padding: 12px; border: 1px solid #ddd;">
                                     @{
@@ -139,9 +212,12 @@
                                 </td>
                                 <td style="padding: 12px; border: 1px solid #ddd;">
                                     @if(file.base64Preview.isDefined) {
-                                    <code style="font-size: 0.8em; color: #666;">
-                                        @file.base64Preview.get...
-                                    </code>
+                                    <details>
+                                        <summary>View JSON</summary>
+                                        <code style="font-size: 0.7em; color: #666; display: block; max-height: 100px; overflow-y: auto;">
+                                            @file.base64Preview.get...
+                                        </code>
+                                    </details>
                                     } else {
                                     <em>No preview available</em>
                                     }
