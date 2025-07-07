@@ -18,7 +18,7 @@
                     <header>
                         <h3>Select Files for Analysis</h3>
                     </header>
-                    <form id="upload-form" enctype="multipart/form-data" method="post" action="/upload">
+                    <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload/add"}>
                         @helper.CSRF.formField
                         <div id="file-input-container">
                             <input
