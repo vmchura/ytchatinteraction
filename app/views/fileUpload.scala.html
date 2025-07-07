@@ -1,9 +1,10 @@
 @import models.User
 @import services.{FileProcessResult, MultiFileUploadResult}
 @import models.StarCraftModels._
-@(user: Option[User], resultOption: Option[MultiFileUploadResult]=None, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
+@import services.UploadSession
+@(user: User, matchID: String, uploadSession: UploadSession, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
 
-@main("File Upload", user) {
+@main("File Upload", Some(user)) {
 <div id="file-upload-container">
     <header>
         <h1>File Upload</h1>
@@ -57,11 +58,10 @@
         </div>
     </section>
 </div>
-@resultOption.map{result =>
 <div id="file-upload-results-container">
     <header>
         <h1>File Upload Results</h1>
-        <p>Processing completed for @result.totalFiles file(s)</p>
+        <p>Processing completed for @uploadSession.uploadedFiles.length file(s)</p>
     </header>
 
     @if(errorMessage.isDefined) {
@@ -74,33 +74,8 @@
     </section>
     } else {
     <!-- Summary Section -->
-    <section>
-        <div class="grid">
-            <div>
-                <article>
-                    <header>
-                        <h3>Upload Summary</h3>
-                    </header>
-                    <div class="summary-stats">
-                        <div class="stat-item">
-                            <strong>Total Files:</strong> @result.totalFiles
-                        </div>
-                        <div class="stat-item">
-                            <strong>Successful:</strong> @result.totalSuccessful
-                        </div>
-                        @if(result.totalFailed > 0) {
-                        <div class="stat-item">
-                            <strong>Failed:</strong> @result.totalFailed
-                        </div>
-                        }
-                    </div>
-                </article>
-            </div>
-        </div>
-    </section>
 
-    <!-- Successful Files Section -->
-    @if(result.successfulFiles.nonEmpty) {
+
     <section>
         <article>
             <header>
@@ -170,54 +145,6 @@
             </div>
         </article>
     </section>
-    }
-
-    <!-- Failed Files Section -->
-    @if(result.failedFiles.nonEmpty) {
-    <section>
-        <article>
-            <header>
-                <h3>Failed Files (@result.totalFailed)</h3>
-            </header>
-            <div class="table-container">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>File Name</th>
-                        <th>Size</th>
-                        <th>Error</th>
-                        <th>Attempted At</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @for(file <- result.failedFiles) {
-                    <tr>
-                        <td>
-                            <strong>@file.fileName</strong>
-                        </td>
-                        <td>
-                            @{
-                            val sizeInKB = file.originalSize / 1024.0
-                            if (sizeInKB < 1024) f"${sizeInKB}%.1f KB"
-                            else f"${sizeInKB / 1024}%.2f MB"
-                            }
-                        </td>
-                        <td>
-                            @file.errorMessage.getOrElse("Unknown error")
-                        </td>
-                        <td>
-                            @{
-                            java.time.Instant.parse(file.processedAt).toString.replace('T', ' ').substring(0, 19)
-                            }
-                        </td>
-                    </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </article>
-    </section>
-    }
 
     <!-- Action Buttons -->
     <section>
@@ -234,7 +161,6 @@
     </section>
     }
 </div>
-}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const uploadFileInput = document.getElementById('uploadFileInput');

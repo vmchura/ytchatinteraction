@@ -51,10 +51,10 @@ GET     /api/replay-parser/health   controllers.ReplayParserHealthController.hea
 GET     /api/replay-parser/status   controllers.ReplayParserHealthController.status()
 POST    /api/replay-parser/test     controllers.ReplayParserHealthController.testParse()
 
-# File Upload routes
-GET     /upload                     controllers.FileUploadController.uploadForm()
-POST    /upload                     controllers.FileUploadController.uploadFile()
-GET     /api/upload/status          controllers.FileUploadController.uploadStatus()
+# Tournament Match File Upload routes (session-based)
+GET     /match/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(matchId: String)
+POST    /match/:matchId/upload/add  controllers.FileUploadController.uploadFile(matchId: String)
+POST    /match/:matchId/upload/finalize controllers.FileUploadController.finalizeSession(matchId: String)
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()
