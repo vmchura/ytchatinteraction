@@ -58,10 +58,12 @@
         </div>
     </section>
 </div>
+
+@if(uploadSession.hasFiles) {
 <div id="file-upload-results-container">
     <header>
         <h1>File Upload Results</h1>
-        <p>Processing completed for @uploadSession.uploadedFiles.length file(s)</p>
+        <p>Processing completed for @uploadSession.totalFiles file(s)</p>
     </header>
 
     @if(errorMessage.isDefined) {
@@ -74,12 +76,10 @@
     </section>
     } else {
     <!-- Summary Section -->
-
-
     <section>
         <article>
             <header>
-                <h3>Successfully Processed Files (@result.totalSuccessful)</h3>
+                <h3>Successfully Processed Files (@uploadSession.successfulFiles.length)</h3>
             </header>
             <div class="table-container">
                 <table>
@@ -92,7 +92,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    @for(file <- result.successfulFiles) {
+                    @for(file <- uploadSession.successfulFiles) {
                     <tr>
                         @file.gameInfo match {
                         case Some(replayParsed: ReplayParsed) => {
@@ -146,21 +146,55 @@
         </article>
     </section>
 
+    @if(uploadSession.failedFiles.nonEmpty) {
+    <section>
+        <article>
+            <header>
+                <h3>Failed Files (@uploadSession.failedFiles.length)</h3>
+            </header>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Error</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @for(file <- uploadSession.failedFiles) {
+                    <tr>
+                        <td>@file.fileName</td>
+                        <td>@file.errorMessage.getOrElse("Unknown error")</td>
+                    </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+    }
+
     <!-- Action Buttons -->
     <section>
         <div class="grid">
             <div>
                 <a href="/upload" role="button" class="secondary">Upload More Files</a>
             </div>
-            @if(result.totalSuccessful > 0) {
+            @if(uploadSession.successfulFiles.nonEmpty) {
             <div>
-                <button onclick="downloadResults()" class="outline">Download Results Summary</button>
+                <form method="post" action="/download-results">
+                    @helper.CSRF.formField
+                    <input type="hidden" name="sessionId" value="@uploadSession.sessionId" />
+                    <button type="submit" class="outline">Download Results Summary</button>
+                </form>
             </div>
             }
         </div>
     </section>
     }
 </div>
+}
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const uploadFileInput = document.getElementById('uploadFileInput');

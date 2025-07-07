@@ -29,7 +29,7 @@ case class UploadSession(
     )
   }
 
-  def finalize(): UploadSession = {
+  def finalizeSession(): UploadSession = {
     this.copy(
       isFinalized = true,
       lastUpdated = Instant.now()
@@ -154,7 +154,7 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !isSessionExpired(session) =>
-        val finalizedSession = session.finalize()
+        val finalizedSession = session.finalizeSession()
         sessions.put(sessionKey, finalizedSession)
         logger.info(s"Finalized session: ${session.sessionId} with ${session.totalFiles} files")
         Future.successful(Some(finalizedSession))
