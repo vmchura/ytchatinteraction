@@ -4,100 +4,70 @@
 
 @main("Create Tournament") {
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h4 class="mb-0">Create New Tournament</h4>
-                    </div>
-                    <div class="card-body">
-                        @if(request.flash.get("success").isDefined) {
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                @request.flash.get("success")
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        }
+        <article>
+            <header>
+                <h1>Create New Tournament</h1>
+                <p>Create a new tournament with default settings.</p>
+            </header>
 
-                        @if(request.flash.get("error").isDefined) {
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                @request.flash.get("error")
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        }
-
-                        @helper.form(action = routes.TournamentController.createTournament(), Symbol("class") -> "needs-validation", Symbol("novalidate") -> "true") {
-                            @helper.CSRF.formField
-                            
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Tournament Name <span class="text-danger">*</span></label>
-                                <input type="text" 
-                                       class="form-control @if(tournamentForm("name").hasErrors) {is-invalid}" 
-                                       id="name" 
-                                       name="name" 
-                                       value="@tournamentForm("name").value.getOrElse("")" 
-                                       placeholder="Enter tournament name"
-                                       required>
-                                @if(tournamentForm("name").hasErrors) {
-                                    <div class="invalid-feedback">
-                                        @tournamentForm("name").errors.map(_.message).mkString(", ")
-                                    </div>
-                                }
-                                <div class="form-text">
-                                    Enter a descriptive name for your tournament.
-                                </div>
-                            </div>
-
-                            <div class="alert alert-info">
-                                <h6 class="alert-heading">Default Settings</h6>
-                                <p class="mb-1">The tournament will be created with these default settings:</p>
-                                <ul class="mb-0">
-                                    <li><strong>Max Participants:</strong> 16</li>
-                                    <li><strong>Registration:</strong> Opens immediately, closes in 7 days</li>
-                                    <li><strong>Status:</strong> Registration Open</li>
-                                    <li><strong>Description:</strong> None (can be added later)</li>
-                                </ul>
-                            </div>
-
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-trophy"></i> Create Tournament
-                                </button>
-                                <a href="@routes.HomeController.index()" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left"></i> Back to Home
-                                </a>
-                            </div>
-                        }
-                    </div>
+            @if(request.flash.get("success").isDefined) {
+                <div role="alert">
+                    @request.flash.get("success")
                 </div>
-            </div>
-        </div>
+            }
+
+            @if(request.flash.get("error").isDefined) {
+                <div role="alert">
+                    @request.flash.get("error")
+                </div>
+            }
+
+            @helper.form(action = routes.TournamentController.createTournament()) {
+                @helper.CSRF.formField
+                
+                <fieldset>
+                    <label for="name">
+                        Tournament Name *
+                        <input type="text" 
+                               id="name" 
+                               name="name" 
+                               value="@tournamentForm("name").value.getOrElse("")" 
+                               placeholder="Enter tournament name"
+                               @if(tournamentForm("name").hasErrors) {aria-invalid="true"}
+                               required>
+                        @if(tournamentForm("name").hasErrors) {
+                            <small>@tournamentForm("name").errors.map(_.message).mkString(", ")</small>
+                        } else {
+                            <small>Enter a descriptive name for your tournament.</small>
+                        }
+                    </label>
+                </fieldset>
+
+                <article>
+                    <header>
+                        <h3>Default Settings</h3>
+                    </header>
+                    <p>The tournament will be created with these default settings:</p>
+                    <ul>
+                        <li><strong>Max Participants:</strong> 16</li>
+                        <li><strong>Registration:</strong> Opens immediately, closes in 7 days</li>
+                        <li><strong>Status:</strong> Registration Open</li>
+                        <li><strong>Description:</strong> None (can be added later)</li>
+                    </ul>
+                </article>
+
+                <div class="grid">
+                    <button type="submit">Create Tournament</button>
+                </div>
+            }
+
+            <footer>
+                <div class="grid">
+                    <a href="@routes.TournamentController.showOpenTournaments()" role="button" class="secondary">View All Tournaments</a>
+                    <a href="@routes.HomeController.index()" role="button" class="contrast">Back to Home</a>
+                </div>
+            </footer>
+        </article>
     </div>
 
-    <script>
-        // Bootstrap form validation
-        (function() {
-            'use strict';
-            window.addEventListener('load', function() {
-                var forms = document.getElementsByClassName('needs-validation');
-                var validation = Array.prototype.filter.call(forms, function(form) {
-                    form.addEventListener('submit', function(event) {
-                        if (form.checkValidity() === false) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
-                        form.classList.add('was-validated');
-                    }, false);
-                });
-            }, false);
-        })();
-
-        // Auto-dismiss alerts after 5 seconds
-        setTimeout(function() {
-            var alerts = document.querySelectorAll('.alert-dismissible');
-            alerts.forEach(function(alert) {
-                var bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
-    </script>
 }

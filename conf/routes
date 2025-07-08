@@ -47,8 +47,10 @@ POST    /my-events/tournament/:tournamentId/register controllers.UserEventsContr
 GET     /my-events/ws               controllers.UserEventsController.eventsUpdates
 
 # Tournament management routes
+GET     /tournaments                controllers.TournamentController.showOpenTournaments()
 GET     /tournaments/create         controllers.TournamentController.showCreateForm()
 POST    /tournaments/create         controllers.TournamentController.createTournament()
+POST    /tournaments/:id/start      controllers.TournamentController.startTournament(id: Long)
 
 # Replay Parser Health Check routes
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
