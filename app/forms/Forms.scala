@@ -43,6 +43,11 @@ case class StreamerToUserCurrencyForm(
                                        amount: Int
                                      )
 
+// Form for creating a new tournament
+case class TournamentCreateForm(
+                                 name: String
+                               )
+
 object Forms:
   val eventForm = Form(
     mapping(
@@ -99,4 +104,10 @@ object Forms:
       "userId" -> longNumber,
       "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
     )(StreamerToUserCurrencyForm.apply)(nn => Some(nn.userId, nn.amount))
+  )
+  
+  val tournamentCreateForm = Form(
+    mapping(
+      "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty)
+    )(TournamentCreateForm.apply)(nn => Some(nn.name))
   )

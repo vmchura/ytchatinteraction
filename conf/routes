@@ -45,6 +45,10 @@ POST    /my-events/vote             controllers.UserEventsController.submitVote(
 GET     /my-events/join/:eventId    controllers.UserEventsController.joinEvent(eventId: Int)
 GET     /my-events/ws               controllers.UserEventsController.eventsUpdates
 
+# Tournament management routes
+GET     /tournaments/create         controllers.TournamentController.showCreateForm()
+POST    /tournaments/create         controllers.TournamentController.createTournament()
+
 # Replay Parser Health Check routes
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
 GET     /api/replay-parser/health   controllers.ReplayParserHealthController.health()

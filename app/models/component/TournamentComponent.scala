@@ -2,33 +2,32 @@ package models.component
 
 import models.{Tournament, TournamentStatus}
 import slick.jdbc.JdbcProfile
-import slick.lifted.TableQuery
+import slick.ast.BaseTypedType
+
 import java.time.Instant
 
 trait TournamentComponent {
   protected val profile: JdbcProfile
+  
   import profile.api.*
 
-  // Custom column type for TournamentStatus
-  implicit val tournamentStatusColumnType: BaseColumnType[TournamentStatus] =
-    MappedColumnType.base[TournamentStatus, String](
-      _.toString,
-      {
-        case "RegistrationOpen" => TournamentStatus.RegistrationOpen
-        case "RegistrationClosed" => TournamentStatus.RegistrationClosed
-        case "InProgress" => TournamentStatus.InProgress
-        case "Completed" => TournamentStatus.Completed
-        case "Cancelled" => TournamentStatus.Cancelled
-        case other => throw new IllegalArgumentException(s"Unknown tournament status: $other")
-      }
-    )
-
-  // Custom column type for Instant
-  implicit val instantColumnType: BaseColumnType[Instant] =
-    MappedColumnType.base[Instant, java.sql.Timestamp](
-      instant => java.sql.Timestamp.from(instant),
-      timestamp => timestamp.toInstant
-    )
+  implicit val tournamentStatusColumnType: BaseTypedType[TournamentStatus] = MappedColumnType.base[TournamentStatus, String](
+    e => e match {
+      case TournamentStatus.RegistrationOpen => "RegistrationOpen"
+      case TournamentStatus.RegistrationClosed => "RegistrationClosed"
+      case TournamentStatus.InProgress => "InProgress"
+      case TournamentStatus.Completed => "Completed"
+      case TournamentStatus.Cancelled => "Cancelled"
+    },
+    s => s match {
+      case "RegistrationOpen" => TournamentStatus.RegistrationOpen
+      case "RegistrationClosed" => TournamentStatus.RegistrationClosed
+      case "InProgress" => TournamentStatus.InProgress
+      case "Completed" => TournamentStatus.Completed
+      case "Cancelled" => TournamentStatus.Cancelled
+      case _ => throw new IllegalArgumentException(s"Unknown tournament status: $s")
+    }
+  )
 
   class TournamentsTable(tag: Tag) extends Table[Tournament](tag, "tournaments") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -45,10 +44,8 @@ trait TournamentComponent {
     def updatedAt = column[Instant]("updated_at")
 
     def * = (id, name, description, maxParticipants, registrationStartAt, registrationEndAt, 
-             tournamentStartAt, tournamentEndAt, challongeTournamentId, status, createdAt, updatedAt) <> 
-             ((Tournament.apply _).tupled, Tournament.unapply)
-
+            tournamentStartAt, tournamentEndAt, challongeTournamentId, status, createdAt, updatedAt).mapTo[Tournament]
   }
 
-  val tournamentsTable = TableQuery[TournamentsTable]
+  lazy val tournamentsTable = TableQuery[TournamentsTable]
 }
