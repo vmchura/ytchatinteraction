@@ -9,22 +9,11 @@ import java.time.Instant
 case class TournamentMatch(
   matchId: String,
   tournamentId: String,
-  firstUserId: String,
-  secondUserId: String,
+  firstUserId: Long,
+  secondUserId: Long,
   createdAt: Instant = Instant.now(),
   status: MatchStatus = MatchStatus.Pending
 )
-
-object TournamentMatch {
-  def apply(tournamentId: String, firstUserId: String, secondUserId: String): TournamentMatch = {
-    TournamentMatch(
-      matchId = UUID.randomUUID().toString,
-      tournamentId = tournamentId,
-      firstUserId = firstUserId,
-      secondUserId = secondUserId
-    )
-  }
-}
 
 /**
  * Status of a tournament match
