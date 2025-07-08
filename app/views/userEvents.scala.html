@@ -1,4 +1,4 @@
-@import models.{StreamerEvent, EventPoll, PollOption, User}
+@import models.{StreamerEvent, EventPoll, PollOption, User, Tournament}
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
 
@@ -7,7 +7,9 @@
   voteForm: Form[VoteFormData],
   user: User,
   extraEvents: Seq[FrontalStreamerEvent],
-  webSocketUrl: String)(implicit request: RequestHeader, flash: Flash)
+  webSocketUrl: String,
+  openTournaments: Seq[Tournament],
+  tournamentsWithRegistrationStatus: Map[Tournament, Boolean])(implicit request: RequestHeader, flash: Flash)
 
 @main("My Events", Some(user)) {
   <h1>My Active Events</h1>
@@ -108,6 +110,43 @@
               <a href="@routes.UserEventsController.joinEvent(event.eventId)" class="join-event-button">
                 Join Event
               </a>
+            </article>
+          </div>
+        }
+    </div>
+  </div>
+  
+  <div id="tournaments-section" style="@if(openTournaments.isEmpty) {display: none;} else {display: block;}">
+    <h2>Open Tournaments</h2>
+    <p>Tournaments currently open for registration:</p>
+    
+    <div id="tournaments-container">
+        @for(tournament <- openTournaments) {
+          <div id="tournament-@tournament.id">
+            <article>
+              <header>
+                <h3>@tournament.name</h3>
+                @tournament.description.map { desc =>
+                  <p>@desc</p>
+                }
+              </header>
+              
+              <div class="tournament-details">
+                <p><strong>Max participants:</strong> @tournament.maxParticipants</p>
+                <p><strong>Registration ends:</strong> @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+                @tournament.tournamentStartAt.map { startTime =>
+                  <p><strong>Tournament starts:</strong> @startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+                }
+              </div>
+              
+              @if(tournamentsWithRegistrationStatus.getOrElse(tournament, false)) {
+                <button disabled class="registered-button">Already Registered</button>
+              } else {
+                <form action="@routes.UserEventsController.registerForTournament(tournament.id)" method="POST" style="display: inline;">
+                  @helper.CSRF.formField
+                  <button type="submit" class="register-button">Register for Tournament</button>
+                </form>
+              }
             </article>
           </div>
         }

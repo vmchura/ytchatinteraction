@@ -8,7 +8,7 @@ import play.api.data.Forms._
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 import play.api.Logger
-import services.{PollService, EventUpdateService}
+import services.{PollService, EventUpdateService, TournamentService}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import java.net.URI
@@ -26,7 +26,8 @@ class UserEventsController @Inject()(
   pollOptionRepository: PollOptionRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
   pollService: PollService,
-  eventUpdateService: EventUpdateService
+  eventUpdateService: EventUpdateService,
+  tournamentService: TournamentService
 )(implicit ec: ExecutionContext, 
   system: ActorSystem,
   mat: Materializer) 
@@ -72,6 +73,15 @@ class UserEventsController @Inject()(
         event.eventId.isDefined && !userEventIds.contains(event.eventId.get))
       extraActiveEventsWithFrontal = extraActiveEvents.flatMap(FrontalStreamerEvent.apply)
       
+      // Get open tournaments
+      openTournaments <- tournamentService.getOpenTournaments
+      
+      // Check which tournaments the user is already registered for
+      userRegistrations <- Future.sequence(openTournaments.map { tournament =>
+        tournamentService.isUserRegistered(tournament.id, userId).map(tournament -> _)
+      })
+      tournamentsWithRegistrationStatus = userRegistrations.toMap
+      
     } yield {
       Ok(views.html.userEvents(
         frontalEventsComplete,
@@ -79,7 +89,9 @@ class UserEventsController @Inject()(
         voteForm,
         request.identity,
         extraActiveEventsWithFrontal,
-        webSocketUrl
+        webSocketUrl,
+        openTournaments,
+        tournamentsWithRegistrationStatus
       ))
     }
   }
@@ -224,6 +236,27 @@ class UserEventsController @Inject()(
       case e: Exception =>
         Redirect(routes.UserEventsController.userEvents())
           .flashing("error" -> s"Error joining event: ${e.getMessage}")
+    }
+  }
+  
+  /**
+   * Register user for a tournament
+   */
+  def registerForTournament(tournamentId: Long) = SecuredAction.async { implicit request =>
+    val userId = request.identity.userId
+    
+    tournamentService.registerUser(tournamentId, userId).map {
+      case Right(_) =>
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("success" -> "Successfully registered for tournament!")
+      case Left(error) =>
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("error" -> error)
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Error registering user $userId for tournament $tournamentId", e)
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("error" -> s"Error registering for tournament: ${e.getMessage}")
     }
   }
 }

@@ -43,6 +43,7 @@ POST    /currency/streamer/:channelId/transfer  controllers.CurrencyController.t
 GET     /my-events                  controllers.UserEventsController.userEvents()
 POST    /my-events/vote             controllers.UserEventsController.submitVote()
 GET     /my-events/join/:eventId    controllers.UserEventsController.joinEvent(eventId: Int)
+POST    /my-events/tournament/:tournamentId/register controllers.UserEventsController.registerForTournament(tournamentId: Long)
 GET     /my-events/ws               controllers.UserEventsController.eventsUpdates
 
 # Tournament management routes
