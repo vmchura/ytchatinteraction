@@ -11,21 +11,23 @@ trait TournamentComponent {
   
   import profile.api.*
 
-  implicit val tournamentStatusColumnType: BaseTypedType[TournamentStatus] = MappedColumnType.base[TournamentStatus, String](
-    e => e match {
+  
+  
+  given BaseTypedType[TournamentStatus] = MappedColumnType.base[TournamentStatus, String](
+    {
       case TournamentStatus.RegistrationOpen => "RegistrationOpen"
       case TournamentStatus.RegistrationClosed => "RegistrationClosed"
       case TournamentStatus.InProgress => "InProgress"
       case TournamentStatus.Completed => "Completed"
       case TournamentStatus.Cancelled => "Cancelled"
     },
-    s => s match {
+    {
       case "RegistrationOpen" => TournamentStatus.RegistrationOpen
       case "RegistrationClosed" => TournamentStatus.RegistrationClosed
       case "InProgress" => TournamentStatus.InProgress
       case "Completed" => TournamentStatus.Completed
       case "Cancelled" => TournamentStatus.Cancelled
-      case _ => throw new IllegalArgumentException(s"Unknown tournament status: $s")
+      case s => throw new IllegalArgumentException(s"Unknown tournament status: $s")
     }
   )
 

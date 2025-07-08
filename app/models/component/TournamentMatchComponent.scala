@@ -10,7 +10,7 @@ trait TournamentMatchComponent {
   import profile.api.*
 
   // Custom column type for MatchStatus
-  implicit val matchStatusColumnType: BaseColumnType[MatchStatus] =
+  given BaseColumnType[MatchStatus] =
     MappedColumnType.base[MatchStatus, String](
       _.toString,
       {
@@ -24,7 +24,7 @@ trait TournamentMatchComponent {
     )
 
   // Custom column type for Instant
-  implicit val instantColumnType: BaseColumnType[Instant] =
+  given BaseColumnType[Instant] =
     MappedColumnType.base[Instant, java.sql.Timestamp](
       instant => java.sql.Timestamp.from(instant),
       timestamp => timestamp.toInstant

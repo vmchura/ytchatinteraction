@@ -11,7 +11,7 @@ trait TournamentRegistrationComponent extends TournamentComponent with UserCompo
   import profile.api.*
 
   // Custom column type for RegistrationStatus
-  implicit val registrationStatusColumnType: BaseColumnType[RegistrationStatus] =
+  given BaseColumnType[RegistrationStatus] =
     MappedColumnType.base[RegistrationStatus, String](
       _.toString,
       {
