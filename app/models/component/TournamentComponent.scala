@@ -48,10 +48,6 @@ trait TournamentComponent {
              tournamentStartAt, tournamentEndAt, challongeTournamentId, status, createdAt, updatedAt) <> 
              ((Tournament.apply _).tupled, Tournament.unapply)
 
-    // Index for efficient queries
-    def idxName = index("idx_tournaments_name", name)
-    def idxStatus = index("idx_tournaments_status", status)
-    def idxChallongeId = index("idx_tournaments_challonge_id", challongeTournamentId)
   }
 
   val tournamentsTable = TableQuery[TournamentsTable]

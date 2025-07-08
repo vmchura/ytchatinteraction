@@ -41,11 +41,7 @@ trait TournamentRegistrationComponent extends TournamentComponent with UserCompo
 
     // Unique constraint to prevent duplicate registrations
     def uniqueTournamentUser = index("idx_tournament_registrations_unique", (tournamentId, userId), unique = true)
-    
-    // Indexes for efficient queries
-    def idxTournamentId = index("idx_tournament_registrations_tournament_id", tournamentId)
-    def idxUserId = index("idx_tournament_registrations_user_id", userId)
-    def idxStatus = index("idx_tournament_registrations_status", status)
+
   }
 
   val tournamentRegistrationsTable = TableQuery[TournamentRegistrationsTable]
