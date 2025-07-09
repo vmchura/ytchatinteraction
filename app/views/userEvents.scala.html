@@ -1,4 +1,4 @@
-@import models.{StreamerEvent, EventPoll, PollOption, User, Tournament}
+@import models.{StreamerEvent, EventPoll, PollOption, User, Tournament, UserMatchInfo}
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
 
@@ -9,7 +9,8 @@
   extraEvents: Seq[FrontalStreamerEvent],
   webSocketUrl: String,
   openTournaments: Seq[Tournament],
-  tournamentsWithRegistrationStatus: Map[Tournament, Boolean])(implicit request: RequestHeader, flash: Flash)
+  tournamentsWithRegistrationStatus: Map[Tournament, Boolean],
+  userMatches: List[UserMatchInfo])(implicit request: RequestHeader, flash: Flash)
 
 @main("My Events", Some(user)) {
   <h1>My Active Events</h1>
@@ -92,6 +93,70 @@
         }
       </div>
     }
+  </div>
+
+  <!-- User Matches Section -->
+  <div id="matches-section" style="@if(userMatches.isEmpty) {display: none;} else {display: block;}">
+    <h2>Your Tournament Matches</h2>
+    <p>Matches you are assigned to in active tournaments</p>
+    
+    <div id="matches-container">
+      @if(userMatches.isEmpty) {
+        <article>
+          <p>You don't have any assigned matches at the moment.</p>
+        </article>
+      } else {
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Tournament</th>
+                <th>Match ID</th>
+                <th>Opponent</th>
+                <th>Status</th>
+                <th>Scheduled Time</th>
+                <th>Result</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for(matchInfo <- userMatches) {
+                <tr>
+                  <td>@matchInfo.tournament.name</td>
+                  <td>#@matchInfo.matchId</td>
+                  <td>@matchInfo.opponent</td>
+                  <td>
+                    @matchInfo.status match {
+                      case "open" => { <mark>Open</mark> }
+                      case "pending" => { <mark>Pending</mark> }
+                      case "complete" => { <mark>Complete</mark> }
+                      case _ => { <mark>@matchInfo.status</mark> }
+                    }
+                  </td>
+                  <td>
+                    @matchInfo.scheduledTime.getOrElse("Not scheduled")
+                  </td>
+                  <td>
+                    @if(matchInfo.winnerId.isDefined) {
+                      <span>See Result</span>
+                    } else {
+                      <span>Pending</span>
+                    }
+                  </td>
+                  <td>
+                    @if(matchInfo.status == "open") {
+                      <a href="/match/@matchInfo.matchId/upload" role="button">
+                        Upload Replay
+                      </a>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
   </div>
 
   <div id="extra-events-section" style="@if(extraEvents.isEmpty) {display: none;} else {display: block;}">

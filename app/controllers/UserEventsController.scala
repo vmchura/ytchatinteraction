@@ -3,12 +3,13 @@ package controllers
 import javax.inject._
 import models._
 import models.repository._
+import models.dao.TournamentChallongeDAO
 import play.api.data._
 import play.api.data.Forms._
 import play.api.i18n.I18nSupport
 import play.api.mvc._
 import play.api.Logger
-import services.{PollService, EventUpdateService, TournamentService}
+import services.{PollService, EventUpdateService, TournamentService, TournamentChallongeService}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import java.net.URI
@@ -27,7 +28,9 @@ class UserEventsController @Inject()(
   userStreamerStateRepository: UserStreamerStateRepository,
   pollService: PollService,
   eventUpdateService: EventUpdateService,
-  tournamentService: TournamentService
+  tournamentService: TournamentService,
+  tournamentChallongeService: TournamentChallongeService,
+  tournamentChallongeDAO: TournamentChallongeDAO
 )(implicit ec: ExecutionContext, 
   system: ActorSystem,
   mat: Materializer) 
@@ -82,6 +85,10 @@ class UserEventsController @Inject()(
       })
       tournamentsWithRegistrationStatus = userRegistrations.toMap
       
+      // Get user's assigned matches for in-progress tournaments
+      inProgressTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.InProgress)
+      userMatches <- getUserMatches(userId, inProgressTournaments)
+      
     } yield {
       Ok(views.html.userEvents(
         frontalEventsComplete,
@@ -91,9 +98,48 @@ class UserEventsController @Inject()(
         extraActiveEventsWithFrontal,
         webSocketUrl,
         openTournaments,
-        tournamentsWithRegistrationStatus
+        tournamentsWithRegistrationStatus,
+        userMatches
       ))
     }
+  }
+
+  /**
+   * Gets matches assigned to a user from Challonge API for all in-progress tournaments.
+   */
+  private def getUserMatches(userId: Long, tournaments: List[Tournament]): Future[List[UserMatchInfo]] = {
+    // Get all tournaments that have Challonge tournament IDs
+    val tournamentsWithChallongeIds = tournaments.filter(_.challongeTournamentId.isDefined)
+    
+    // For each tournament, get the user's participant mapping and fetch matches
+    val matchFutures = tournamentsWithChallongeIds.map { tournament =>
+      val challongeTournamentId = tournament.challongeTournamentId.get
+      
+      for {
+        // Get the user's Challonge participant ID
+        participantOpt <- tournamentChallongeDAO.getTournamentChallongeParticipants(tournament.id)
+          .map(_.find(_.userId == userId))
+        matches <- participantOpt match {
+          case Some(participant) =>
+            // Get matches from Challonge API
+            tournamentChallongeService.getMatchesForParticipant(challongeTournamentId, participant.challongeParticipantId)
+              .map(_.map(challengeMatch => UserMatchInfo(
+                tournament = tournament,
+                matchId = challengeMatch.id.toString,
+                challengeMatchId = challengeMatch.id,
+                opponent = challengeMatch.opponent,
+                status = challengeMatch.state,
+                scheduledTime = challengeMatch.scheduledTime,
+                winnerId = challengeMatch.winnerId
+              )))
+          case None =>
+            Future.successful(List.empty[UserMatchInfo])
+        }
+      } yield matches
+    }
+    
+    // Combine all matches from all tournaments
+    Future.sequence(matchFutures).map(_.flatten)
   }
 
   /**
