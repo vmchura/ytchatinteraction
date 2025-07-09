@@ -52,6 +52,9 @@ GET     /tournaments/create         controllers.TournamentController.showCreateF
 POST    /tournaments/create         controllers.TournamentController.createTournament()
 POST    /tournaments/:id/start      controllers.TournamentController.startTournament(id: Long)
 
+# Tournament User routes
+GET     /tournaments/dashboard      controllers.TournamentUserController.dashboard()
+
 # Replay Parser Health Check routes
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
 GET     /api/replay-parser/health   controllers.ReplayParserHealthController.health()

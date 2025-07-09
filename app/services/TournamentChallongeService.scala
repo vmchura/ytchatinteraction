@@ -1,6 +1,6 @@
 package services
 
-import models.{Tournament, User}
+import models.{Tournament, User, ChallongeMatch, ChallongeParticipant}
 import play.api.libs.ws.WSClient
 import play.api.libs.json._
 import play.api.Configuration
@@ -59,6 +59,23 @@ trait TournamentChallongeService {
    * @return Success flag
    */
   def startChallongeTournament(challongeTournamentId: Long): Future[Boolean]
+
+  /**
+   * Gets all matches for a tournament from Challonge.
+   *
+   * @param challongeTournamentId The Challonge tournament ID
+   * @return List of matches from Challonge
+   */
+  def getMatches(challongeTournamentId: Long): Future[List[ChallongeMatch]]
+
+  /**
+   * Gets matches for a specific participant from Challonge.
+   *
+   * @param challongeTournamentId The Challonge tournament ID
+   * @param participantId The Challonge participant ID
+   * @return List of matches where the participant is involved
+   */
+  def getMatchesForParticipant(challongeTournamentId: Long, participantId: Long): Future[List[ChallongeMatch]]
 }
 
 /**
@@ -318,6 +335,125 @@ class TournamentChallongeServiceImpl @Inject()(
       case ex =>
         logger.error(s"Error starting Challonge tournament $challongeTournamentId", ex)
         false
+    }
+  }
+
+  /**
+   * Gets all matches for a tournament from Challonge.
+   */
+  override def getMatches(challongeTournamentId: Long): Future[List[ChallongeMatch]] = {
+    logger.debug(s"Getting matches for Challonge tournament $challongeTournamentId")
+
+    val request = wsClient
+      .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches.json")
+      .addHttpHeaders(commonHeaders.toSeq: _*)
+      .addQueryStringParameters("api_key" -> challongeApiKey)
+
+    request.get().map { response =>
+      response.status match {
+        case 200 =>
+          try {
+            val matchesJson = response.json.as[List[JsObject]]
+            val matches = matchesJson.map { matchObj =>
+              val matchData = (matchObj \ "match").as[JsObject]
+              ChallongeMatch(
+                id = (matchData \ "id").as[Long],
+                state = (matchData \ "state").as[String],
+                player1Id = (matchData \ "player1_id").asOpt[Long],
+                player2Id = (matchData \ "player2_id").asOpt[Long],
+                winnerId = (matchData \ "winner_id").asOpt[Long],
+                loserId = (matchData \ "loser_id").asOpt[Long],
+                scheduledTime = (matchData \ "scheduled_time").asOpt[String],
+                opponent = "Unknown" // Will be set in getMatchesForParticipant
+              )
+            }
+            logger.debug(s"Retrieved ${matches.length} matches for tournament $challongeTournamentId")
+            matches
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Failed to parse matches response for tournament $challongeTournamentId. Response: ${response.body}", ex)
+              List.empty
+          }
+        case status =>
+          logger.warn(s"Failed to get matches for tournament $challongeTournamentId. Status: $status, Response: ${response.body}")
+          List.empty
+      }
+    }.recover {
+      case ex =>
+        logger.error(s"Error getting matches for tournament $challongeTournamentId", ex)
+        List.empty
+    }
+  }
+
+  /**
+   * Gets matches for a specific participant from Challonge.
+   */
+  override def getMatchesForParticipant(challongeTournamentId: Long, participantId: Long): Future[List[ChallongeMatch]] = {
+    logger.debug(s"Getting matches for participant $participantId in tournament $challongeTournamentId")
+
+    for {
+      allMatches <- getMatches(challongeTournamentId)
+      participants <- getParticipants(challongeTournamentId)
+      participantMap = participants.map(p => p.id -> p.name).toMap
+    } yield {
+      // Filter matches where the participant is involved
+      val userMatches = allMatches.filter { match_ =>
+        match_.player1Id.contains(participantId) || match_.player2Id.contains(participantId)
+      }
+
+      // Set the opponent name for each match
+      userMatches.map { match_ =>
+        val opponentId = if (match_.player1Id.contains(participantId)) {
+          match_.player2Id
+        } else {
+          match_.player1Id
+        }
+        
+        val opponentName = opponentId.flatMap(participantMap.get).getOrElse("Unknown")
+        
+        match_.copy(opponent = opponentName)
+      }
+    }
+  }
+
+  /**
+   * Gets all participants for a tournament from Challonge.
+   */
+  private def getParticipants(challongeTournamentId: Long): Future[List[ChallongeParticipant]] = {
+    logger.debug(s"Getting participants for Challonge tournament $challongeTournamentId")
+
+    val request = wsClient
+      .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/participants.json")
+      .addHttpHeaders(commonHeaders.toSeq: _*)
+      .addQueryStringParameters("api_key" -> challongeApiKey)
+
+    request.get().map { response =>
+      response.status match {
+        case 200 =>
+          try {
+            val participantsJson = response.json.as[List[JsObject]]
+            val participants = participantsJson.map { participantObj =>
+              val participantData = (participantObj \ "participant").as[JsObject]
+              ChallongeParticipant(
+                id = (participantData \ "id").as[Long],
+                name = (participantData \ "name").as[String]
+              )
+            }
+            logger.debug(s"Retrieved ${participants.length} participants for tournament $challongeTournamentId")
+            participants
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Failed to parse participants response for tournament $challongeTournamentId. Response: ${response.body}", ex)
+              List.empty
+          }
+        case status =>
+          logger.warn(s"Failed to get participants for tournament $challongeTournamentId. Status: $status, Response: ${response.body}")
+          List.empty
+      }
+    }.recover {
+      case ex =>
+        logger.error(s"Error getting participants for tournament $challongeTournamentId", ex)
+        List.empty
     }
   }
 
