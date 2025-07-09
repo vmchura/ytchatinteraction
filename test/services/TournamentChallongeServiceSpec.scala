@@ -171,4 +171,63 @@ class TournamentChallongeServiceSpec extends PlaySpec with BeforeAndAfterEach wi
       }
     }
   }
+
+  "TournamentChallongeService fake user generation" should {
+    // Create a service instance for testing fake user generation
+    val mockWsClient = null // Not needed for this test
+    val service = new TournamentChallongeServiceImpl(mockWsClient, mockConfiguration)
+    
+    "generate 2 fake users when no real participants exist" in {
+      val emptyParticipants = List.empty[User]
+      val fakeUsers = service.generateFakeUsers(emptyParticipants)
+      
+      fakeUsers.length must be(2)
+      fakeUsers.foreach { user =>
+        user.userId must be < 0L // Fake users have negative IDs
+        user.userName must startWith("ChallongeBot_")
+      }
+    }
+    
+    "generate 1 fake user when 1 real participant exists" in {
+      val oneParticipant = List(User(1L, "RealPlayer"))
+      val fakeUsers = service.generateFakeUsers(oneParticipant)
+      
+      fakeUsers.length must be(1)
+      fakeUsers.head.userId must be < 0L
+      fakeUsers.head.userName must startWith("ChallongeBot_")
+    }
+    
+    "generate no fake users when 2 or more real participants exist" in {
+      val twoParticipants = List(User(1L, "Player1"), User(2L, "Player2"))
+      val fakeUsers = service.generateFakeUsers(twoParticipants)
+      
+      fakeUsers.length must be(0)
+    }
+    
+    "generate fake users with unique names" in {
+      val emptyParticipants = List.empty[User]
+      val fakeUsers = service.generateFakeUsers(emptyParticipants)
+      
+      val userNames = fakeUsers.map(_.userName)
+      userNames.distinct.length must be(userNames.length) // All names should be unique
+    }
+    
+    "generate fake users with valid format" in {
+      val emptyParticipants = List.empty[User]
+      val fakeUsers = service.generateFakeUsers(emptyParticipants)
+      
+      fakeUsers.foreach { user =>
+        user.userName must not be empty
+        user.userName must include("ChallongeBot_")
+        user.userId must be < 0L
+      }
+    }
+    
+    "handle edge case with many real participants" in {
+      val manyParticipants = (1 to 10).map(i => User(i.toLong, s"Player$i")).toList
+      val fakeUsers = service.generateFakeUsers(manyParticipants)
+      
+      fakeUsers.length must be(0) // No fake users needed
+    }
+  }
 }

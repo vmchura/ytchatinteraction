@@ -72,54 +72,57 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
           for {
             registrationsWithUsers <- tournamentService.getTournamentRegistrationsWithUsers(id)
             participants = registrationsWithUsers.map(_._2) // Extract just the users
-            result <- if (participants.isEmpty) {
-              logger.warn(s"Cannot start tournament ${tournament.name} (ID: $id) - no participants registered")
-              Future.successful(
-                Redirect(routes.TournamentController.showOpenTournaments())
-                  .flashing("error" -> "Cannot start tournament with no participants.")
+
+            // Create tournament in Challonge (which will add fake users if needed)
+            result <- tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { challongeTournamentId =>
+              logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
+
+              // Update local tournament with Challonge ID, start time and status
+              val updatedTournament = tournament.copy(
+                status = TournamentStatus.InProgress,
+                tournamentStartAt = Some(Instant.now()),
+                challongeTournamentId = Some(challongeTournamentId),
+                updatedAt = Instant.now()
               )
-            } else {
-              // Create tournament in Challonge
-              tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { challongeTournamentId =>
-                logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
 
-                // Update local tournament with Challonge ID, start time and status
-                val updatedTournament = tournament.copy(
-                  status = TournamentStatus.InProgress,
-                  tournamentStartAt = Some(Instant.now()),
-                  challongeTournamentId = Some(challongeTournamentId),
-                  updatedAt = Instant.now()
-                )
+              tournamentService.updateTournament(updatedTournament).flatMap {
+                case Some(updated) =>
+                  logger.info(s"Started tournament: ${updated.name} (ID: ${updated.id}) with Challonge ID: $challongeTournamentId")
 
-                tournamentService.updateTournament(updatedTournament).flatMap {
-                  case Some(updated) =>
-                    logger.info(s"Started tournament: ${updated.name} (ID: ${updated.id}) with Challonge ID: $challongeTournamentId")
+                  // Start the tournament in Challonge
+                  tournamentChallongeService.startChallongeTournament(challongeTournamentId).map { started =>
+                    if (started) {
+                      logger.info(s"Successfully started Challonge tournament $challongeTournamentId")
+                      val realParticipants = participants.length
+                      val fakeParticipants = tournamentChallongeService.generateFakeUsers(participants).length
+                      val totalParticipants = realParticipants + fakeParticipants
 
-                    // Start the tournament in Challonge
-                    tournamentChallongeService.startChallongeTournament(challongeTournamentId).map { started =>
-                      if (started) {
-                        logger.info(s"Successfully started Challonge tournament $challongeTournamentId")
-                        Redirect(routes.TournamentController.showOpenTournaments())
-                          .flashing("success" -> s"Tournament '${updated.name}' has been started in Challonge with ${participants.length} participants!")
+                      val successMessage = if (fakeParticipants > 0) {
+                        s"Tournament '${updated.name}' has been started in Challonge with $realParticipants real participant(s) and $fakeParticipants fake participant(s) (total: $totalParticipants)!"
                       } else {
-                        logger.warn(s"Failed to start Challonge tournament $challongeTournamentId")
-                        Redirect(routes.TournamentController.showOpenTournaments())
-                          .flashing("warning" -> s"Tournament '${updated.name}' was created in Challonge but failed to start. You may need to start it manually.")
+                        s"Tournament '${updated.name}' has been started in Challonge with $totalParticipants participants!"
                       }
-                    }
-                  case None =>
-                    logger.error(s"Failed to update tournament with ID $id after creating Challonge tournament")
-                    Future.successful(
+
                       Redirect(routes.TournamentController.showOpenTournaments())
-                        .flashing("error" -> "Failed to update tournament after creating in Challonge. Please try again.")
-                    )
-                }
-              }.recover {
-                case ex =>
-                  logger.error(s"Failed to create Challonge tournament for ${tournament.name}: ${ex.getMessage}", ex)
-                  Redirect(routes.TournamentController.showOpenTournaments())
-                    .flashing("error" -> s"Failed to create tournament in Challonge: ${ex.getMessage}")
+                        .flashing("success" -> successMessage)
+                    } else {
+                      logger.warn(s"Failed to start Challonge tournament $challongeTournamentId")
+                      Redirect(routes.TournamentController.showOpenTournaments())
+                        .flashing("warning" -> s"Tournament '${updated.name}' was created in Challonge but failed to start. You may need to start it manually.")
+                    }
+                  }
+                case None =>
+                  logger.error(s"Failed to update tournament with ID $id after creating Challonge tournament")
+                  Future.successful(
+                    Redirect(routes.TournamentController.showOpenTournaments())
+                      .flashing("error" -> "Failed to update tournament after creating in Challonge. Please try again.")
+                  )
               }
+            }.recover {
+              case ex =>
+                logger.error(s"Failed to create Challonge tournament for ${tournament.name}: ${ex.getMessage}", ex)
+                Redirect(routes.TournamentController.showOpenTournaments())
+                  .flashing("error" -> s"Failed to create tournament in Challonge: ${ex.getMessage}")
             }
           } yield result
         case Some(tournament) =>

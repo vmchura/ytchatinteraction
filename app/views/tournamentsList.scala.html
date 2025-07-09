@@ -80,19 +80,18 @@
                                 }
 
                                 <footer>
-                                    @if(registrations.length >= 2) {
-                                        <form method="post" action="@routes.TournamentController.startTournament(tournament.id)" style="display: inline;">
-                                            @helper.CSRF.formField
-                                            <button type="submit" 
-                                                    onclick="return confirm('Are you sure you want to start this tournament? This will close registration and begin the tournament.');">
-                                                Start Tournament
-                                            </button>
-                                        </form>
-                                    } else {
-                                        <button disabled title="At least 2 participants required to start">
-                                            Start Tournament (Need @{2 - registrations.length} more)
+                                    <form method="post" action="@routes.TournamentController.startTournament(tournament.id)" style="display: inline;">
+                                        @helper.CSRF.formField
+                                        <button type="submit" 
+                                                onclick="return confirm('Are you sure you want to start this tournament? This will close registration and begin the tournament. If needed, fake participants will be added to complete a round robin.');">
+                                            Start Tournament
+                                            @if(registrations.length == 0) {
+                                                (will add fake participants)
+                                            } else if(registrations.length == 1) {
+                                                (will add fake participants)
+                                            }
                                         </button>
-                                    }
+                                    </form>
                                 </footer>
                             </article>
                         }

@@ -17,12 +17,21 @@ trait TournamentChallongeService {
 
   /**
    * Creates a tournament in Challonge with the given participants.
+   * If there are fewer than 2 participants, adds fake users to reach at least 2 participants (max 4 fake users).
    *
    * @param tournament   The local tournament
    * @param participants The list of users registered for the tournament
    * @return The Challonge tournament ID
    */
   def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[Long]
+
+  /**
+   * Generates fake users to complete the tournament if needed.
+   *
+   * @param existingParticipants The current participants
+   * @return A list of fake users to add (up to 4 fake users max)
+   */
+  def generateFakeUsers(existingParticipants: List[User]): List[User]
 
   /**
    * Updates an existing Challonge tournament.
@@ -74,9 +83,18 @@ class TournamentChallongeServiceImpl @Inject()(
 
   /**
    * Creates a tournament in Challonge with round robin format.
+   * Automatically adds fake users if needed to ensure at least 2 participants.
    */
   override def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[Long] = {
     logger.info(s"Creating Challonge tournament for: ${tournament.name} with ${participants.length} participants")
+
+    // Generate fake users if needed
+    val fakeUsers = generateFakeUsers(participants)
+    val allParticipants = participants ++ fakeUsers
+
+    if (fakeUsers.nonEmpty) {
+      logger.info(s"Added ${fakeUsers.length} fake users to tournament: ${fakeUsers.map(_.userName).mkString(", ")}")
+    }
 
     val tournamentData = Json.obj(
       "tournament" -> Json.obj(
@@ -119,14 +137,50 @@ class TournamentChallongeServiceImpl @Inject()(
           val tournamentId = (json \ "tournament" \ "id").as[Long]
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
-          // Add participants to the tournament
-          addAllParticipants(tournamentId, participants).map(_ => tournamentId)
+          // Add all participants (real + fake) to the tournament
+          addAllParticipants(tournamentId, allParticipants).map(_ => tournamentId)
 
         case status =>
           logger.error(s"Failed to create Challonge tournament. Status: $status, Response: ${response.body}")
           Future.failed(new RuntimeException(s"Failed to create tournament in Challonge: Status $status"))
       }
     } yield challongeTournamentId
+  }
+
+  /**
+   * Generates fake users to complete the tournament if needed.
+   * Will add fake users to reach at least 2 participants, with a maximum of 4 fake users total.
+   */
+  override def generateFakeUsers(existingParticipants: List[User]): List[User] = {
+    val participantCount = existingParticipants.length
+
+    // Define some fake user names
+    val fakeUserNames = List(
+      "ChallongeBot_Alpha",
+      "ChallongeBot_Beta",
+      "ChallongeBot_Gamma",
+      "ChallongeBot_Delta"
+    )
+
+    // Determine how many fake users to add
+    val fakeUsersNeeded = if (participantCount == 0) {
+      2 // Add 2 fake users if no real participants
+    } else if (participantCount == 1) {
+      1 // Add 1 fake user if only 1 real participant
+    } else {
+      0 // No fake users needed if 2 or more real participants
+    }
+
+    // Generate fake users with negative IDs to distinguish them from real users
+    val fakeUsers = (0 until fakeUsersNeeded).map { index =>
+      User(
+        userId = -(index + 1), // Negative IDs for fake users
+        userName = fakeUserNames(index)
+      )
+    }.toList
+
+    logger.info(s"Generated ${fakeUsers.length} fake users for tournament with ${participantCount} real participants")
+    fakeUsers
   }
 
   /**
