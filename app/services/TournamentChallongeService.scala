@@ -18,6 +18,7 @@ trait TournamentChallongeService {
   /**
    * Creates a tournament in Challonge with the given participants.
    * If there are fewer than 2 participants, adds fake users to reach at least 2 participants (max 4 fake users).
+   * Stores the mapping between users and their Challonge participant IDs.
    *
    * @param tournament   The local tournament
    * @param participants The list of users registered for the tournament
@@ -43,13 +44,13 @@ trait TournamentChallongeService {
   def updateChallongeTournament(challongeTournamentId: Long, tournament: Tournament): Future[Boolean]
 
   /**
-   * Adds a participant to a Challonge tournament.
+   * Adds a participant to a Challonge tournament and returns the participant ID.
    *
    * @param challongeTournamentId The Challonge tournament ID
    * @param participant           The user to add as participant
-   * @return Success flag
+   * @return The Challonge participant ID if successful, None otherwise
    */
-  def addParticipant(challongeTournamentId: Long, participant: User): Future[Boolean]
+  def addParticipant(challongeTournamentId: Long, participant: User): Future[Option[Long]]
 
   /**
    * Starts a tournament in Challonge.
@@ -66,7 +67,8 @@ trait TournamentChallongeService {
 @Singleton
 class TournamentChallongeServiceImpl @Inject()(
                                                 wsClient: WSClient,
-                                                configuration: Configuration
+                                                configuration: Configuration,
+                                                tournamentChallongeDAO: models.dao.TournamentChallongeDAO
                                               )(implicit ec: ExecutionContext) extends TournamentChallongeService {
 
   private val logger = Logger(this.getClass)
@@ -138,7 +140,7 @@ class TournamentChallongeServiceImpl @Inject()(
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
           // Add all participants (real + fake) to the tournament
-          addAllParticipants(tournamentId, allParticipants).map(_ => tournamentId)
+          addAllParticipants(tournamentId, allParticipants, tournament.id).map(_ => tournamentId)
 
         case status =>
           logger.error(s"Failed to create Challonge tournament. Status: $status, Response: ${response.body}")
@@ -184,22 +186,41 @@ class TournamentChallongeServiceImpl @Inject()(
   }
 
   /**
-   * Adds all participants to the Challonge tournament.
+   * Adds all participants to the Challonge tournament and stores their participant IDs.
    */
-  private def addAllParticipants(challongeTournamentId: Long, participants: List[User]): Future[List[Boolean]] = {
+  private def addAllParticipants(challongeTournamentId: Long, participants: List[User], tournamentId: Long): Future[List[Option[Long]]] = {
     logger.info(s"Adding ${participants.length} participants to Challonge tournament $challongeTournamentId")
 
     val participantFutures = participants.map { user =>
-      addParticipant(challongeTournamentId, user)
+      addParticipant(challongeTournamentId, user).flatMap {
+        case Some(participantId) =>
+          // Only store mapping for real users (not fake users with negative IDs)
+          if (user.userId > 0) {
+            tournamentChallongeDAO.createChallongeParticipantMapping(
+              tournamentId,
+              user.userId,
+              participantId,
+              challongeTournamentId
+            ).map(_ => Option(participantId)).recover {
+              case ex =>
+                logger.error(s"Failed to store Challonge participant mapping for user ${user.userId}", ex)
+                Option(participantId) // Still return the participant ID even if mapping storage fails
+            }
+          } else {
+            Future.successful(Option(participantId))
+          }
+        case None =>
+          Future.successful(Option.empty[Long])
+      }
     }
 
     Future.sequence(participantFutures)
   }
 
   /**
-   * Adds a participant to a Challonge tournament.
+   * Adds a participant to a Challonge tournament and returns the participant ID.
    */
-  override def addParticipant(challongeTournamentId: Long, participant: User): Future[Boolean] = {
+  override def addParticipant(challongeTournamentId: Long, participant: User): Future[Option[Long]] = {
     logger.debug(s"Adding participant ${participant.userName} to Challonge tournament $challongeTournamentId")
 
     val participantData = Json.obj(
@@ -217,16 +238,24 @@ class TournamentChallongeServiceImpl @Inject()(
     request.post(participantData).map { response =>
       response.status match {
         case 200 | 201 =>
-          logger.debug(s"Successfully added participant ${participant.userName} to tournament $challongeTournamentId")
-          true
+          try {
+            val json = response.json
+            val participantId = (json \ "participant" \ "id").as[Long]
+            logger.debug(s"Successfully added participant ${participant.userName} to tournament $challongeTournamentId with ID $participantId")
+            Some(participantId)
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Failed to parse participant ID from response for ${participant.userName}. Response: ${response.body}", ex)
+              None
+          }
         case status =>
           logger.warn(s"Failed to add participant ${participant.userName}. Status: $status, Response: ${response.body}")
-          false
+          None
       }
     }.recover {
       case ex =>
         logger.error(s"Error adding participant ${participant.userName} to tournament $challongeTournamentId", ex)
-        false
+        None
     }
   }
 
