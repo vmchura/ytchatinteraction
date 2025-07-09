@@ -17,6 +17,9 @@ silhouette.youtube.clientSecret = "your-client-secret"
 silhouette.youtube.redirectURL = "http://localhost:9000/authenticate/youtube"
 youtube.api.key = "your-youtube-api-key"
 
+# Challonge API settings - replace with your development credentials
+challonge.api.key = "your-challonge-api-key"
+
 # Database settings - adjust for your local environment
 slick.dbs.default.db.properties.url = "jdbc:postgresql://localhost:5432/ytchatinteraction"
 slick.dbs.default.db.properties.user = "postgres"

@@ -1,7 +1,7 @@
 package modules
 
 import play.api.inject._
-import services.{ParseReplayFileService, DefaultParseReplayFileService, UploadSessionService, TournamentService, TournamentServiceImpl}
+import services.{ParseReplayFileService, DefaultParseReplayFileService, UploadSessionService, TournamentService, TournamentServiceImpl, TournamentChallongeService, TournamentChallongeServiceImpl}
 
 /**
  * Module for binding services
@@ -9,5 +9,6 @@ import services.{ParseReplayFileService, DefaultParseReplayFileService, UploadSe
 class ServicesModule extends SimpleModule(
   bind[ParseReplayFileService].to[DefaultParseReplayFileService],
   bind[UploadSessionService].toSelf.eagerly(),
-  bind[TournamentService].to[TournamentServiceImpl]
+  bind[TournamentService].to[TournamentServiceImpl],
+  bind[TournamentChallongeService].to[TournamentChallongeServiceImpl]
 )

@@ -3,7 +3,7 @@ package controllers
 import forms.{Forms, TournamentCreateForm}
 import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
-import services.TournamentService
+import services.{TournamentService, TournamentChallongeService}
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.I18nSupport
@@ -19,9 +19,10 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 @Singleton
 class TournamentController @Inject()(val controllerComponents: ControllerComponents,
-                                   tournamentRepository: TournamentRepository,
-                                   tournamentService: TournamentService)
-                                  (implicit ec: ExecutionContext, webJarsUtil: WebJarsUtil)
+                                     tournamentRepository: TournamentRepository,
+                                     tournamentService: TournamentService,
+                                     tournamentChallongeService: TournamentChallongeService)
+                                    (implicit ec: ExecutionContext, webJarsUtil: WebJarsUtil)
   extends BaseController with I18nSupport {
 
   private val logger = Logger(getClass)
@@ -50,7 +51,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
     } yield {
       Ok(views.html.tournamentsList(tournamentWithRegistrations))
     }
-    
+
     future.recover {
       case ex =>
         logger.error(s"Error loading tournaments: ${ex.getMessage}", ex)
@@ -60,28 +61,67 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
 
   /**
    * Starts a tournament by changing its status from RegistrationOpen to InProgress.
+   * Creates a tournament in Challonge with all registered users and updates the local tournament with the Challonge ID.
    */
   def startTournament(id: Long): Action[AnyContent] = Action.async { implicit request =>
     val future = for {
       tournamentOpt <- tournamentService.getTournament(id)
       result <- tournamentOpt match {
         case Some(tournament) if tournament.status == TournamentStatus.RegistrationOpen =>
-          // Update tournament with start time and status
-          val updatedTournament = tournament.copy(
-            status = TournamentStatus.InProgress,
-            tournamentStartAt = Some(Instant.now()),
-            updatedAt = Instant.now()
-          )
-          tournamentService.updateTournament(updatedTournament).map {
-            case Some(updated) =>
-              logger.info(s"Started tournament: ${updated.name} (ID: ${updated.id})")
-              Redirect(routes.TournamentController.showOpenTournaments())
-                .flashing("success" -> s"Tournament '${updated.name}' has been started!")
-            case None =>
-              logger.warn(s"Failed to update tournament with ID $id")
-              Redirect(routes.TournamentController.showOpenTournaments())
-                .flashing("error" -> "Failed to start tournament. Please try again.")
-          }
+          // Get registered users for the tournament
+          for {
+            registrationsWithUsers <- tournamentService.getTournamentRegistrationsWithUsers(id)
+            participants = registrationsWithUsers.map(_._2) // Extract just the users
+            result <- if (participants.isEmpty) {
+              logger.warn(s"Cannot start tournament ${tournament.name} (ID: $id) - no participants registered")
+              Future.successful(
+                Redirect(routes.TournamentController.showOpenTournaments())
+                  .flashing("error" -> "Cannot start tournament with no participants.")
+              )
+            } else {
+              // Create tournament in Challonge
+              tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { challongeTournamentId =>
+                logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
+
+                // Update local tournament with Challonge ID, start time and status
+                val updatedTournament = tournament.copy(
+                  status = TournamentStatus.InProgress,
+                  tournamentStartAt = Some(Instant.now()),
+                  challongeTournamentId = Some(challongeTournamentId),
+                  updatedAt = Instant.now()
+                )
+
+                tournamentService.updateTournament(updatedTournament).flatMap {
+                  case Some(updated) =>
+                    logger.info(s"Started tournament: ${updated.name} (ID: ${updated.id}) with Challonge ID: $challongeTournamentId")
+
+                    // Start the tournament in Challonge
+                    tournamentChallongeService.startChallongeTournament(challongeTournamentId).map { started =>
+                      if (started) {
+                        logger.info(s"Successfully started Challonge tournament $challongeTournamentId")
+                        Redirect(routes.TournamentController.showOpenTournaments())
+                          .flashing("success" -> s"Tournament '${updated.name}' has been started in Challonge with ${participants.length} participants!")
+                      } else {
+                        logger.warn(s"Failed to start Challonge tournament $challongeTournamentId")
+                        Redirect(routes.TournamentController.showOpenTournaments())
+                          .flashing("warning" -> s"Tournament '${updated.name}' was created in Challonge but failed to start. You may need to start it manually.")
+                      }
+                    }
+                  case None =>
+                    logger.error(s"Failed to update tournament with ID $id after creating Challonge tournament")
+                    Future.successful(
+                      Redirect(routes.TournamentController.showOpenTournaments())
+                        .flashing("error" -> "Failed to update tournament after creating in Challonge. Please try again.")
+                    )
+                }
+              }.recover {
+                case ex =>
+                  logger.error(s"Failed to create Challonge tournament for ${tournament.name}: ${ex.getMessage}", ex)
+                  Redirect(routes.TournamentController.showOpenTournaments())
+                    .flashing("error" -> s"Failed to create tournament in Challonge: ${ex.getMessage}")
+              }
+            }
+          } yield result
         case Some(tournament) =>
           logger.warn(s"Tournament ${tournament.name} (ID: $id) is not open for registration (status: ${tournament.status})")
           Future.successful(
@@ -96,7 +136,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
           )
       }
     } yield result
-    
+
     future.recover {
       case ex =>
         logger.error(s"Error starting tournament $id: ${ex.getMessage}", ex)
