@@ -157,7 +157,7 @@ trait TournamentService {
    * @param tournamentId The tournament ID
    * @return The tournament match if found, None otherwise
    */
-  def getMatch(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]]
+  def getMatch(tournamentId: Long, matchId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Retrieves all matches for a specific tournament.
@@ -430,7 +430,7 @@ class TournamentServiceImpl @Inject() (
    * Retrieves a tournament match by its ID and tournament ID.
    * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    */
-  override def getMatch(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]] = {
+  override def getMatch(tournamentId: Long,matchId: Long): Future[Option[TournamentMatch]] = {
     // First try to find the match locally
     tournamentMatchRepository.findById(matchId).flatMap {
       case Some(existingMatch) => 
