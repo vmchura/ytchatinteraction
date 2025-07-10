@@ -63,7 +63,7 @@ POST    /api/replay-parser/test     controllers.ReplayParserHealthController.tes
 
 # Tournament Match File Upload routes (session-based)
 GET     /match/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(matchId: String)
-POST    /match/:matchId/upload/add  controllers.FileUploadController.uploadFile(matchId: String)
+POST    /match/:matchId/upload  controllers.FileUploadController.uploadFile(matchId: String)
 POST    /match/:matchId/upload/finalize controllers.FileUploadController.finalizeSession(matchId: String)
 
 # Polls view

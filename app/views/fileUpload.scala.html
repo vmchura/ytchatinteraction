@@ -2,12 +2,25 @@
 @import services.{FileProcessResult, MultiFileUploadResult}
 @import models.StarCraftModels._
 @import services.UploadSession
-@(user: User, matchID: String, uploadSession: UploadSession, errorMessage: Option[String] = None)(implicit request: RequestHeader, flash: Flash)
+@import models.{Tournament, TournamentMatch}
+@(user: User, matchID: String, uploadSession: UploadSession, errorMessage: Option[String] = None, tournament: Option[Tournament] = None, tournamentMatch: Option[TournamentMatch] = None, firstUser: Option[User] = None, secondUser: Option[User] = None)(implicit request: RequestHeader, flash: Flash)
 
 @main("File Upload", Some(user)) {
 <div id="file-upload-container">
     <header>
         <h1>File Upload</h1>
+        @if(tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined && secondUser.isDefined) {
+            <div class="match-info">
+                <h2>@tournament.get.name</h2>
+                <p class="match-details">
+                    <strong>Match:</strong> @firstUser.get.userName vs @secondUser.get.userName
+                </p>
+                <div class="match-metadata" style="display: none;">
+                    <span id="tournament-id">@tournament.get.id</span>
+                    <span id="match-id">@tournamentMatch.get.matchId</span>
+                </div>
+            </div>
+        }
         <p>Upload and analyze files automatically (.rep)</p>
     </header>
 
@@ -127,7 +140,7 @@
                 <div id="validation-messages"></div>
             </div>
 
-            <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload/add"}>
+            <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload"}>
                 @helper.CSRF.formField
                 <div id="file-input-container">
                     <input

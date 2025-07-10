@@ -26,7 +26,9 @@ object FileUploadState {
 class FileUploadController @Inject()(
                                       val scc: SilhouetteControllerComponents,
                                       parseReplayFileService: ParseReplayFileService,
-                                      uploadSessionService: UploadSessionService
+                                      uploadSessionService: UploadSessionService,
+                                      tournamentService: services.TournamentService,
+                                      userRepository: models.repository.UserRepository
                                     )(implicit ec: ExecutionContext) extends SilhouetteController(scc) {
 
 
@@ -37,8 +39,46 @@ class FileUploadController @Inject()(
     for {
       currentSessionOpt <- uploadSessionService.getSession(request.identity, matchId)
       currentSession <- currentSessionOpt.fold(uploadSessionService.startSession(request.identity, matchId))(session => Future.successful(session))
-    }yield{
-      Ok(views.html.fileUpload(request.identity, matchId, currentSession))
+      
+      // Get match details
+      matchOpt <- tournamentService.getMatch(matchId)
+      
+      // Get tournament and user information if match exists
+      matchDetailsOpt <- matchOpt match {
+        case Some(tournamentMatch) =>
+          for {
+            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId.toLong)
+            firstUserOpt <- userRepository.getById(tournamentMatch.firstUserId)
+            secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
+          } yield Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt))
+        case None => Future.successful(None)
+      }
+      
+    } yield {
+      matchDetailsOpt match {
+        case Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt)) =>
+          Ok(views.html.fileUpload(
+            request.identity, 
+            matchId, 
+            currentSession, 
+            None, 
+            tournamentOpt, 
+            Some(tournamentMatch), 
+            firstUserOpt, 
+            secondUserOpt
+          ))
+        case None =>
+          Ok(views.html.fileUpload(
+            request.identity, 
+            matchId, 
+            currentSession, 
+            Some("Match not found"), 
+            None, 
+            None, 
+            None, 
+            None
+          ))
+      }
     }
   }
 
@@ -48,11 +88,11 @@ class FileUploadController @Inject()(
   def uploadFile(matchId: String): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
     uploadSessionService.getOrCreateSession(request.identity, matchId).flatMap { session =>
       if (session.isFinalized) {
-        Future.successful(Ok(views.html.fileUpload(request.identity, matchId, session)))
+        renderUploadFormWithMatchDetails(request.identity, matchId, session)
       } else {
         val uploadedFiles = request.body.files.filter(_.key == "upload_file")
         if (uploadedFiles.isEmpty) {
-          Future.successful(Ok(views.html.fileUpload(request.identity, matchId, session)))
+          renderUploadFormWithMatchDetails(request.identity, matchId, session)
         } else {
           processFilesAndAddToSession(request.identity, matchId, uploadedFiles)(request)
         }
@@ -78,6 +118,47 @@ class FileUploadController @Inject()(
 
 
   /**
+   * Helper method to render upload form with match details
+   */
+  private def renderUploadFormWithMatchDetails(
+    user: User,
+    matchId: String,
+    session: UploadSession,
+    errorMessage: Option[String] = None
+  )(implicit request: RequestHeader): Future[Result] = {
+    tournamentService.getMatch(matchId).flatMap { matchOpt =>
+      matchOpt match {
+        case Some(tournamentMatch) =>
+          for {
+            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId.toLong)
+            firstUserOpt <- userRepository.getById(tournamentMatch.firstUserId)
+            secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
+          } yield Ok(views.html.fileUpload(
+            user,
+            matchId,
+            session,
+            errorMessage,
+            tournamentOpt,
+            Some(tournamentMatch),
+            firstUserOpt,
+            secondUserOpt
+          ))
+        case None =>
+          Future.successful(Ok(views.html.fileUpload(
+            user,
+            matchId,
+            session,
+            errorMessage.orElse(Some("Match not found")),
+            None,
+            None,
+            None,
+            None
+          )))
+      }
+    }
+  }
+
+  /**
    * Helper method to process files and add them to session
    */
   private def processFilesAndAddToSession(
@@ -98,13 +179,13 @@ class FileUploadController @Inject()(
       }
 
       Future.sequence(addFutures).flatMap { sessionResults =>
-        // Get the updated session
-        uploadSessionService.getSession(user, matchId).map { sessionOpt =>
+        // Get the updated session and render with match details
+        uploadSessionService.getSession(user, matchId).flatMap { sessionOpt =>
           sessionOpt match {
             case Some(session) =>
-              Ok(views.html.fileUpload(user, matchId, session))
+              renderUploadFormWithMatchDetails(user, matchId, session)
             case None =>
-              Ok(views.html.index(Some(user)))
+              Future.successful(Ok(views.html.index(Some(user))))
           }
         }
       }
