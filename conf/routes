@@ -62,9 +62,9 @@ GET     /api/replay-parser/status   controllers.ReplayParserHealthController.sta
 POST    /api/replay-parser/test     controllers.ReplayParserHealthController.testParse()
 
 # Tournament Match File Upload routes (session-based)
-GET     /match/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(matchId: String)
-POST    /match/:matchId/upload  controllers.FileUploadController.uploadFile(matchId: String)
-POST    /match/:matchId/upload/finalize controllers.FileUploadController.finalizeSession(matchId: String)
+GET     /match/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(matchId: Long)
+POST    /match/:matchId/upload  controllers.FileUploadController.uploadFile(matchId: Long)
+POST    /match/:matchId/upload/finalize controllers.FileUploadController.finalizeSession(matchId: Long)
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

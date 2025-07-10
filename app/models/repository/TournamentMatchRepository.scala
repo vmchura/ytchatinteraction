@@ -38,28 +38,28 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Finds a tournament match by its ID.
    */
-  def findById(matchId: String): Future[Option[TournamentMatch]] = db.run {
+  def findById(matchId: Long): Future[Option[TournamentMatch]] = db.run {
     findByIdAction(matchId)
   }
 
   /**
    * Finds a tournament match by its ID (DBIO action).
    */
-  def findByIdAction(matchId: String): DBIO[Option[TournamentMatch]] = {
+  def findByIdAction(matchId: Long): DBIO[Option[TournamentMatch]] = {
     tournamentMatchesTable.filter(_.matchId === matchId).result.headOption
   }
 
   /**
    * Finds all tournament matches for a specific tournament.
    */
-  def findByTournamentId(tournamentId: String): Future[List[TournamentMatch]] = db.run {
+  def findByTournamentId(tournamentId: Long): Future[List[TournamentMatch]] = db.run {
     findByTournamentIdAction(tournamentId)
   }
 
   /**
    * Finds all tournament matches for a specific tournament (DBIO action).
    */
-  def findByTournamentIdAction(tournamentId: String): DBIO[List[TournamentMatch]] = {
+  def findByTournamentIdAction(tournamentId: Long): DBIO[List[TournamentMatch]] = {
     tournamentMatchesTable
       .filter(_.tournamentId === tournamentId)
       .sortBy(_.createdAt.desc)
@@ -106,14 +106,14 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Finds tournament matches by tournament ID and status.
    */
-  def findByTournamentIdAndStatus(tournamentId: String, status: MatchStatus): Future[List[TournamentMatch]] = db.run {
+  def findByTournamentIdAndStatus(tournamentId: Long, status: MatchStatus): Future[List[TournamentMatch]] = db.run {
     findByTournamentIdAndStatusAction(tournamentId, status)
   }
 
   /**
    * Finds tournament matches by tournament ID and status (DBIO action).
    */
-  def findByTournamentIdAndStatusAction(tournamentId: String, status: MatchStatus): DBIO[List[TournamentMatch]] = {
+  def findByTournamentIdAndStatusAction(tournamentId: Long, status: MatchStatus): DBIO[List[TournamentMatch]] = {
     tournamentMatchesTable
       .filter(matchTournament => matchTournament.tournamentId === tournamentId && matchTournament.status === status)
       .sortBy(_.createdAt.desc)
@@ -124,14 +124,14 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Updates the status of a tournament match.
    */
-  def updateStatus(matchId: String, newStatus: MatchStatus): Future[Option[TournamentMatch]] = db.run {
+  def updateStatus(matchId: Long, newStatus: MatchStatus): Future[Option[TournamentMatch]] = db.run {
     updateStatusAction(matchId, newStatus)
   }
 
   /**
    * Updates the status of a tournament match (DBIO action).
    */
-  def updateStatusAction(matchId: String, newStatus: MatchStatus): DBIO[Option[TournamentMatch]] = {
+  def updateStatusAction(matchId: Long, newStatus: MatchStatus): DBIO[Option[TournamentMatch]] = {
     val updateQuery = tournamentMatchesTable.filter(_.matchId === matchId).map(_.status)
     for {
       rowsUpdated <- updateQuery.update(newStatus)
@@ -142,14 +142,14 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Deletes a tournament match by its ID.
    */
-  def delete(matchId: String): Future[Boolean] = db.run {
+  def delete(matchId: Long): Future[Boolean] = db.run {
     deleteAction(matchId)
   }
 
   /**
    * Deletes a tournament match by its ID (DBIO action).
    */
-  def deleteAction(matchId: String): DBIO[Boolean] = {
+  def deleteAction(matchId: Long): DBIO[Boolean] = {
     tournamentMatchesTable.filter(_.matchId === matchId).delete.map(_ > 0)
   }
 
@@ -170,14 +170,14 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Checks if a tournament match exists by its ID.
    */
-  def exists(matchId: String): Future[Boolean] = db.run {
+  def exists(matchId: Long): Future[Boolean] = db.run {
     existsAction(matchId)
   }
 
   /**
    * Checks if a tournament match exists by its ID (DBIO action).
    */
-  def existsAction(matchId: String): DBIO[Boolean] = {
+  def existsAction(matchId: Long): DBIO[Boolean] = {
     tournamentMatchesTable.filter(_.matchId === matchId).exists.result
   }
 
@@ -202,14 +202,14 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Counts tournament matches for a specific tournament.
    */
-  def countByTournamentId(tournamentId: String): Future[Int] = db.run {
+  def countByTournamentId(tournamentId: Long): Future[Int] = db.run {
     countByTournamentIdAction(tournamentId)
   }
 
   /**
    * Counts tournament matches for a specific tournament (DBIO action).
    */
-  def countByTournamentIdAction(tournamentId: String): DBIO[Int] = {
+  def countByTournamentIdAction(tournamentId: Long): DBIO[Int] = {
     tournamentMatchesTable.filter(_.tournamentId === tournamentId).length.result
   }
 

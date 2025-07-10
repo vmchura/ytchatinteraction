@@ -141,12 +141,13 @@ trait TournamentService {
   /**
    * Creates a new tournament match.
    *
+   * @param matchId The match ID (from Challonge API)
    * @param tournamentId The tournament ID
    * @param firstUserId The first user ID
    * @param secondUserId The second user ID
    * @return The created tournament match
    */
-  def createMatch(matchID: String, tournamentId: String, firstUserId: Int, secondUserId: Int): Future[TournamentMatch]
+  def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch]
 
   /**
    * Retrieves a tournament match by its ID.
@@ -154,7 +155,7 @@ trait TournamentService {
    * @param matchId The match ID
    * @return The tournament match if found, None otherwise
    */
-  def getMatch(matchId: String): Future[Option[TournamentMatch]]
+  def getMatch(matchId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Retrieves all matches for a specific tournament.
@@ -162,7 +163,7 @@ trait TournamentService {
    * @param tournamentId The tournament ID
    * @return List of tournament matches
    */
-  def getMatchesForTournament(tournamentId: String): Future[List[TournamentMatch]]
+  def getMatchesForTournament(tournamentId: Long): Future[List[TournamentMatch]]
 
   /**
    * Retrieves all matches for a specific user.
@@ -179,7 +180,7 @@ trait TournamentService {
    * @param newStatus The new status
    * @return The updated tournament match if found, None otherwise
    */
-  def updateMatchStatus(matchId: String, newStatus: MatchStatus): Future[Option[TournamentMatch]]
+  def updateMatchStatus(matchId: Long, newStatus: MatchStatus): Future[Option[TournamentMatch]]
 
   /**
    * Starts a tournament match by changing its status to InProgress.
@@ -187,7 +188,7 @@ trait TournamentService {
    * @param matchId The match ID
    * @return The updated tournament match if found and was in Pending status, None otherwise
    */
-  def startMatch(matchId: String): Future[Option[TournamentMatch]]
+  def startMatch(matchId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Completes a tournament match by changing its status to Completed.
@@ -195,7 +196,7 @@ trait TournamentService {
    * @param matchId The match ID
    * @return The updated tournament match if found and was in InProgress status, None otherwise
    */
-  def completeMatch(matchId: String): Future[Option[TournamentMatch]]
+  def completeMatch(matchId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Cancels a tournament match by changing its status to Cancelled.
@@ -203,7 +204,7 @@ trait TournamentService {
    * @param matchId The match ID
    * @return The updated tournament match if found, None otherwise
    */
-  def cancelMatch(matchId: String): Future[Option[TournamentMatch]]
+  def cancelMatch(matchId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Deletes a tournament match.
@@ -211,7 +212,7 @@ trait TournamentService {
    * @param matchId The match ID
    * @return True if the match was deleted, false otherwise
    */
-  def deleteMatch(matchId: String): Future[Boolean]
+  def deleteMatch(matchId: Long): Future[Boolean]
 
   /**
    * Retrieves matches by status.
@@ -227,7 +228,7 @@ trait TournamentService {
    * @param tournamentId The tournament ID
    * @return List of pending tournament matches
    */
-  def getPendingMatches(tournamentId: String): Future[List[TournamentMatch]]
+  def getPendingMatches(tournamentId: Long): Future[List[TournamentMatch]]
 
   /**
    * Retrieves active (InProgress) matches for a specific tournament.
@@ -235,7 +236,7 @@ trait TournamentService {
    * @param tournamentId The tournament ID
    * @return List of active tournament matches
    */
-  def getActiveMatches(tournamentId: String): Future[List[TournamentMatch]]
+  def getActiveMatches(tournamentId: Long): Future[List[TournamentMatch]]
 }
 
 /**
@@ -414,22 +415,22 @@ class TournamentServiceImpl @Inject() (
   /**
    * Creates a new tournament match.
    */
-  override def createMatch(matchID: String, tournamentId: String, firstUserId: Int, secondUserId: Int): Future[TournamentMatch] = {
-    val tournamentMatch = TournamentMatch(matchID, tournamentId, firstUserId, secondUserId)
+  override def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch] = {
+    val tournamentMatch = TournamentMatch(matchId, tournamentId, firstUserId, secondUserId)
     tournamentMatchRepository.create(tournamentMatch)
   }
 
   /**
    * Retrieves a tournament match by its ID.
    */
-  override def getMatch(matchId: String): Future[Option[TournamentMatch]] = {
+  override def getMatch(matchId: Long): Future[Option[TournamentMatch]] = {
     tournamentMatchRepository.findById(matchId)
   }
 
   /**
    * Retrieves all matches for a specific tournament.
    */
-  override def getMatchesForTournament(tournamentId: String): Future[List[TournamentMatch]] = {
+  override def getMatchesForTournament(tournamentId: Long): Future[List[TournamentMatch]] = {
     tournamentMatchRepository.findByTournamentId(tournamentId)
   }
 
@@ -443,14 +444,14 @@ class TournamentServiceImpl @Inject() (
   /**
    * Updates the status of a tournament match.
    */
-  override def updateMatchStatus(matchId: String, newStatus: MatchStatus): Future[Option[TournamentMatch]] = {
+  override def updateMatchStatus(matchId: Long, newStatus: MatchStatus): Future[Option[TournamentMatch]] = {
     tournamentMatchRepository.updateStatus(matchId, newStatus)
   }
 
   /**
    * Starts a tournament match by changing its status to InProgress.
    */
-  override def startMatch(matchId: String): Future[Option[TournamentMatch]] = {
+  override def startMatch(matchId: Long): Future[Option[TournamentMatch]] = {
     for {
       matchOpt <- tournamentMatchRepository.findById(matchId)
       result <- matchOpt match {
@@ -465,7 +466,7 @@ class TournamentServiceImpl @Inject() (
   /**
    * Completes a tournament match by changing its status to Completed.
    */
-  override def completeMatch(matchId: String): Future[Option[TournamentMatch]] = {
+  override def completeMatch(matchId: Long): Future[Option[TournamentMatch]] = {
     for {
       matchOpt <- tournamentMatchRepository.findById(matchId)
       result <- matchOpt match {
@@ -480,14 +481,14 @@ class TournamentServiceImpl @Inject() (
   /**
    * Cancels a tournament match by changing its status to Cancelled.
    */
-  override def cancelMatch(matchId: String): Future[Option[TournamentMatch]] = {
+  override def cancelMatch(matchId: Long): Future[Option[TournamentMatch]] = {
     tournamentMatchRepository.updateStatus(matchId, MatchStatus.Cancelled)
   }
 
   /**
    * Deletes a tournament match.
    */
-  override def deleteMatch(matchId: String): Future[Boolean] = {
+  override def deleteMatch(matchId: Long): Future[Boolean] = {
     tournamentMatchRepository.delete(matchId)
   }
 
@@ -501,14 +502,14 @@ class TournamentServiceImpl @Inject() (
   /**
    * Retrieves pending matches for a specific tournament.
    */
-  override def getPendingMatches(tournamentId: String): Future[List[TournamentMatch]] = {
+  override def getPendingMatches(tournamentId: Long): Future[List[TournamentMatch]] = {
     tournamentMatchRepository.findByTournamentIdAndStatus(tournamentId, MatchStatus.Pending)
   }
 
   /**
    * Retrieves active (InProgress) matches for a specific tournament.
    */
-  override def getActiveMatches(tournamentId: String): Future[List[TournamentMatch]] = {
+  override def getActiveMatches(tournamentId: Long): Future[List[TournamentMatch]] = {
     tournamentMatchRepository.findByTournamentIdAndStatus(tournamentId, MatchStatus.InProgress)
   }
 }

@@ -31,8 +31,8 @@ trait TournamentMatchComponent {
     )
 
   class TournamentMatchesTable(tag: Tag) extends Table[TournamentMatch](tag, "tournament_matches") {
-    def matchId = column[String]("match_id", O.PrimaryKey)
-    def tournamentId = column[String]("tournament_id")
+    def matchId = column[Long]("match_id", O.PrimaryKey)
+    def tournamentId = column[Long]("tournament_id")
     def firstUserId = column[Long]("first_user_id")
     def secondUserId = column[Long]("second_user_id")
     def createdAt = column[Instant]("created_at")

@@ -47,7 +47,7 @@ CREATE TABLE tournament_registrations (
 
 -- Create table for tournament matches
 CREATE TABLE tournament_matches (
-  match_id VARCHAR(36) PRIMARY KEY,
+  match_id BIGINT PRIMARY KEY,
   tournament_id BIGINT NOT NULL,
   first_user_id BIGINT NOT NULL,
   second_user_id BIGINT NOT NULL,

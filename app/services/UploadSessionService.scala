@@ -15,7 +15,7 @@ import play.api.Logger
  */
 case class UploadSession(
   sessionId: String,
-  matchId: String,
+  matchId: Long,
   userId: Long,
   uploadedFiles: List[FileProcessResult],
   createdAt: Instant,
@@ -45,7 +45,7 @@ case class UploadSession(
 /**
  * Key for identifying upload sessions by user and match
  */
-case class SessionKey(userId: String, matchId: String) {
+case class SessionKey(userId: Long, matchId: Long) {
   override def toString: String = s"${userId}_$matchId"
 }
 
@@ -64,8 +64,8 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Start a new upload session for a user and match
    */
-  def startSession(user: User, matchId: String): Future[UploadSession] = {
-    val sessionKey = SessionKey(user.userId.toString, matchId)
+  def startSession(user: User, matchId: Long): Future[UploadSession] = {
+    val sessionKey = SessionKey(user.userId, matchId)
     val sessionId = UUID.randomUUID().toString
     
     val session = UploadSession(
@@ -86,8 +86,8 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Get existing session or create a new one if it doesn't exist
    */
-  def getOrCreateSession(user: User, matchId: String): Future[UploadSession] = {
-    val sessionKey = SessionKey(user.userId.toString, matchId)
+  def getOrCreateSession(user: User, matchId: Long): Future[UploadSession] = {
+    val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
@@ -106,8 +106,8 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Add a file to an existing session
    */
-  def addFileToSession(user: User, matchId: String, fileResult: FileProcessResult): Future[Option[UploadSession]] = {
-    val sessionKey = SessionKey(user.userId.toString, matchId)
+  def addFileToSession(user: User, matchId: Long, fileResult: FileProcessResult): Future[Option[UploadSession]] = {
+    val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !session.isFinalized && !isSessionExpired(session) =>
@@ -131,8 +131,8 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Get current session for user and match
    */
-  def getSession(user: User, matchId: String): Future[Option[UploadSession]] = {
-    val sessionKey = SessionKey(user.userId.toString, matchId)
+  def getSession(user: User, matchId: Long): Future[Option[UploadSession]] = {
+    val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !isSessionExpired(session) =>
@@ -149,8 +149,8 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Finalize a session (no more files can be added)
    */
-  def finalizeSession(user: User, matchId: String): Future[Option[UploadSession]] = {
-    val sessionKey = SessionKey(user.userId.toString, matchId)
+  def finalizeSession(user: User, matchId: Long): Future[Option[UploadSession]] = {
+    val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !isSessionExpired(session) =>
@@ -171,7 +171,7 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Clear/delete a session
    */
-  def clearSession(userId: String, matchId: String): Future[Boolean] = {
+  def clearSession(userId: Long, matchId: Long): Future[Boolean] = {
     val sessionKey = SessionKey(userId, matchId)
     val removed = Option(sessions.remove(sessionKey)).isDefined
     
@@ -199,7 +199,7 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   /**
    * Get sessions for a specific match (both users)
    */
-  def getSessionsForMatch(matchId: String): Future[List[UploadSession]] = {
+  def getSessionsForMatch(matchId: Long): Future[List[UploadSession]] = {
     val matchSessions = sessions.asScala.values
       .filter(session => session.matchId == matchId && !isSessionExpired(session))
       .toList

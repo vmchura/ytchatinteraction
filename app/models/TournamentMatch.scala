@@ -7,8 +7,8 @@ import java.time.Instant
  * Represents a match in a tournament between two users
  */
 case class TournamentMatch(
-  matchId: String,
-  tournamentId: String,
+  matchId: Long,
+  tournamentId: Long,
   firstUserId: Long,
   secondUserId: Long,
   createdAt: Instant = Instant.now(),

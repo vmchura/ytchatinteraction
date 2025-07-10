@@ -35,7 +35,7 @@ class FileUploadController @Inject()(
   /**
    * Show the file upload form for a specific match
    */
-  def uploadFormForMatch(matchId: String): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def uploadFormForMatch(matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
       currentSessionOpt <- uploadSessionService.getSession(request.identity, matchId)
       currentSession <- currentSessionOpt.fold(uploadSessionService.startSession(request.identity, matchId))(session => Future.successful(session))
@@ -47,7 +47,7 @@ class FileUploadController @Inject()(
       matchDetailsOpt <- matchOpt match {
         case Some(tournamentMatch) =>
           for {
-            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId.toLong)
+            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId)
             firstUserOpt <- userRepository.getById(tournamentMatch.firstUserId)
             secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
           } yield Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt))
@@ -58,8 +58,8 @@ class FileUploadController @Inject()(
       matchDetailsOpt match {
         case Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt)) =>
           Ok(views.html.fileUpload(
-            request.identity, 
-            matchId, 
+            request.identity,
+            matchId,
             currentSession, 
             None, 
             tournamentOpt, 
@@ -69,8 +69,8 @@ class FileUploadController @Inject()(
           ))
         case None =>
           Ok(views.html.fileUpload(
-            request.identity, 
-            matchId, 
+            request.identity,
+            matchId,
             currentSession, 
             Some("Match not found"), 
             None, 
@@ -85,7 +85,7 @@ class FileUploadController @Inject()(
   /**
    * Handle multiple file upload and processing - returns HTML view (legacy endpoint)
    */
-  def uploadFile(matchId: String): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
+  def uploadFile(matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
     uploadSessionService.getOrCreateSession(request.identity, matchId).flatMap { session =>
       if (session.isFinalized) {
         renderUploadFormWithMatchDetails(request.identity, matchId, session)
@@ -105,7 +105,7 @@ class FileUploadController @Inject()(
   /**
    * Finalize an upload session (no more files can be added)
    */
-  def finalizeSession(matchId: String): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def finalizeSession(matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     val user = request.identity
     
     uploadSessionService.finalizeSession(user, matchId).map {
@@ -122,7 +122,7 @@ class FileUploadController @Inject()(
    */
   private def renderUploadFormWithMatchDetails(
     user: User,
-    matchId: String,
+    matchId: Long,
     session: UploadSession,
     errorMessage: Option[String] = None
   )(implicit request: RequestHeader): Future[Result] = {
@@ -130,7 +130,7 @@ class FileUploadController @Inject()(
       matchOpt match {
         case Some(tournamentMatch) =>
           for {
-            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId.toLong)
+            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId)
             firstUserOpt <- userRepository.getById(tournamentMatch.firstUserId)
             secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
           } yield Ok(views.html.fileUpload(
@@ -163,7 +163,7 @@ class FileUploadController @Inject()(
    */
   private def processFilesAndAddToSession(
     user: User,
-    matchId: String, 
+    matchId: Long, 
     uploadedFiles: Seq[MultipartFormData.FilePart[TemporaryFile]]
   )(implicit request: SecuredRequest[EnvType, MultipartFormData[TemporaryFile]]): Future[Result] = {
     

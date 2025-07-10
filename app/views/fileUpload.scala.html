@@ -3,7 +3,7 @@
 @import models.StarCraftModels._
 @import services.UploadSession
 @import models.{Tournament, TournamentMatch}
-@(user: User, matchID: String, uploadSession: UploadSession, errorMessage: Option[String] = None, tournament: Option[Tournament] = None, tournamentMatch: Option[TournamentMatch] = None, firstUser: Option[User] = None, secondUser: Option[User] = None)(implicit request: RequestHeader, flash: Flash)
+@(user: User, matchID: Long, uploadSession: UploadSession, errorMessage: Option[String] = None, tournament: Option[Tournament] = None, tournamentMatch: Option[TournamentMatch] = None, firstUser: Option[User] = None, secondUser: Option[User] = None)(implicit request: RequestHeader, flash: Flash)
 
 @main("File Upload", Some(user)) {
 <div id="file-upload-container">
