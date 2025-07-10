@@ -1,7 +1,7 @@
 package services
 
 import models.{Tournament, TournamentMatch, TournamentRegistration, TournamentStatus, MatchStatus, RegistrationStatus, User}
-import models.repository.{TournamentRepository, TournamentMatchRepository, TournamentRegistrationRepository}
+import models.repository.{TournamentRepository, TournamentMatchRepository, TournamentRegistrationRepository, TournamentChallongeParticipantRepository}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import java.time.Instant
@@ -150,12 +150,14 @@ trait TournamentService {
   def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch]
 
   /**
-   * Retrieves a tournament match by its ID.
+   * Retrieves a tournament match by its ID and tournament ID.
+   * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    *
    * @param matchId The match ID
+   * @param tournamentId The tournament ID
    * @return The tournament match if found, None otherwise
    */
-  def getMatch(matchId: Long): Future[Option[TournamentMatch]]
+  def getMatch(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]]
 
   /**
    * Retrieves all matches for a specific tournament.
@@ -245,13 +247,17 @@ trait TournamentService {
  * @param tournamentRepository The tournament repository implementation.
  * @param tournamentMatchRepository The tournament match repository implementation.
  * @param tournamentRegistrationRepository The tournament registration repository implementation.
+ * @param tournamentChallongeService The Challonge service for API interactions.
+ * @param tournamentChallongeParticipantRepository The repository for Challonge participant mappings.
  * @param ec The execution context.
  */
 @Singleton
 class TournamentServiceImpl @Inject() (
   tournamentRepository: TournamentRepository,
   tournamentMatchRepository: TournamentMatchRepository,
-  tournamentRegistrationRepository: TournamentRegistrationRepository
+  tournamentRegistrationRepository: TournamentRegistrationRepository,
+  tournamentChallongeService: TournamentChallongeService,
+  tournamentChallongeParticipantRepository: TournamentChallongeParticipantRepository
 )(implicit ec: ExecutionContext) extends TournamentService {
 
   // Tournament management methods
@@ -421,10 +427,105 @@ class TournamentServiceImpl @Inject() (
   }
 
   /**
-   * Retrieves a tournament match by its ID.
+   * Retrieves a tournament match by its ID and tournament ID.
+   * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    */
-  override def getMatch(matchId: Long): Future[Option[TournamentMatch]] = {
-    tournamentMatchRepository.findById(matchId)
+  override def getMatch(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]] = {
+    // First try to find the match locally
+    tournamentMatchRepository.findById(matchId).flatMap {
+      case Some(existingMatch) => 
+        Future.successful(Some(existingMatch))
+      case None =>
+        // Match not found locally, try to fetch from Challonge API
+        fetchMatchFromChallonge(matchId, tournamentId)
+    }
+  }
+
+  /**
+   * Fetches a match from Challonge API and creates it locally with user mappings.
+   */
+  private def fetchMatchFromChallonge(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]] = {
+    for {
+      // Get tournament to verify it has Challonge integration
+      tournamentOpt <- tournamentRepository.findById(tournamentId)
+      result <- tournamentOpt match {
+        case Some(tournament) if tournament.challongeTournamentId.isDefined =>
+          val challongeTournamentId = tournament.challongeTournamentId.get
+          
+          for {
+            // Get all matches from Challonge
+            challongeMatches <- tournamentChallongeService.getMatches(challongeTournamentId)
+            
+            // Find the specific match
+            matchResult <- challongeMatches.find(_.id == matchId) match {
+              case Some(challongeMatch) =>
+                // Convert Challonge participants to local user IDs
+                convertChallongeMatchToTournamentMatch(challongeMatch, tournamentId, challongeTournamentId)
+              case None =>
+                Future.successful(None)
+            }
+          } yield matchResult
+          
+        case Some(_) =>
+          // Tournament doesn't have Challonge integration
+          Future.successful(None)
+        case None =>
+          // Tournament not found
+          Future.successful(None)
+      }
+    } yield result
+  }
+
+  /**
+   * Converts a Challonge match to a TournamentMatch and creates it locally.
+   */
+  private def convertChallongeMatchToTournamentMatch(
+    challongeMatch: models.ChallongeMatch, 
+    tournamentId: Long, 
+    challongeTournamentId: Long
+  ): Future[Option[TournamentMatch]] = {
+    
+    // Get participant mappings for this tournament
+    for {
+      participantMappings <- tournamentChallongeParticipantRepository.findByChallongeTournamentId(challongeTournamentId)
+      participantMap = participantMappings.map(p => p.challongeParticipantId -> p.userId).toMap
+      
+      result <- (challongeMatch.player1Id, challongeMatch.player2Id) match {
+        case (Some(player1ChallongeId), Some(player2ChallongeId)) =>
+          (participantMap.get(player1ChallongeId), participantMap.get(player2ChallongeId)) match {
+            case (Some(user1Id), Some(user2Id)) =>
+              // Create the match locally
+              val tournamentMatch = TournamentMatch(
+                matchId = challongeMatch.id,
+                tournamentId = tournamentId,
+                firstUserId = user1Id,
+                secondUserId = user2Id,
+                status = convertChallongeStatusToMatchStatus(challongeMatch.state)
+              )
+              
+              tournamentMatchRepository.create(tournamentMatch).map(Some(_))
+              
+            case _ =>
+              // One or both participants not found in mapping (probably fake users)
+              Future.successful(None)
+          }
+        case _ =>
+          // Match doesn't have both participants yet
+          Future.successful(None)
+      }
+    } yield result
+  }
+
+  /**
+   * Converts Challonge match state to local MatchStatus.
+   */
+  private def convertChallongeStatusToMatchStatus(challongeState: String): models.MatchStatus = {
+    challongeState.toLowerCase match {
+      case "pending" => models.MatchStatus.Pending
+      case "open" => models.MatchStatus.InProgress
+      case "complete" => models.MatchStatus.Completed
+      case _ => models.MatchStatus.Pending
+    }
   }
 
   /**

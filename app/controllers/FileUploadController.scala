@@ -31,17 +31,16 @@ class FileUploadController @Inject()(
                                       userRepository: models.repository.UserRepository
                                     )(implicit ec: ExecutionContext) extends SilhouetteController(scc) {
 
-
   /**
    * Show the file upload form for a specific match
    */
-  def uploadFormForMatch(matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def uploadFormForMatch(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
       currentSessionOpt <- uploadSessionService.getSession(request.identity, matchId)
       currentSession <- currentSessionOpt.fold(uploadSessionService.startSession(request.identity, matchId))(session => Future.successful(session))
       
       // Get match details
-      matchOpt <- tournamentService.getMatch(matchId)
+      matchOpt <- tournamentService.getMatch(tournamentId, matchId)
       
       // Get tournament and user information if match exists
       matchDetailsOpt <- matchOpt match {
@@ -59,6 +58,7 @@ class FileUploadController @Inject()(
         case Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt)) =>
           Ok(views.html.fileUpload(
             request.identity,
+            tournamentId,
             matchId,
             currentSession, 
             None, 
@@ -70,6 +70,7 @@ class FileUploadController @Inject()(
         case None =>
           Ok(views.html.fileUpload(
             request.identity,
+            tournamentId,
             matchId,
             currentSession, 
             Some("Match not found"), 
@@ -85,27 +86,25 @@ class FileUploadController @Inject()(
   /**
    * Handle multiple file upload and processing - returns HTML view (legacy endpoint)
    */
-  def uploadFile(matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
+  def uploadFile(tournamentId: Long, matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
     uploadSessionService.getOrCreateSession(request.identity, matchId).flatMap { session =>
       if (session.isFinalized) {
-        renderUploadFormWithMatchDetails(request.identity, matchId, session)
+        renderUploadFormWithMatchDetails(request.identity, tournamentId, matchId, session)
       } else {
         val uploadedFiles = request.body.files.filter(_.key == "upload_file")
         if (uploadedFiles.isEmpty) {
-          renderUploadFormWithMatchDetails(request.identity, matchId, session)
+          renderUploadFormWithMatchDetails(request.identity, tournamentId, matchId, session)
         } else {
-          processFilesAndAddToSession(request.identity, matchId, uploadedFiles)(request)
+          processFilesAndAddToSession(request.identity, tournamentId, matchId, uploadedFiles)(request)
         }
       }
     }
   }
-  
-
 
   /**
    * Finalize an upload session (no more files can be added)
    */
-  def finalizeSession(matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def finalizeSession(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     val user = request.identity
     
     uploadSessionService.finalizeSession(user, matchId).map {
@@ -122,11 +121,12 @@ class FileUploadController @Inject()(
    */
   private def renderUploadFormWithMatchDetails(
     user: User,
+    tournamentId: Long,
     matchId: Long,
     session: UploadSession,
     errorMessage: Option[String] = None
   )(implicit request: RequestHeader): Future[Result] = {
-    tournamentService.getMatch(matchId).flatMap { matchOpt =>
+    tournamentService.getMatch(tournamentId, matchId).flatMap { matchOpt =>
       matchOpt match {
         case Some(tournamentMatch) =>
           for {
@@ -135,6 +135,7 @@ class FileUploadController @Inject()(
             secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
           } yield Ok(views.html.fileUpload(
             user,
+            tournamentId,
             matchId,
             session,
             errorMessage,
@@ -146,6 +147,7 @@ class FileUploadController @Inject()(
         case None =>
           Future.successful(Ok(views.html.fileUpload(
             user,
+            tournamentId,
             matchId,
             session,
             errorMessage.orElse(Some("Match not found")),
@@ -163,6 +165,7 @@ class FileUploadController @Inject()(
    */
   private def processFilesAndAddToSession(
     user: User,
+    tournamentId: Long,
     matchId: Long, 
     uploadedFiles: Seq[MultipartFormData.FilePart[TemporaryFile]]
   )(implicit request: SecuredRequest[EnvType, MultipartFormData[TemporaryFile]]): Future[Result] = {
@@ -183,7 +186,7 @@ class FileUploadController @Inject()(
         uploadSessionService.getSession(user, matchId).flatMap { sessionOpt =>
           sessionOpt match {
             case Some(session) =>
-              renderUploadFormWithMatchDetails(user, matchId, session)
+              renderUploadFormWithMatchDetails(user, tournamentId, matchId, session)
             case None =>
               Future.successful(Ok(views.html.index(Some(user))))
           }

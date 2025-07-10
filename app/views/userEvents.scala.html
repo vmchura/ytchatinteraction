@@ -145,7 +145,7 @@
                   </td>
                   <td>
                     @if(matchInfo.status == "open") {
-                      <a href="/match/@matchInfo.matchId/upload" role="button">
+                      <a href="/match/@matchInfo.tournament.id/@matchInfo.challengeMatchId/upload" role="button">
                         Upload Replay
                       </a>
                     }

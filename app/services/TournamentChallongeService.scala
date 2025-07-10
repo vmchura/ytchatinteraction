@@ -76,6 +76,15 @@ trait TournamentChallongeService {
    * @return List of matches where the participant is involved
    */
   def getMatchesForParticipant(challongeTournamentId: Long, participantId: Long): Future[List[ChallongeMatch]]
+
+  /**
+   * Gets a specific match by ID from Challonge.
+   *
+   * @param challongeTournamentId The Challonge tournament ID
+   * @param matchId The Challonge match ID
+   * @return The match if found, None otherwise
+   */
+  def getMatch(challongeTournamentId: Long, matchId: Long): Future[Option[ChallongeMatch]]
 }
 
 /**
@@ -454,6 +463,54 @@ class TournamentChallongeServiceImpl @Inject()(
       case ex =>
         logger.error(s"Error getting participants for tournament $challongeTournamentId", ex)
         List.empty
+    }
+  }
+
+  /**
+   * Gets a specific match by ID from Challonge.
+   */
+  override def getMatch(challongeTournamentId: Long, matchId: Long): Future[Option[ChallongeMatch]] = {
+    logger.debug(s"Getting match $matchId for Challonge tournament $challongeTournamentId")
+
+    val request = wsClient
+      .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches/$matchId.json")
+      .addHttpHeaders(commonHeaders.toSeq: _*)
+      .addQueryStringParameters("api_key" -> challongeApiKey)
+
+    request.get().map { response =>
+      response.status match {
+        case 200 =>
+          try {
+            val matchObj = response.json.as[JsObject]
+            val matchData = (matchObj \ "match").as[JsObject]
+            val challongeMatch = ChallongeMatch(
+              id = (matchData \ "id").as[Long],
+              state = (matchData \ "state").as[String],
+              player1Id = (matchData \ "player1_id").asOpt[Long],
+              player2Id = (matchData \ "player2_id").asOpt[Long],
+              winnerId = (matchData \ "winner_id").asOpt[Long],
+              loserId = (matchData \ "loser_id").asOpt[Long],
+              scheduledTime = (matchData \ "scheduled_time").asOpt[String],
+              opponent = "Unknown" // Will be set based on context
+            )
+            logger.debug(s"Retrieved match $matchId for tournament $challongeTournamentId")
+            Some(challongeMatch)
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Failed to parse match response for match $matchId in tournament $challongeTournamentId. Response: ${response.body}", ex)
+              None
+          }
+        case 404 =>
+          logger.debug(s"Match $matchId not found in tournament $challongeTournamentId")
+          None
+        case status =>
+          logger.warn(s"Failed to get match $matchId for tournament $challongeTournamentId. Status: $status, Response: ${response.body}")
+          None
+      }
+    }.recover {
+      case ex =>
+        logger.error(s"Error getting match $matchId for tournament $challongeTournamentId", ex)
+        None
     }
   }
 
