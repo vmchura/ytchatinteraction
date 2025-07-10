@@ -11,60 +11,145 @@
         <p>Upload and analyze files automatically (.rep)</p>
     </header>
 
+    @if(uploadSession.hasFiles) {
+    <!-- Status Section -->
     <section>
-        <div class="grid">
-            <div>
-                <article>
-                    <header>
-                        <h3>Select Files for Analysis</h3>
-                    </header>
-                    <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload/add"}>
-                        @helper.CSRF.formField
-                        <div id="file-input-container">
-                            <input
-                                    id="uploadFileInput"
-                                    type="file"
-                                    name="upload_file"
-                                    accept=".rep"
-                                    multiple
-                            />
-                            <small>Archivos .rep de máximo 1MB cada uno</small>
-                        </div>
+        <article>
+            <header>
+                <h3>Session Status</h3>
+            </header>
+            <p>Processing completed for @uploadSession.totalFiles file(s)</p>
 
-                        <div id="file-info">
-                            <strong>Selected files:</strong> <span id="selected-files-count">0</span> file(s)
-                        </div>
+            @if(uploadSession.successfulFiles.nonEmpty) {
+            <details open>
+                <summary>Successfully Processed Files (@uploadSession.successfulFiles.length)</summary>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Map</th>
+                            <th>Jugador 1</th>
+                            <th>Jugador 2</th>
+                            <th>Hora inicio</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @for(file <- uploadSession.successfulFiles) {
+                        <tr>
+                            @file.gameInfo match {
+                            case Some(replayParsed: ReplayParsed) => {
+                            <td>@replayParsed.mapName.getOrElse("Unknown")</td>
+                            <td>
+                                @if(replayParsed.teams.nonEmpty && replayParsed.teams.head.participants.nonEmpty) {
+                                @defining(replayParsed.teams.head.participants.head) { player =>
+                                @player.name (@{
+                                player.race match {
+                                case Zerg => "Z"
+                                case Terran => "T"
+                                case Protoss => "P"
+                                }
+                                })
+                                }
+                                } else {
+                                Unknown Player
+                                }
+                            </td>
+                            <td>
+                                @if(replayParsed.teams.length > 1 && replayParsed.teams(1).participants.nonEmpty) {
+                                @defining(replayParsed.teams(1).participants.head) { player =>
+                                @player.name (@{
+                                player.race match {
+                                case Zerg => "Z"
+                                case Terran => "T"
+                                case Protoss => "P"
+                                }
+                                })
+                                }
+                                } else {
+                                Unknown Player
+                                }
+                            </td>
+                            <td>
+                                @replayParsed.startTime.getOrElse("Unknown")
+                            </td>
+                            }
+                            case Some(ImpossibleToParse) | None => {
+                            <td>?</td>
+                            <td>?</td>
+                            <td>?</td>
+                            <td>?</td>
+                            }
+                            }
+                        </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            }
 
-                        <div id="validation-errors">
-                            <h4>Validation Problems:</h4>
-                            <table id="error-table">
-                                <thead>
-                                <tr>
-                                    <th>File Name</th>
-                                    <th>Problem</th>
-                                </tr>
-                                </thead>
-                                <tbody id="error-table-body">
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <button type="submit" id="submit-btn" disabled>
-                            Upload Files
-                        </button>
-                    </form>
-                </article>
-            </div>
-        </div>
+            @if(uploadSession.failedFiles.nonEmpty) {
+            <details open>
+                <summary>Failed Files (@uploadSession.failedFiles.length)</summary>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Error</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @for(file <- uploadSession.failedFiles) {
+                        <tr>
+                            <td>@file.fileName</td>
+                            <td>@file.errorMessage.getOrElse("Unknown error")</td>
+                        </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            }
+        </article>
     </section>
-</div>
+    }
 
-@if(uploadSession.hasFiles) {
-<div id="file-upload-results-container">
-    <header>
-        <h1>File Upload Results</h1>
-        <p>Processing completed for @uploadSession.totalFiles file(s)</p>
-    </header>
+    <!-- Upload Form Section -->
+    <section>
+        <article>
+            <header>
+                <h3>@if(uploadSession.hasFiles) {Add More Files} else {Select Files for Analysis}</h3>
+            </header>
+
+            <div id="validation-flash" style="display: none;">
+                <h4>Validation Problems:</h4>
+                <div id="validation-messages"></div>
+            </div>
+
+            <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload/add"}>
+                @helper.CSRF.formField
+                <div id="file-input-container">
+                    <input
+                            id="uploadFileInput"
+                            type="file"
+                            name="upload_file"
+                            accept=".rep"
+                            multiple
+                    />
+                    <small>Archivos .rep de máximo 1MB cada uno</small>
+                </div>
+
+                <div id="file-info" style="display: none;">
+                    <strong>Selected files:</strong> <span id="selected-files-count">0</span> file(s)
+                </div>
+
+                <button type="submit" id="submit-btn" style="display: none;">
+                    Upload Files
+                </button>
+            </form>
+        </article>
+    </section>
 
     @if(errorMessage.isDefined) {
     <section>
@@ -74,126 +159,8 @@
             <a href="/upload" role="button" class="secondary">Try Again</a>
         </article>
     </section>
-    } else {
-    <!-- Summary Section -->
-    <section>
-        <article>
-            <header>
-                <h3>Successfully Processed Files (@uploadSession.successfulFiles.length)</h3>
-            </header>
-            <div class="table-container">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Map</th>
-                        <th>Jugador 1</th>
-                        <th>Jugador 2</th>
-                        <th>Hora inicio</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @for(file <- uploadSession.successfulFiles) {
-                    <tr>
-                        @file.gameInfo match {
-                        case Some(replayParsed: ReplayParsed) => {
-                        <td>@replayParsed.mapName.getOrElse("Unknown")</td>
-                        <td>
-                            @if(replayParsed.teams.nonEmpty && replayParsed.teams.head.participants.nonEmpty) {
-                            @defining(replayParsed.teams.head.participants.head) { player =>
-                            @player.name (@{
-                            player.race match {
-                            case Zerg => "Z"
-                            case Terran => "T"
-                            case Protoss => "P"
-                            }
-                            })
-                            }
-                            } else {
-                            Unknown Player
-                            }
-                        </td>
-                        <td>
-                            @if(replayParsed.teams.length > 1 && replayParsed.teams(1).participants.nonEmpty) {
-                            @defining(replayParsed.teams(1).participants.head) { player =>
-                            @player.name (@{
-                            player.race match {
-                            case Zerg => "Z"
-                            case Terran => "T"
-                            case Protoss => "P"
-                            }
-                            })
-                            }
-                            } else {
-                            Unknown Player
-                            }
-                        </td>
-                        <td>
-                            @replayParsed.startTime.getOrElse("Unknown")
-                        </td>
-                        }
-                        case Some(ImpossibleToParse) | None => {
-                        <td>?</td>
-                        <td>?</td>
-                        <td>?</td>
-                        <td>?</td>
-                        }
-                        }
-                    </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </article>
-    </section>
-
-    @if(uploadSession.failedFiles.nonEmpty) {
-    <section>
-        <article>
-            <header>
-                <h3>Failed Files (@uploadSession.failedFiles.length)</h3>
-            </header>
-            <div class="table-container">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>File Name</th>
-                        <th>Error</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @for(file <- uploadSession.failedFiles) {
-                    <tr>
-                        <td>@file.fileName</td>
-                        <td>@file.errorMessage.getOrElse("Unknown error")</td>
-                    </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </article>
-    </section>
-    }
-
-    <!-- Action Buttons -->
-    <section>
-        <div class="grid">
-            <div>
-                <a href="/upload" role="button" class="secondary">Upload More Files</a>
-            </div>
-            @if(uploadSession.successfulFiles.nonEmpty) {
-            <div>
-                <form method="post" action="/download-results">
-                    @helper.CSRF.formField
-                    <input type="hidden" name="sessionId" value="@uploadSession.sessionId" />
-                    <button type="submit" class="outline">Download Results Summary</button>
-                </form>
-            </div>
-            }
-        </div>
-    </section>
     }
 </div>
-}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -201,8 +168,8 @@
         const uploadForm = document.getElementById('upload-form');
         const fileInfo = document.getElementById('file-info');
         const selectedFilesCount = document.getElementById('selected-files-count');
-        const validationErrors = document.getElementById('validation-errors');
-        const errorTableBody = document.getElementById('error-table-body');
+        const validationFlash = document.getElementById('validation-flash');
+        const validationMessages = document.getElementById('validation-messages');
         const submitBtn = document.getElementById('submit-btn');
 
         let validationResults = [];
@@ -212,8 +179,7 @@
 
             if (files.length === 0) {
                 fileInfo.style.display = 'none';
-                validationErrors.style.display = 'none';
-                submitBtn.disabled = true;
+                validationFlash.style.display = 'none';
                 return;
             }
 
@@ -229,35 +195,11 @@
 
             if (hasErrors) {
                 showValidationErrors(validationResults);
-                submitBtn.disabled = true;
             } else {
-                validationErrors.style.display = 'none';
-                submitBtn.disabled = false;
+                validationFlash.style.display = 'none';
                 // Auto-submit when all files are valid
                 uploadForm.submit();
             }
-        });
-
-        uploadForm.addEventListener('submit', function(event) {
-            const files = uploadFileInput.files;
-            if (files.length === 0) {
-                event.preventDefault();
-                alert('Please select at least one file');
-                return;
-            }
-
-            // Re-validate before submission
-            validationResults = validateFiles(files);
-            const hasErrors = validationResults.some(result => result.errors.length > 0);
-
-            if (hasErrors) {
-                event.preventDefault();
-                showValidationErrors(validationResults);
-                return;
-            }
-
-            // If all files are valid, allow normal form submission
-            // No need to prevent default - let the form submit naturally
         });
 
         function validateFiles(files) {
@@ -292,28 +234,27 @@
             const errorsExist = results.some(result => result.errors.length > 0);
 
             if (!errorsExist) {
-                validationErrors.style.display = 'none';
+                validationFlash.style.display = 'none';
                 return;
             }
 
-            // Clear previous errors
-            errorTableBody.innerHTML = '';
+            // Clear previous messages
+            validationMessages.innerHTML = '';
 
-            // Add errors to table
+            // Create flash messages for each file with errors
             results.forEach(result => {
                 if (result.errors.length > 0) {
                     result.errors.forEach(error => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td >${escapeHtml(result.fileName)}</td>
-                            <td >${escapeHtml(error)}</td>
+                        const flashCard = document.createElement('div');
+                        flashCard.innerHTML = `
+                            <strong>${escapeHtml(result.fileName)}:</strong> ${escapeHtml(error)}
                         `;
-                        errorTableBody.appendChild(row);
+                        validationMessages.appendChild(flashCard);
                     });
                 }
             });
 
-            validationErrors.style.display = 'block';
+            validationFlash.style.display = 'block';
         }
 
         function escapeHtml(text) {
@@ -321,7 +262,6 @@
             div.textContent = text;
             return div.innerHTML;
         }
-
     });
 </script>
 }
