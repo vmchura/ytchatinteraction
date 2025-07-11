@@ -51,25 +51,42 @@ CREATE TABLE tournament_matches (
   tournament_id BIGINT NOT NULL,
   first_user_id BIGINT NOT NULL,
   second_user_id BIGINT NOT NULL,
+  winner_user_id BIGINT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   status VARCHAR(20) NOT NULL DEFAULT 'Pending',
   CONSTRAINT chk_tournament_matches_status 
-    CHECK (status IN ('Pending', 'InProgress', 'Completed', 'Disputed', 'Cancelled'))
+    CHECK (status IN ('Pending', 'InProgress', 'Completed', 'Disputed', 'Cancelled')),
+  CONSTRAINT fk_tournament_matches_tournament
+    FOREIGN KEY (tournament_id)
+    REFERENCES tournaments (id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_tournament_matches_first_user
+    FOREIGN KEY (first_user_id)
+    REFERENCES users (user_id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_tournament_matches_second_user
+    FOREIGN KEY (second_user_id)
+    REFERENCES users (user_id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_tournament_matches_winner_user
+    FOREIGN KEY (winner_user_id)
+    REFERENCES users (user_id)
+    ON DELETE SET NULL,
+  CONSTRAINT chk_tournament_matches_winner_valid
+    CHECK (winner_user_id IS NULL OR winner_user_id = first_user_id OR winner_user_id = second_user_id)
 );
-
-
--- Add foreign key constraint to tournament_matches table
-ALTER TABLE tournament_matches 
-ADD CONSTRAINT fk_tournament_matches_tournament
-FOREIGN KEY (tournament_id)
-REFERENCES tournaments (id)
-ON DELETE CASCADE;
 
 -- !Downs
 
--- Remove foreign key constraint from tournament_matches
+-- Remove foreign key constraints from tournament_matches
 ALTER TABLE tournament_matches 
 DROP CONSTRAINT IF EXISTS fk_tournament_matches_tournament;
+
+ALTER TABLE tournament_matches 
+DROP CONSTRAINT IF EXISTS fk_tournament_matches_first_user;
+
+ALTER TABLE tournament_matches 
+DROP CONSTRAINT IF EXISTS fk_tournament_matches_second_user;
 
 -- Drop tournament_matches table
 DROP TABLE IF EXISTS tournament_matches;
