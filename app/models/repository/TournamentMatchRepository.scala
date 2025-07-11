@@ -226,4 +226,23 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   def countByStatusAction(status: MatchStatus): DBIO[Int] = {
     tournamentMatchesTable.filter(_.status === status).length.result
   }
+
+  /**
+   * Updates the winner and status of a tournament match.
+   */
+  def updateWinnerAndStatus(matchId: Long, winnerId: Option[Long], newStatus: MatchStatus): Future[Option[TournamentMatch]] = db.run {
+    updateWinnerAndStatusAction(matchId, winnerId, newStatus)
+  }
+
+  /**
+   * Updates the winner and status of a tournament match (DBIO action).
+   */
+  def updateWinnerAndStatusAction(matchId: Long, winnerId: Option[Long], newStatus: MatchStatus): DBIO[Option[TournamentMatch]] = {
+    val updateQuery = tournamentMatchesTable.filter(_.matchId === matchId)
+      .map(m => (m.winnerUserId, m.status))
+    for {
+      rowsUpdated <- updateQuery.update((winnerId, newStatus))
+      updatedMatch <- if (rowsUpdated > 0) findByIdAction(matchId) else DBIO.successful(None)
+    } yield updatedMatch
+  }
 }

@@ -85,6 +85,26 @@ trait TournamentChallongeService {
    * @return The match if found, None otherwise
    */
   def getMatch(challongeTournamentId: Long, matchId: Long): Future[Option[ChallongeMatch]]
+
+  /**
+   * Submits match result to Challonge.
+   *
+   * @param challongeTournamentId The Challonge tournament ID
+   * @param matchId The Challonge match ID
+   * @param player1Id The Challonge participant ID of player 1
+   * @param player2Id The Challonge participant ID of player 2
+   * @param winnerId The Challonge participant ID of the winner (None for tie or cancelled)
+   * @param resultType The result type ("with_winner", "tie", "cancelled")
+   * @return Success flag
+   */
+  def submitMatchResult(
+    challongeTournamentId: Long, 
+    matchId: Long, 
+    player1Id: Long, 
+    player2Id: Long, 
+    winnerId: Option[Long], 
+    resultType: String
+  ): Future[Boolean]
 }
 
 /**
@@ -511,6 +531,61 @@ class TournamentChallongeServiceImpl @Inject()(
       case ex =>
         logger.error(s"Error getting match $matchId for tournament $challongeTournamentId", ex)
         None
+    }
+  }
+
+  /**
+   * Submits match result to Challonge.
+   */
+  override def submitMatchResult(
+    challongeTournamentId: Long, 
+    matchId: Long, 
+    player1Id: Long, 
+    player2Id: Long, 
+    winnerId: Option[Long], 
+    resultType: String
+  ): Future[Boolean] = {
+    logger.info(s"Submitting match result for match $matchId in tournament $challongeTournamentId. Result type: $resultType")
+
+    // Build the score string based on result type
+    val scoreString = resultType match {
+      case "with_winner" =>
+        winnerId match {
+          case Some(winnerParticipantId) =>
+            if (winnerParticipantId == player1Id) "1-0"
+            else "0-1"
+          case None => "1-0" // Default to player 1 if winner not specified
+        }
+      case "tie" => "1-1"
+      case "cancelled" => "0-0"
+      case _ => "1-0" // Default
+    }
+
+    val matchData = Json.obj(
+      "match" -> Json.obj(
+        "scores_csv" -> scoreString,
+        "winner_id" -> winnerId
+      )
+    )
+
+    val request = wsClient
+      .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches/$matchId.json")
+      .addHttpHeaders(commonHeaders.toSeq: _*)
+      .addQueryStringParameters("api_key" -> challongeApiKey)
+
+    request.put(matchData).map { response =>
+      response.status match {
+        case 200 =>
+          logger.info(s"Successfully submitted match result for match $matchId in tournament $challongeTournamentId with score: $scoreString")
+          true
+        case status =>
+          logger.error(s"Failed to submit match result for match $matchId. Status: $status, Response: ${response.body}")
+          false
+      }
+    }.recover {
+      case ex =>
+        logger.error(s"Error submitting match result for match $matchId in tournament $challongeTournamentId", ex)
+        false
     }
   }
 

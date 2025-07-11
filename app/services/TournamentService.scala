@@ -239,6 +239,17 @@ trait TournamentService {
    * @return List of active tournament matches
    */
   def getActiveMatches(tournamentId: Long): Future[List[TournamentMatch]]
+
+  /**
+   * Submits match result and updates both local database and Challonge.
+   *
+   * @param tournamentId The tournament ID
+   * @param matchId The match ID
+   * @param winnerId The winner user ID (None for tie or cancelled)
+   * @param resultType The result type ("with_winner", "tie", "cancelled")
+   * @return Either error message or success
+   */
+  def submitMatchResult(tournamentId: Long, matchId: Long, winnerId: Option[Long], resultType: String): Future[Either[String, TournamentMatch]]
 }
 
 /**
@@ -613,5 +624,105 @@ class TournamentServiceImpl @Inject() (
    */
   override def getActiveMatches(tournamentId: Long): Future[List[TournamentMatch]] = {
     tournamentMatchRepository.findByTournamentIdAndStatus(tournamentId, MatchStatus.InProgress)
+  }
+
+  /**
+   * Submits match result and updates both local database and Challonge.
+   */
+  override def submitMatchResult(tournamentId: Long, matchId: Long, winnerId: Option[Long], resultType: String): Future[Either[String, TournamentMatch]] = {
+    for {
+      // Get the tournament and match
+      tournamentOpt <- tournamentRepository.findById(tournamentId)
+      matchOpt <- getMatch(tournamentId, matchId)
+      
+      result <- (tournamentOpt, matchOpt) match {
+        case (Some(tournament), Some(tournamentMatch)) =>
+          // Validate winner if provided
+          val isValidWinner = winnerId match {
+            case Some(userId) => userId == tournamentMatch.firstUserId || userId == tournamentMatch.secondUserId
+            case None => true
+          }
+          
+          if (!isValidWinner) {
+            Future.successful(Left("Invalid winner ID"))
+          } else {
+            // Determine new status and winner
+            val (newStatus, finalWinnerId) = resultType match {
+              case "with_winner" => (MatchStatus.Completed, winnerId)
+              case "tie" => (MatchStatus.Completed, None)
+              case "cancelled" => (MatchStatus.Cancelled, None)
+              case _ => (MatchStatus.Completed, winnerId)
+            }
+            
+            // Update local database
+            for {
+              // Update in local database with both winner and status
+              localUpdateResult <- tournamentMatchRepository.updateWinnerAndStatus(matchId, finalWinnerId, newStatus)
+              
+              // Update in Challonge if tournament has Challonge integration
+              challongeUpdateResult <- tournament.challongeTournamentId match {
+                case Some(challongeTournamentId) =>
+                  updateChallongeMatch(challongeTournamentId, matchId, tournamentMatch, finalWinnerId, resultType)
+                case None =>
+                  Future.successful(true) // No Challonge integration, consider successful
+              }
+              
+              finalResult <- (localUpdateResult, challongeUpdateResult) match {
+                case (Some(match_), true) =>
+                  Future.successful(Right(match_))
+                case (None, _) =>
+                  Future.successful(Left("Failed to update match in local database"))
+                case (_, false) =>
+                  Future.successful(Left("Failed to update match in Challonge"))
+              }
+            } yield finalResult
+          }
+          
+        case (None, _) =>
+          Future.successful(Left("Tournament not found"))
+        case (_, None) =>
+          Future.successful(Left("Match not found"))
+      }
+    } yield result
+  }
+
+  /**
+   * Updates match result in Challonge.
+   */
+  private def updateChallongeMatch(
+    challongeTournamentId: Long, 
+    matchId: Long, 
+    tournamentMatch: TournamentMatch,
+    winnerId: Option[Long], 
+    resultType: String
+  ): Future[Boolean] = {
+    for {
+      // Get participant mappings to convert user IDs to Challonge participant IDs
+      participantMappings <- tournamentChallongeParticipantRepository.findByChallongeTournamentId(challongeTournamentId)
+      userToChallongeMap = participantMappings.map(p => p.userId -> p.challongeParticipantId).toMap
+      
+      // Convert winner user ID to Challonge participant ID
+      challongeWinnerId = winnerId.flatMap(userToChallongeMap.get)
+      
+      // Get Challonge participant IDs for both players
+      player1ChallongeId = userToChallongeMap.get(tournamentMatch.firstUserId)
+      player2ChallongeId = userToChallongeMap.get(tournamentMatch.secondUserId)
+      
+      result <- (player1ChallongeId, player2ChallongeId) match {
+        case (Some(p1Id), Some(p2Id)) =>
+          // Submit result to Challonge
+          tournamentChallongeService.submitMatchResult(
+            challongeTournamentId, 
+            matchId, 
+            p1Id, 
+            p2Id, 
+            challongeWinnerId, 
+            resultType
+          )
+        case _ =>
+          // One or both players not found in Challonge (probably fake users)
+          Future.successful(true) // Consider successful for fake user matches
+      }
+    } yield result
   }
 }

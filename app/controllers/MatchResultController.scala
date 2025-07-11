@@ -40,22 +40,39 @@ class MatchResultController @Inject()(
             .flashing("error" -> "Invalid form data")
         )
       }, {
-        case MatchResultForm(Some(userId), "with_winner") =>
-          println("WIth winner")
-          Future.successful(
-            Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-          )
+        case MatchResultForm(Some(winnerId), "with_winner") =>
+          // Submit result with winner
+          tournamentService.submitMatchResult(tournamentId, matchId, Some(winnerId), "with_winner").map {
+            case Right(_) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("success" -> "Match result submitted successfully")
+            case Left(error) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("error" -> s"Failed to submit result: $error")
+          }
+
         case MatchResultForm(None, "tie") =>
-          println("tie")
-          Future.successful(
-            Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-          )
+          // Submit result as tie
+          tournamentService.submitMatchResult(tournamentId, matchId, None, "tie").map {
+            case Right(_) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("success" -> "Match result submitted as tie")
+            case Left(error) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("error" -> s"Failed to submit result: $error")
+          }
 
         case MatchResultForm(None, "cancelled") =>
-          println("cancelled")
-          Future.successful(
-            Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-          )
+          // Submit result as cancelled
+          tournamentService.submitMatchResult(tournamentId, matchId, None, "cancelled").map {
+            case Right(_) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("success" -> "Match cancelled successfully")
+            case Left(error) =>
+              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
+                .flashing("error" -> s"Failed to cancel match: $error")
+          }
+
         case _ => Future.successful(
           Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
             .flashing("error" -> "Invalid form data")
