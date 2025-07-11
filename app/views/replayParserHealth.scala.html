@@ -12,40 +12,25 @@
         <section>
             <div class="grid">
                 <div>
-                    <article id="health-status" class="@{parserHealth.map(h => s"status-${h.status}").getOrElse("loading")}">
+                    <article>
                         <header>
                             <h3>Replay Parser Service</h3>
                         </header>
-                        <div id="status-content">
+                        <div>
                             @parserHealth match {
                                 case Some(parser) => {
-                                    <div class="metric">
-                                        <span><span class="status-indicator @{parser.status}"></span>Status:</span>
-                                        <strong>@{parser.status.capitalize}</strong>
-                                    </div>
-                                    <div class="metric">
-                                        <span>Service:</span>
-                                        <strong>@parser.service</strong>
-                                    </div>
-                                    <div class="metric">
-                                        <span>Reachable:</span>
-                                        <strong>@{if(parser.reachable) "Yes" else "No"}</strong>
-                                    </div>
+                                    <p><strong>Status:</strong> @{parser.status.capitalize}</p>
+                                    <p><strong>Service:</strong> @parser.service</p>
+                                    <p><strong>Reachable:</strong> @{if(parser.reachable) "Yes" else "No"}</p>
                                     @parser.responseTime.map { time =>
-                                        <div class="metric">
-                                            <span>Response Time:</span>
-                                            <strong>@{time}ms</strong>
-                                        </div>
+                                        <p><strong>Response Time:</strong> @{time}ms</p>
                                     }
                                     @parser.error.map { error =>
-                                        <div class="metric">
-                                            <span>Error:</span>
-                                            <strong style="color: var(--pico-color-red-500);">@error</strong>
-                                        </div>
+                                        <p><strong>Error:</strong> <mark>@error</mark></p>
                                     }
                                 }
                                 case None => {
-                                    <div>Health status not available</div>
+                                    <p>Health status not available</p>
                                 }
                             }
                         </div>
@@ -53,50 +38,29 @@
                 </div>
                 
                 <div>
-                    <article id="storage-status" class="@{storageHealth.map(h => s"status-${h.status}").getOrElse("loading")}">
+                    <article>
                         <header>
                             <h3>File Storage</h3>
                         </header>
-                        <div id="storage-content">
+                        <div>
                             @storageHealth match {
                                 case Some(storage) => {
-                                    <div class="metric">
-                                        <span><span class="status-indicator @{storage.status}"></span>Status:</span>
-                                        <strong>@{storage.status.capitalize}</strong>
-                                    </div>
-                                    <div class="metric">
-                                        <span>Path:</span>
-                                        <code>@storage.path</code>
-                                    </div>
-                                    <div class="metric">
-                                        <span>Accessible:</span>
-                                        <strong>@{if(storage.exists && storage.readable && storage.writable) "Yes" else "No"}</strong>
-                                    </div>
+                                    <p><strong>Status:</strong> @{storage.status.capitalize}</p>
+                                    <p><strong>Path:</strong> <code>@storage.path</code></p>
+                                    <p><strong>Accessible:</strong> @{if(storage.exists && storage.readable && storage.writable) "Yes" else "No"}</p>
                                     @storage.fileCount.map { count =>
-                                        <div class="metric">
-                                            <span>Files:</span>
-                                            <strong>@count</strong>
-                                        </div>
+                                        <p><strong>Files:</strong> @count</p>
                                     }
                                     @storage.freeSpaceGB.map { free =>
-                                        <div class="metric">
-                                            <span>Free Space:</span>
-                                            <strong>@{free}GB</strong>
-                                        </div>
+                                        <p><strong>Free Space:</strong> @{free}GB</p>
                                     }
                                     @storage.error.map { error =>
-                                        <div class="metric">
-                                            <span>Error:</span>
-                                            <strong style="color: var(--pico-color-red-500);">@error</strong>
-                                        </div>
+                                        <p><strong>Error:</strong> <mark>@error</mark></p>
                                     }
-                                    <div class="metric">
-                                        <span>Checked At:</span>
-                                        <strong>@{java.time.Instant.parse(storage.checkedAt).toString}</strong>
-                                    </div>
+                                    <p><strong>Checked At:</strong> @{java.time.Instant.parse(storage.checkedAt).toString}</p>
                                 }
                                 case None => {
-                                    <div>Storage status not available</div>
+                                    <p>Storage status not available</p>
                                 }
                             }
                         </div>
@@ -134,80 +98,4 @@
             </div>
         </section>
     </div>
-
-    <style>
-        .status-healthy {
-            border-left: 4px solid var(--pico-color-green-500);
-            background-color: var(--pico-color-green-100);
-        }
-        
-        .status-unhealthy {
-            border-left: 4px solid var(--pico-color-red-500);
-            background-color: var(--pico-color-red-100);
-        }
-        
-        .status-unreachable {
-            border-left: 4px solid var(--pico-color-orange-500);
-            background-color: var(--pico-color-orange-100);
-        }
-        
-        .loading {
-            border-left: 4px solid var(--pico-color-blue-500);
-        }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .status-indicator.healthy {
-            background-color: var(--pico-color-green-500);
-        }
-        
-        .status-indicator.unhealthy {
-            background-color: var(--pico-color-red-500);
-        }
-        
-        .status-indicator.unreachable {
-            background-color: var(--pico-color-orange-500);
-        }
-        
-        .metric {
-            display: flex;
-            justify-content: space-between;
-            margin: 0.5rem 0;
-        }
-        
-        .metric strong {
-            color: var(--pico-color);
-        }
-        
-        code {
-            background-color: var(--pico-color-slate-100);
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-        
-        @@media (prefers-color-scheme: dark) {
-            .status-healthy {
-                background-color: var(--pico-color-green-900);
-            }
-            
-            .status-unhealthy {
-                background-color: var(--pico-color-red-900);
-            }
-            
-            .status-unreachable {
-                background-color: var(--pico-color-orange-900);
-            }
-            
-            code {
-                background-color: var(--pico-color-slate-800);
-            }
-        }
-    </style>
 }
