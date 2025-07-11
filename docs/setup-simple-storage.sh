@@ -33,27 +33,3 @@ ssh -i $SSH_KEY $DOKKU_SERVER "dokku storage:mount ytchatinteraction /var/lib/do
 # This restarts your container with the new volume mount active
 # After this, your Play app can read/write files to /app/uploads
 ssh -i $SSH_KEY $DOKKU_SERVER "dokku ps:restart ytchatinteraction"
-
-echo "✅ Simple file storage is ready!"
-echo ""
-echo "📁 How it works:"
-echo "   • Host server directory: /var/lib/dokku/data/storage/file-uploads"
-echo "   • Inside your app: /app/uploads"
-echo "   • Files saved to /app/uploads appear on the server and persist across deployments"
-echo ""
-echo "💡 In your Play Framework app:"
-echo "   • Save files to: new File(\"/app/uploads/filename.ext\")"
-echo "   • Read files from: new File(\"/app/uploads/filename.ext\")"
-echo "   • Create a controller route to serve files (see example below)"
-echo ""
-echo "📝 Example Play controller to serve files:"
-echo '   def getFile(filename: String) = Action {'
-echo '     val file = new File(s"/app/uploads/$filename")'
-echo '     if (file.exists()) Ok.sendFile(file)'
-echo '     else NotFound("File not found")'
-echo '   }'
-echo ""
-echo "🔒 Security notes:"
-echo "   • Validate filenames to prevent directory traversal attacks"
-echo "   • Consider file size limits and file type restrictions"
-echo "   • Files are stored unencrypted on the server disk"

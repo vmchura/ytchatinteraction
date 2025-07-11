@@ -1,12 +1,12 @@
 @import models.User
-@import play.api.libs.json.JsValue
-@(user: Option[User], healthData: Option[JsValue] = None)(implicit flash: Flash)
+@import controllers.StorageHealthStatus
+@(user: Option[User], storageHealth: Option[StorageHealthStatus] = None)(implicit flash: Flash)
 
-@main("Replay Parser Health", user) {
+@main("System Health", user) {
     <div id="health-container">
         <header>
-            <h1>Replay Parser Service Health</h1>
-            <p>Monitor the status of the StarCraft replay parsing microservice</p>
+            <h1>System Health Monitoring</h1>
+            <p>Monitor the status of the StarCraft replay parsing service and file storage system</p>
         </header>
 
         <section>
@@ -14,14 +14,69 @@
                 <div>
                     <article id="health-status" class="loading">
                         <header>
-                            <h3>Service Status</h3>
+                            <h3>Replay Parser Service</h3>
                         </header>
                         <div id="status-content">
-                            <div aria-busy="true">Loading health status...</div>
+                            <div aria-busy="true">Loading service status...</div>
                         </div>
                     </article>
                 </div>
                 
+                <div>
+                    <article id="storage-status" class="@{storageHealth.map(h => s"status-${h.status}").getOrElse("loading")}">
+                        <header>
+                            <h3>File Storage</h3>
+                        </header>
+                        <div id="storage-content">
+                            @storageHealth match {
+                                case Some(storage) => {
+                                    <div class="metric">
+                                        <span><span class="status-indicator @{storage.status}"></span>Status:</span>
+                                        <strong>@{storage.status.capitalize}</strong>
+                                    </div>
+                                    <div class="metric">
+                                        <span>Path:</span>
+                                        <code>@storage.path</code>
+                                    </div>
+                                    <div class="metric">
+                                        <span>Accessible:</span>
+                                        <strong>@{if(storage.exists && storage.readable && storage.writable) "Yes" else "No"}</strong>
+                                    </div>
+                                    @storage.fileCount.map { count =>
+                                        <div class="metric">
+                                            <span>Files:</span>
+                                            <strong>@count</strong>
+                                        </div>
+                                    }
+                                    @storage.freeSpaceGB.map { free =>
+                                        <div class="metric">
+                                            <span>Free Space:</span>
+                                            <strong>@{free}GB</strong>
+                                        </div>
+                                    }
+                                    @storage.error.map { error =>
+                                        <div class="metric">
+                                            <span>Error:</span>
+                                            <strong style="color: var(--pico-color-red-500);">@error</strong>
+                                        </div>
+                                    }
+                                    <div class="metric">
+                                        <span>Last Check:</span>
+                                        <strong>@{java.time.Instant.parse(storage.checkedAt).toString}</strong>
+                                    </div>
+                                }
+                                case None => {
+                                    <div aria-busy="true">Loading storage status...</div>
+                                }
+                            }
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="grid">
                 <div>
                     <article id="service-info">
                         <header>
@@ -32,6 +87,19 @@
                         </div>
                     </article>
                 </div>
+                
+                <div>
+                    <article>
+                        <header>
+                            <h3>Storage Operations</h3>
+                        </header>
+                        <div class="grid">
+                            <button id="test-storage" class="secondary">Test Storage Write</button>
+                            <button id="list-files" class="outline">List Files</button>
+                        </div>
+                        <div id="storage-test-result" style="margin-top: 1rem;"></div>
+                    </article>
+                </div>
             </div>
         </section>
 
@@ -39,15 +107,16 @@
             <details>
                 <summary>Manual Actions</summary>
                 <div class="grid">
-                    <button id="refresh-health" class="secondary">Refresh Health Check</button>
+                    <button id="refresh-health" class="secondary">Refresh All Health Checks</button>
                     <button id="test-parse" class="outline">Test Parser Endpoint</button>
+                    <button id="full-health-check" class="primary">Full System Check</button>
                 </div>
             </details>
         </section>
 
         <section>
             <details>
-                <summary>Service Endpoints</summary>
+                <summary>API Endpoints</summary>
                 <table>
                     <thead>
                         <tr>
@@ -58,19 +127,45 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><code>/health</code></td>
-                            <td>GET</td>
-                            <td>Health check endpoint</td>
+                            <th colspan="3">Replay Parser Service</th>
                         </tr>
                         <tr>
-                            <td><code>/parse-replay</code></td>
+                            <td><code>/api/replay-parser/health</code></td>
+                            <td>GET</td>
+                            <td>Parser service health check</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/replay-parser/status</code></td>
+                            <td>GET</td>
+                            <td>Detailed parser service status</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/replay-parser/test</code></td>
                             <td>POST</td>
-                            <td>Parse StarCraft replay file</td>
+                            <td>Test parser endpoint connectivity</td>
                         </tr>
                         <tr>
-                            <td><code>/</code></td>
+                            <th colspan="3">Storage System</th>
+                        </tr>
+                        <tr>
+                            <td><code>/api/storage/health</code></td>
                             <td>GET</td>
-                            <td>Service information</td>
+                            <td>Storage system health check</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/storage/test-write</code></td>
+                            <td>POST</td>
+                            <td>Test storage write capability</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/storage/list</code></td>
+                            <td>GET</td>
+                            <td>List files in storage directory</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/system/health</code></td>
+                            <td>GET</td>
+                            <td>Full system health check</td>
                         </tr>
                     </tbody>
                 </table>
@@ -155,28 +250,21 @@
     </style>
 
     <script>
-        // Auto-refresh health status every 30 seconds
         let healthInterval;
         
         function updateHealthStatus() {
             fetch('/api/replay-parser/status', {
                 method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' }
             })
             .then(response => response.json())
             .then(data => {
                 const statusContent = document.getElementById('status-content');
                 const statusArticle = document.getElementById('health-status');
                 
-                // Remove loading state
                 statusArticle.classList.remove('loading');
-                
-                // Update status styling
                 statusArticle.className = 'status-' + data.status;
                 
-                // Build status content
                 const statusIndicator = data.reachable 
                     ? (data.status === 'healthy' ? 'healthy' : 'unhealthy')
                     : 'unreachable';
@@ -206,7 +294,6 @@
                     ` : ''}
                 `;
                 
-                // Update service info
                 const infoContent = document.getElementById('info-content');
                 if (data.serviceInfo && Object.keys(data.serviceInfo).length > 0) {
                     const serviceInfo = data.serviceInfo;
@@ -252,10 +339,86 @@
                 `;
             });
         }
+
+        function updateStorageStatus() {
+            fetch('/api/storage/health', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const storageContent = document.getElementById('storage-content');
+                const storageArticle = document.getElementById('storage-status');
+                
+                storageArticle.classList.remove('loading');
+                storageArticle.className = 'status-' + data.status;
+                
+                const statusIndicator = data.status === 'healthy' ? 'healthy' : 
+                                      data.status === 'unhealthy' ? 'unhealthy' : 'unreachable';
+                
+                storageContent.innerHTML = `
+                    <div class="metric">
+                        <span><span class="status-indicator ${statusIndicator}"></span>Status:</span>
+                        <strong>${data.status.charAt(0).toUpperCase() + data.status.slice(1)}</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Path:</span>
+                        <code>${data.path}</code>
+                    </div>
+                    <div class="metric">
+                        <span>Accessible:</span>
+                        <strong>${data.exists && data.readable && data.writable ? 'Yes' : 'No'}</strong>
+                    </div>
+                    ${data.fileCount !== null ? `
+                        <div class="metric">
+                            <span>Files:</span>
+                            <strong>${data.fileCount}</strong>
+                        </div>
+                    ` : ''}
+                    ${data.freeSpaceGB !== null ? `
+                        <div class="metric">
+                            <span>Free Space:</span>
+                            <strong>${data.freeSpaceGB}GB</strong>
+                        </div>
+                    ` : ''}
+                    ${data.error ? `
+                        <div class="metric">
+                            <span>Error:</span>
+                            <strong style="color: var(--pico-color-red-500);">${data.error}</strong>
+                        </div>
+                    ` : ''}
+                    <div class="metric">
+                        <span>Last Check:</span>
+                        <strong>${new Date(data.checkedAt).toLocaleTimeString()}</strong>
+                    </div>
+                `;
+            })
+            .catch(error => {
+                console.error('Error fetching storage status:', error);
+                const storageContent = document.getElementById('storage-content');
+                const storageArticle = document.getElementById('storage-status');
+                
+                storageArticle.className = 'status-unreachable';
+                storageContent.innerHTML = `
+                    <div class="metric">
+                        <span><span class="status-indicator unreachable"></span>Status:</span>
+                        <strong>Connection Error</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Error:</span>
+                        <strong style="color: var(--pico-color-red-500);">${error.message}</strong>
+                    </div>
+                `;
+            });
+        }
         
         function startHealthMonitoring() {
-            updateHealthStatus(); // Initial check
-            healthInterval = setInterval(updateHealthStatus, 30000); // Every 30 seconds
+            updateHealthStatus();
+            updateStorageStatus();
+            healthInterval = setInterval(() => {
+                updateHealthStatus();
+                updateStorageStatus();
+            }, 30000);
         }
         
         function stopHealthMonitoring() {
@@ -263,38 +426,142 @@
                 clearInterval(healthInterval);
             }
         }
+
+        function testStorageWrite() {
+            const resultDiv = document.getElementById('storage-test-result');
+            resultDiv.innerHTML = '<div aria-busy="true">Testing storage write...</div>';
+            
+            fetch('/api/storage/test-write', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const isSuccess = data.status === 'success';
+                resultDiv.innerHTML = `
+                    <div class="metric">
+                        <span>Test Result:</span>
+                        <strong style="color: ${isSuccess ? 'var(--pico-color-green-500)' : 'var(--pico-color-red-500)'}">
+                            ${data.status.toUpperCase()}
+                        </strong>
+                    </div>
+                    <div class="metric">
+                        <span>Message:</span>
+                        <span>${data.message}</span>
+                    </div>
+                `;
+                updateStorageStatus();
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `
+                    <div class="metric">
+                        <span>Test Result:</span>
+                        <strong style="color: var(--pico-color-red-500)">ERROR</strong>
+                    </div>
+                    <div class="metric">
+                        <span>Error:</span>
+                        <span>${error.message}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function listStorageFiles() {
+            const resultDiv = document.getElementById('storage-test-result');
+            resultDiv.innerHTML = '<div aria-busy="true">Loading file list...</div>';
+            
+            fetch('/api/storage/list', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    resultDiv.innerHTML = `
+                        <div class="metric">
+                            <span>File Count:</span>
+                            <strong>${data.fileCount}</strong>
+                        </div>
+                        ${data.files.length > 0 ? `
+                            <details style="margin-top: 0.5rem;">
+                                <summary>Files in Storage</summary>
+                                <ul style="max-height: 200px; overflow-y: auto;">
+                                    ${data.files.map(file => 
+                                        `<li><code>${file.name}</code> (${(file.size / 1024).toFixed(1)}KB, ${new Date(file.lastModified).toLocaleDateString()})</li>`
+                                    ).join('')}
+                                </ul>
+                            </details>
+                        ` : '<p>No files found in storage directory.</p>'}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="metric">
+                            <span>Status:</span>
+                            <strong style="color: var(--pico-color-red-500)">${data.status.toUpperCase()}</strong>
+                        </div>
+                        ${data.message ? `
+                            <div class="metric">
+                                <span>Message:</span>
+                                <span>${data.message}</span>
+                            </div>
+                        ` : ''}
+                    `;
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `
+                    <div class="metric">
+                        <span>Error:</span>
+                        <strong style="color: var(--pico-color-red-500)">${error.message}</strong>
+                    </div>
+                `;
+            });
+        }
+
+        function runFullHealthCheck() {
+            fetch('/api/system/health', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(`System Health: ${data.overall.toUpperCase()}\n\nParser: ${data.parser.status}\nStorage: ${data.storage.status}\n\nLast checked: ${new Date(data.checkedAt).toLocaleString()}`);
+                updateHealthStatus();
+                updateStorageStatus();
+            })
+            .catch(error => {
+                alert(`Failed to perform full health check: ${error.message}`);
+            });
+        }
         
         // Event listeners
-        document.getElementById('refresh-health').addEventListener('click', updateHealthStatus);
+        document.getElementById('refresh-health').addEventListener('click', () => {
+            updateHealthStatus();
+            updateStorageStatus();
+        });
         
         document.getElementById('test-parse').addEventListener('click', function() {
-            // Simple test to see if the parse endpoint is reachable
             fetch('/api/replay-parser/test', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ test: true })
             })
-            .then(response => {
-                if (response.ok) {
-                    alert('Parse endpoint is reachable (test call successful)');
-                } else {
-                    alert(`Parse endpoint returned error: ${response.status}`);
-                }
+            .then(response => response.json())
+            .then(data => {
+                alert(`Parse Test Result: ${data.status}\n${data.message}`);
             })
             .catch(error => {
                 alert(`Parse endpoint is unreachable: ${error.message}`);
             });
         });
+
+        document.getElementById('test-storage').addEventListener('click', testStorageWrite);
+        document.getElementById('list-files').addEventListener('click', listStorageFiles);
+        document.getElementById('full-health-check').addEventListener('click', runFullHealthCheck);
         
-        // Start monitoring when page loads
         document.addEventListener('DOMContentLoaded', startHealthMonitoring);
-        
-        // Stop monitoring when page unloads
         window.addEventListener('beforeunload', stopHealthMonitoring);
         
-        // Handle visibility changes (pause when tab is hidden)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 stopHealthMonitoring();
