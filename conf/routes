@@ -64,7 +64,6 @@ POST    /api/replay-parser/test     controllers.ReplayParserHealthController.tes
 # Tournament Match File Upload routes (session-based)
 GET     /match/:tournamentId/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(tournamentId: Long, matchId: Long)
 POST    /match/:tournamentId/:matchId/upload  controllers.FileUploadController.uploadFile(tournamentId: Long, matchId: Long)
-POST    /match/:tournamentId/:matchId/upload/finalize controllers.FileUploadController.finalizeSession(tournamentId: Long, matchId: Long)
 
 # Match Result routes
 POST    /match/:tournamentId/:matchId/result  controllers.MatchResultController.submitResult(tournamentId: Long, matchId: Long)
