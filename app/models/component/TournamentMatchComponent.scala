@@ -35,10 +35,11 @@ trait TournamentMatchComponent {
     def tournamentId = column[Long]("tournament_id")
     def firstUserId = column[Long]("first_user_id")
     def secondUserId = column[Long]("second_user_id")
+    def winnerUserId = column[Option[Long]]("winner_user_id")
     def createdAt = column[Instant]("created_at")
     def status = column[MatchStatus]("status")
 
-    def * = (matchId, tournamentId, firstUserId, secondUserId, createdAt, status) <> ((TournamentMatch.apply _).tupled, TournamentMatch.unapply)
+    def * = (matchId, tournamentId, firstUserId, secondUserId, winnerUserId, createdAt, status) <> ((TournamentMatch.apply _).tupled, TournamentMatch.unapply)
 
   }
 

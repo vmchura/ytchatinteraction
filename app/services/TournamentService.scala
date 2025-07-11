@@ -422,7 +422,7 @@ class TournamentServiceImpl @Inject() (
    * Creates a new tournament match.
    */
   override def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch] = {
-    val tournamentMatch = TournamentMatch(matchId, tournamentId, firstUserId, secondUserId)
+    val tournamentMatch = TournamentMatch(matchId, tournamentId, firstUserId, secondUserId, winnerUserId=None)
     tournamentMatchRepository.create(tournamentMatch)
   }
 
@@ -500,6 +500,7 @@ class TournamentServiceImpl @Inject() (
                 tournamentId = tournamentId,
                 firstUserId = user1Id,
                 secondUserId = user2Id,
+                winnerUserId=None,
                 status = convertChallongeStatusToMatchStatus(challongeMatch.state)
               )
               
