@@ -10,21 +10,22 @@
     <header>
         <h1>File Upload</h1>
         @if(tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined && secondUser.isDefined) {
-            <div class="match-info">
-                <h2>@tournament.get.name</h2>
-                <p class="match-details">
-                    <strong>Match:</strong> @firstUser.get.userName vs @secondUser.get.userName
-                </p>
-                <div class="match-metadata" style="display: none;">
-                    <span id="tournament-id">@tournament.get.id</span>
-                    <span id="match-id">@tournamentMatch.get.matchId</span>
-                </div>
+        <div class="match-info">
+            <h2>@tournament.get.name</h2>
+            <p class="match-details">
+                <strong>Match:</strong> @firstUser.get.userName vs @secondUser.get.userName
+            </p>
+            <div class="match-metadata" style="display: none;">
+                <span id="tournament-id">@tournament.get.id</span>
+                <span id="match-id">@tournamentMatch.get.matchId</span>
             </div>
+        </div>
         }
         <p>Upload and analyze files automatically (.rep)</p>
     </header>
 
-    @if(uploadSession.hasFiles) {
+    @if(uploadSession.hasFiles && tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined &&
+    secondUser.isDefined) {
     <!-- Status Section -->
     <section>
         <article>
@@ -126,7 +127,57 @@
             }
         </article>
     </section>
+
+    @if(uploadSession.successfulFiles.nonEmpty) {
+    <!-- Match Winner Form Section -->
+
+    <section>
+        <article>
+            <header>
+                <h3>Match Result</h3>
+            </header>
+            <form id="match_result_form" method="post"
+                  action="@routes.MatchResultController.submitResult(tournamentID, matchID)">
+                @helper.CSRF.formField
+
+                <fieldset>
+                    <legend>Select the match outcome:</legend>
+                    <label>
+                        <input type="radio" name="selection" value="@firstUser.get.userId"
+                               onclick="updateHiddenFields('@firstUser.get.userId', 'with_winner')" required/>
+                        @firstUser.get.userName
+                    </label>
+                    <label>
+                        <input type="radio" name="selection" value="@secondUser.get.userId"
+                               onclick="updateHiddenFields('@secondUser.get.userId', 'with_winner')"/>
+                        @secondUser.get.userName
+                    </label>
+                    <label>
+                        <input type="radio" name="selection" value="tie" onclick="updateHiddenFields(null, 'tie')"/>
+                        Tie
+                    </label>
+                    <label>
+                        <input type="radio" name="selection" value="cancelled"
+                               onclick="updateHiddenFields(null, 'cancelled')"/>
+                        Cancelled
+                    </label>
+                </fieldset>
+
+                <input type="hidden" name="winnerId" id="winnerIdField"/>
+                <input type="hidden" name="resultType" id="resultTypeField"/>
+
+                <button type="submit">Submit Result</button>
+
+
+            </form>
+
+        </article>
+    </section>
     }
+
+
+    }
+
 
     <!-- Upload Form Section -->
     <section>
@@ -140,7 +191,8 @@
                 <div id="validation-messages"></div>
             </div>
 
-            <form id="upload-form" enctype="multipart/form-data" method="post" action=@{s"/match/$matchID/upload"}>
+            <form id="upload-form" enctype="multipart/form-data" method="post"
+                  action="@routes.FileUploadController.uploadFile(tournamentID, matchID)">
                 @helper.CSRF.formField
                 <div id="file-input-container">
                     <input
@@ -174,6 +226,13 @@
     </section>
     }
 </div>
+
+<script>
+    function updateHiddenFields(winnerId, resultType) {
+        document.getElementById('resultTypeField').value = resultType;
+        document.getElementById('winnerIdField').value = winnerId;
+    }
+</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
