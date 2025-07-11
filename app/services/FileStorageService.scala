@@ -47,8 +47,8 @@ class DefaultFileStorageService @Inject()(
 
   private val logger = Logger(getClass)
   
-  // Storage path for file uploads (mounted via Dokku)
-  private val uploadStoragePath = "/app/uploads"
+  // Storage path for file uploads (mounted via Dokku in production, local in development)
+  private val uploadStoragePath = configuration.get[String]("app.storage.uploads.path")
   
   override def storeFile(
     fileBytes: Array[Byte],
