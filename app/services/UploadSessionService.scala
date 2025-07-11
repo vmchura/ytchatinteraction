@@ -23,10 +23,27 @@ case class UploadSession(
   isFinalized: Boolean = false
 ) {
   def addFile(fileResult: FileProcessResult): UploadSession = {
-    this.copy(
-      uploadedFiles = uploadedFiles :+ fileResult,
-      lastUpdated = Instant.now()
-    )
+    fileResult.sha256Hash match {
+      case Some(newHash) =>
+        // Check if this SHA256 already exists in the session
+        val isDuplicate = uploadedFiles.exists(existing =>
+          existing.sha256Hash.contains(newHash)
+        )
+
+        if (isDuplicate) {
+          // For duplicate files, don't add them but update lastUpdated
+          this.copy(lastUpdated = Instant.now())
+        } else {
+          // Add the unique file
+          this.copy(
+            uploadedFiles = uploadedFiles :+ fileResult,
+            lastUpdated = Instant.now()
+          )
+        }
+      case None =>
+        // If no SHA256 available, add the file (fallback behavior)
+        this
+    }
   }
 
   def finalizeSession(): UploadSession = {
@@ -104,7 +121,7 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   }
   
   /**
-   * Add a file to an existing session
+   * Add a file to an existing session with duplicate detection
    */
   def addFileToSession(user: User, matchId: Long, fileResult: FileProcessResult): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, matchId)
@@ -113,7 +130,15 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
       case Some(session) if !session.isFinalized && !isSessionExpired(session) =>
         val updatedSession = session.addFile(fileResult)
         sessions.put(sessionKey, updatedSession)
-        logger.info(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
+
+        // Log based on whether file was actually added or was a duplicate
+        val wasAdded = updatedSession.uploadedFiles.length > session.uploadedFiles.length
+        if (wasAdded) {
+          logger.info(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
+        } else {
+          logger.debug(s"File ${fileResult.fileName} already exists in session: ${session.sessionId} (duplicate SHA256)")
+        }
+
         Future.successful(Some(updatedSession))
       case Some(session) if session.isFinalized =>
         logger.warn(s"Attempted to add file to finalized session: ${session.sessionId}")

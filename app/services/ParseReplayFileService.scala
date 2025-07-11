@@ -12,6 +12,7 @@ import play.api.Configuration
 import scala.concurrent.{ExecutionContext, Future}
 import java.nio.file.Files
 import java.util.Base64
+import java.security.MessageDigest
 import models.StarCraftModels.GameInfo
 
 case class FileProcessResult(
@@ -21,7 +22,8 @@ case class FileProcessResult(
                               processedAt: String,
                               success: Boolean,
                               errorMessage: Option[String] = None,
-                              gameInfo: Option[GameInfo] = None
+                              gameInfo: Option[GameInfo] = None,
+                              sha256Hash: Option[String] = None
                             )
 
 case class MultiFileUploadResult(
@@ -83,6 +85,7 @@ class DefaultParseReplayFileService @Inject()(
 
   /**
    * Process multiple files and return comprehensive results
+   * This method now supports efficient bulk duplicate detection when used with UploadSession
    */
   override def processMultipleFiles(files: Seq[MultipartFormData.FilePart[TemporaryFile]]): Future[MultiFileUploadResult] = {
     val futureResults = files.map { file =>
@@ -100,6 +103,24 @@ class DefaultParseReplayFileService @Inject()(
         totalSuccessful = successful.length,
         totalFailed = failed.length
       )
+    }.recover { case ex: Exception =>
+      logger.error(s"Error processing multiple files: ${ex.getMessage}", ex)
+      MultiFileUploadResult(
+        totalFiles = files.length,
+        successfulFiles = List.empty,
+        failedFiles = files.map(file => FileProcessResult(
+          fileName = file.filename,
+          originalSize = tryGetFileSize(file),
+          contentType = file.contentType.getOrElse("unknown"),
+          processedAt = java.time.Instant.now().toString,
+          success = false,
+          errorMessage = Some(s"Batch processing failed: ${ex.getMessage}"),
+          gameInfo = None,
+          sha256Hash = None
+        )).toList,
+        totalSuccessful = 0,
+        totalFailed = files.length
+      )
     }
   }
 
@@ -116,6 +137,14 @@ class DefaultParseReplayFileService @Inject()(
       case Right(validFile) =>
         processFileToResult(validFile)
       case Left(error) =>
+        val fileBytes = try {
+          Files.readAllBytes(file.ref.path)
+        } catch {
+          case _: Exception => Array.empty[Byte]
+        }
+
+        val sha256 = if (fileBytes.nonEmpty) Some(calculateSHA256(fileBytes)) else None
+
         Future.successful(FileProcessResult(
           fileName = file.filename,
           originalSize = tryGetFileSize(file),
@@ -123,7 +152,8 @@ class DefaultParseReplayFileService @Inject()(
           processedAt = java.time.Instant.now().toString,
           success = false,
           errorMessage = Some(getErrorMessage(error)),
-          gameInfo = None
+          gameInfo = None,
+          sha256Hash = sha256
         ))
     }
   }
@@ -134,6 +164,15 @@ class DefaultParseReplayFileService @Inject()(
     } catch {
       case _: Exception => 0L
     }
+  }
+
+  /**
+   * Calculate SHA256 hash of file content
+   */
+  private def calculateSHA256(fileBytes: Array[Byte]): String = {
+    val digest = MessageDigest.getInstance("SHA-256")
+    val hashBytes = digest.digest(fileBytes)
+    hashBytes.map("%02x".format(_)).mkString
   }
 
   private def validateFileSize(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
@@ -161,10 +200,11 @@ class DefaultParseReplayFileService @Inject()(
   private def processFileToResult(file: MultipartFormData.FilePart[TemporaryFile]): Future[FileProcessResult] = {
     try {
       val fileBytes = Files.readAllBytes(file.ref.path)
+      val sha256Hash = calculateSHA256(fileBytes)
       val base64Content = Base64.getEncoder.encodeToString(fileBytes)
       val fileName = file.filename
 
-      logger.info(s"Processing file: $fileName, size: ${fileBytes.length} bytes")
+      logger.info(s"Processing file: $fileName, size: ${fileBytes.length} bytes, SHA256: $sha256Hash")
 
       // Prepare request payload for the Go replay parser service
       val requestPayload = Json.obj(
@@ -197,7 +237,8 @@ class DefaultParseReplayFileService @Inject()(
               processedAt = java.time.Instant.now().toString,
               success = true,
               errorMessage = None,
-              gameInfo = gameInfo
+              gameInfo = gameInfo,
+              sha256Hash = Some(sha256Hash)
             )
           } else {
             logger.error(s"Replay parser service returned error ${response.status}: ${response.body[String]}")
@@ -208,7 +249,8 @@ class DefaultParseReplayFileService @Inject()(
               processedAt = java.time.Instant.now().toString,
               success = false,
               errorMessage = Some(s"Parser service error (${response.status}): ${response.body[String]}"),
-              gameInfo = None
+              gameInfo = None,
+              sha256Hash = Some(sha256Hash)
             )
           }
         }
@@ -221,7 +263,8 @@ class DefaultParseReplayFileService @Inject()(
             processedAt = java.time.Instant.now().toString,
             success = false,
             errorMessage = Some(s"Service call failed: ${ex.getMessage}"),
-            gameInfo = None
+            gameInfo = None,
+            sha256Hash = Some(sha256Hash)
           )
         }
 
@@ -235,7 +278,8 @@ class DefaultParseReplayFileService @Inject()(
           processedAt = java.time.Instant.now().toString,
           success = false,
           errorMessage = Some(s"File reading error: ${ex.getMessage}"),
-          gameInfo = None
+          gameInfo = None,
+          sha256Hash = None
         ))
     }
   }
