@@ -51,3 +51,7 @@ libraryDependencies ++= Seq(
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds"
 Test / javaOptions += "-Dconfig.file=conf/test.conf"
+// Fix for Java 23 compatibility with Byte Buddy (used by Mockito)
+Test / javaOptions += "-Dnet.bytebuddy.experimental=true"
+// Additional JVM options for Java 23
+Test / javaOptions += "-XX:+EnableDynamicAgentLoading"

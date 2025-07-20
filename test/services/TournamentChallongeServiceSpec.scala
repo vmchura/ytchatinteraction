@@ -175,7 +175,8 @@ class TournamentChallongeServiceSpec extends PlaySpec with BeforeAndAfterEach wi
   "TournamentChallongeService fake user generation" should {
     // Create a service instance for testing fake user generation
     val mockWsClient = null // Not needed for this test
-    val service = new TournamentChallongeServiceImpl(mockWsClient, mockConfiguration)
+    val mockTournamentChallongeDAO = null // Not needed for this test
+    val service = new TournamentChallongeServiceImpl(mockWsClient, mockConfiguration, mockTournamentChallongeDAO)
     
     "generate 2 fake users when no real participants exist" in {
       val emptyParticipants = List.empty[User]
