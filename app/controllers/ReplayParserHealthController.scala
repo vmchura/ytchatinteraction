@@ -5,64 +5,56 @@ import play.api.Logger
 import play.api.mvc.*
 import play.api.libs.ws.WSClient
 import play.api.Configuration
+import play.api.i18n.I18nSupport
+import utils.auth.WithAdmin
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 import scala.jdk.CollectionConverters.*
-import java.nio.file.{Files, Path, Paths}
-import java.io.File
+import java.nio.file.{Files, Paths}
 import java.time.Instant
 
 case class HealthStatus(
-  service: String,
-  status: String,
-  reachable: Boolean,
-  responseTime: Option[Long] = None,
-  error: Option[String] = None
-)
+                         service: String,
+                         status: String,
+                         reachable: Boolean,
+                         responseTime: Option[Long] = None,
+                         error: Option[String] = None
+                       )
 
 case class StorageHealthStatus(
-  path: String,
-  exists: Boolean,
-  readable: Boolean,
-  writable: Boolean,
-  freeSpaceGB: Option[Long] = None,
-  totalSpaceGB: Option[Long] = None,
-  fileCount: Option[Int] = None,
-  status: String,
-  error: Option[String] = None,
-  checkedAt: String
-)
+                                path: String,
+                                exists: Boolean,
+                                readable: Boolean,
+                                writable: Boolean,
+                                freeSpaceGB: Option[Long] = None,
+                                totalSpaceGB: Option[Long] = None,
+                                fileCount: Option[Int] = None,
+                                status: String,
+                                error: Option[String] = None,
+                                checkedAt: String
+                              )
 
-/**
- * Controller for checking the health of the replay-parser microservice and storage systems
- */
 @Singleton
 class ReplayParserHealthController @Inject()(
-  val controllerComponents: ControllerComponents,
-  ws: WSClient,
-  configuration: Configuration
-)(implicit ec: ExecutionContext) extends BaseController {
+                                              components: DefaultSilhouetteControllerComponents,
+                                              ws: WSClient,
+                                              configuration: Configuration
+                                            )(implicit ec: ExecutionContext) extends SilhouetteController(components) with I18nSupport with RequestMarkerContext {
 
   private val logger = Logger(getClass)
-  
-  // Get the replay parser service URL from configuration, default to localhost for development
+
   private val replayParserUrl = configuration.getOptional[String]("replayparser.url")
     .getOrElse("http://localhost:5000")
-  
-  // Storage path for file uploads (mounted via Dokku in production, local in development)
+
   private val uploadStoragePath = configuration.get[String]("app.storage.uploads.path")
 
-  /**
-   * Show the health status page with both parser and storage status checked at render time
-   */
-  def healthPage(): Action[AnyContent] = Action.async { implicit request =>
+  def healthPage(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     logger.info("Performing health checks for page rendering")
-    
-    // Perform both health checks synchronously during page render
+
     val parserHealthFuture = checkParserHealthOnce()
     val storageHealthFuture = Future.successful(checkStorageHealthSync())
-    
+
     for {
       parserHealth <- parserHealthFuture
       storageHealth <- storageHealthFuture
@@ -76,7 +68,7 @@ class ReplayParserHealthController @Inject()(
     try {
       val path = Paths.get(uploadStoragePath)
       val exists = Files.exists(path)
-      
+
       if (!exists) {
         StorageHealthStatus(
           path = uploadStoragePath,
@@ -90,23 +82,23 @@ class ReplayParserHealthController @Inject()(
       } else {
         val readable = Files.isReadable(path)
         val writable = Files.isWritable(path)
-        
+
         val (freeSpace, totalSpace) = Try {
           val store = Files.getFileStore(path)
           (Some(store.getUsableSpace / (1024 * 1024 * 1024)), // Convert to GB
-           Some(store.getTotalSpace / (1024 * 1024 * 1024)))
+            Some(store.getTotalSpace / (1024 * 1024 * 1024)))
         }.getOrElse((None, None))
-        
+
         val fileCount = Try {
           Files.list(path).iterator().asScala.length
         }.toOption
-        
+
         val status = if (readable && writable) "healthy" else "unhealthy"
         val error = if (!readable && !writable) Some("Directory not readable or writable")
-                   else if (!readable) Some("Directory not readable")
-                   else if (!writable) Some("Directory not writable")
-                   else None
-        
+        else if (!readable) Some("Directory not readable")
+        else if (!writable) Some("Directory not writable")
+        else None
+
         StorageHealthStatus(
           path = uploadStoragePath,
           exists = true,
@@ -137,15 +129,15 @@ class ReplayParserHealthController @Inject()(
 
   private def checkParserHealthOnce(): Future[HealthStatus] = {
     val startTime = System.currentTimeMillis()
-    
+
     logger.info(s"Checking health of replay-parser service at $replayParserUrl")
-    
+
     ws.url(s"$replayParserUrl/health")
       .withRequestTimeout(scala.concurrent.duration.Duration(10, "seconds"))
       .get()
       .map { response =>
         val responseTime = System.currentTimeMillis() - startTime
-        
+
         if (response.status == 200) {
           logger.info(s"Replay-parser service is healthy (${responseTime}ms)")
           HealthStatus(
