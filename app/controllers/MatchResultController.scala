@@ -4,23 +4,19 @@ import javax.inject.*
 import play.api.mvc.*
 import play.api.data.*
 import play.api.data.Forms.*
+
 import scala.concurrent.{ExecutionContext, Future}
-import models.User
-import play.silhouette.api.actions.SecuredRequest
+import utils.auth.WithAdmin
 
 case class MatchResultForm(
                             winnerId: Option[Long],
                             resultType: String
                           )
 
-/**
- * Controller for handling match result submissions
- */
 @Singleton
-class MatchResultController @Inject()(
-                                       val scc: SilhouetteControllerComponents,
-                                       tournamentService: services.TournamentService
-                                     )(implicit ec: ExecutionContext) extends SilhouetteController(scc) {
+class MatchResultController @Inject()(components: DefaultSilhouetteControllerComponents,
+                                      tournamentService: services.TournamentService
+                                     )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
 
   private val matchResultForm = Form(
     mapping(
@@ -29,10 +25,7 @@ class MatchResultController @Inject()(
     )(MatchResultForm.apply)(r => Some((r.winnerId, r.resultType)))
   )
 
-  /**
-   * Submit match result
-   */
-  def submitResult(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def submitResult(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     matchResultForm.bindFromRequest().fold(
       formWithErrors => {
         Future.successful(
@@ -41,7 +34,6 @@ class MatchResultController @Inject()(
         )
       }, {
         case MatchResultForm(Some(winnerId), "with_winner") =>
-          // Submit result with winner
           tournamentService.submitMatchResult(tournamentId, matchId, Some(winnerId), "with_winner").map {
             case Right(_) =>
               Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
@@ -52,7 +44,6 @@ class MatchResultController @Inject()(
           }
 
         case MatchResultForm(None, "tie") =>
-          // Submit result as tie
           tournamentService.submitMatchResult(tournamentId, matchId, None, "tie").map {
             case Right(_) =>
               Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
@@ -63,7 +54,6 @@ class MatchResultController @Inject()(
           }
 
         case MatchResultForm(None, "cancelled") =>
-          // Submit result as cancelled
           tournamentService.submitMatchResult(tournamentId, matchId, None, "cancelled").map {
             case Right(_) =>
               Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
