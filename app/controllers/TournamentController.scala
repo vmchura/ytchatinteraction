@@ -1,25 +1,21 @@
 package controllers
 
-import forms.{Forms, TournamentCreateForm}
+import forms.Forms
 import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
 import modules.DefaultEnv
 import services.{TournamentService, TournamentChallongeService}
 import utils.auth.WithAdmin
 import play.api.Logger
-import play.api.data.Form
 import play.api.i18n.I18nSupport
 import play.api.mvc.*
 import play.silhouette.api.Silhouette
 import org.webjars.play.WebJarsUtil
 
-import java.time.{Instant, ZoneOffset}
+import java.time.Instant
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Controller for tournament management.
- */
 @Singleton
 class TournamentController @Inject()(val controllerComponents: ControllerComponents,
                                      tournamentRepository: TournamentRepository,
@@ -31,22 +27,15 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
 
   private val logger = Logger(getClass)
 
-  /**
-   * Shows the tournament creation form. Admin-only access.
-   */
   def showCreateForm(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Future.successful(Ok(views.html.tournamentCreate(Forms.tournamentCreateForm)))
   }
 
-  /**
-   * Shows all open tournaments with their registered users and start buttons.
-   */
-  def showOpenTournaments(): Action[AnyContent] = Action.async { implicit request =>
+  def showOpenTournaments(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val future = for {
       openTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.RegistrationOpen)
       inProgressTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.InProgress)
       allTournaments = openTournaments ++ inProgressTournaments
-      // Get registrations with users for each tournament
       tournamentWithRegistrations <- Future.sequence(allTournaments.map { tournament =>
         tournamentService.getTournamentRegistrationsWithUsers(tournament.id).map { registrations =>
           (tournament, registrations)
@@ -63,26 +52,18 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
     }
   }
 
-  /**
-   * Starts a tournament by changing its status from RegistrationOpen to InProgress.
-   * Creates a tournament in Challonge with all registered users and updates the local tournament with the Challonge ID.
-   * Admin-only access.
-   */
   def startTournament(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val future = for {
       tournamentOpt <- tournamentService.getTournament(id)
       result <- tournamentOpt match {
         case Some(tournament) if tournament.status == TournamentStatus.RegistrationOpen =>
-          // Get registered users for the tournament
           for {
             registrationsWithUsers <- tournamentService.getTournamentRegistrationsWithUsers(id)
-            participants = registrationsWithUsers.map(_._2) // Extract just the users
+            participants = registrationsWithUsers.map(_._2)
 
-            // Create tournament in Challonge (which will add fake users if needed)
             result <- tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { challongeTournamentId =>
               logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
 
-              // Update local tournament with Challonge ID, start time and status
               val updatedTournament = tournament.copy(
                 status = TournamentStatus.InProgress,
                 tournamentStartAt = Some(Instant.now()),
@@ -94,7 +75,6 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
                 case Some(updated) =>
                   logger.info(s"Started tournament: ${updated.name} (ID: ${updated.id}) with Challonge ID: $challongeTournamentId")
 
-                  // Start the tournament in Challonge
                   tournamentChallongeService.startChallongeTournament(challongeTournamentId).map { started =>
                     if (started) {
                       logger.info(s"Successfully started Challonge tournament $challongeTournamentId")
@@ -153,11 +133,6 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
     }
   }
 
-  /**
-   * Creates a new tournament with only the name provided.
-   * All other fields will be set to default values.
-   * Admin-only access.
-   */
   def createTournament(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Forms.tournamentCreateForm.bindFromRequest().fold(
       formWithErrors => {
@@ -165,14 +140,13 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
         Future.successful(BadRequest(views.html.tournamentCreate(formWithErrors)))
       },
       tournamentData => {
-        // Create tournament with default values
         val now = Instant.now()
         val defaultTournament = Tournament(
           name = tournamentData.name.trim,
           description = None,
-          maxParticipants = 16, // Default max participants
+          maxParticipants = 16,
           registrationStartAt = now,
-          registrationEndAt = now.plusSeconds(7 * 24 * 3600), // 7 days from now
+          registrationEndAt = now.plusSeconds(7 * 24 * 3600),
           tournamentStartAt = None,
           tournamentEndAt = None,
           challongeTournamentId = None,
