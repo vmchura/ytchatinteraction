@@ -46,6 +46,13 @@ trait UserService extends IdentityService[User] {
    * @return The updated user.
    */
   def unlink(user: User, loginInfo: LoginInfo): Future[User]
+
+  /**
+   * Gets all users in the system.
+   *
+   * @return A list of all users.
+   */
+  def getAllUsers(): Future[Seq[User]]
 }
 
 /**
@@ -102,5 +109,14 @@ class UserServiceImpl @Inject() (
    */
   override def unlink(user: User, loginInfo: LoginInfo): Future[User] = {
     loginInfoRepository.remove(loginInfo).map(_ => user)
+  }
+
+  /**
+   * Gets all users in the system.
+   *
+   * @return A list of all users.
+   */
+  override def getAllUsers(): Future[Seq[User]] = {
+    userRepository.list()
   }
 }

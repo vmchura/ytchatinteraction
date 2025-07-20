@@ -3,11 +3,14 @@ package controllers
 import forms.{Forms, TournamentCreateForm}
 import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
+import modules.DefaultEnv
 import services.{TournamentService, TournamentChallongeService}
+import utils.auth.WithAdmin
 import play.api.Logger
 import play.api.data.Form
 import play.api.i18n.I18nSupport
 import play.api.mvc.*
+import play.silhouette.api.Silhouette
 import org.webjars.play.WebJarsUtil
 
 import java.time.{Instant, ZoneOffset}
@@ -21,17 +24,18 @@ import scala.concurrent.{ExecutionContext, Future}
 class TournamentController @Inject()(val controllerComponents: ControllerComponents,
                                      tournamentRepository: TournamentRepository,
                                      tournamentService: TournamentService,
-                                     tournamentChallongeService: TournamentChallongeService)
+                                     tournamentChallongeService: TournamentChallongeService,
+                                     silhouette: Silhouette[DefaultEnv])
                                     (implicit ec: ExecutionContext, webJarsUtil: WebJarsUtil)
   extends BaseController with I18nSupport {
 
   private val logger = Logger(getClass)
 
   /**
-   * Shows the tournament creation form.
+   * Shows the tournament creation form. Admin-only access.
    */
-  def showCreateForm(): Action[AnyContent] = Action { implicit request =>
-    Ok(views.html.tournamentCreate(Forms.tournamentCreateForm))
+  def showCreateForm(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    Future.successful(Ok(views.html.tournamentCreate(Forms.tournamentCreateForm)))
   }
 
   /**
@@ -62,8 +66,9 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   /**
    * Starts a tournament by changing its status from RegistrationOpen to InProgress.
    * Creates a tournament in Challonge with all registered users and updates the local tournament with the Challonge ID.
+   * Admin-only access.
    */
-  def startTournament(id: Long): Action[AnyContent] = Action.async { implicit request =>
+  def startTournament(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val future = for {
       tournamentOpt <- tournamentService.getTournament(id)
       result <- tournamentOpt match {
@@ -151,8 +156,9 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   /**
    * Creates a new tournament with only the name provided.
    * All other fields will be set to default values.
+   * Admin-only access.
    */
-  def createTournament(): Action[AnyContent] = Action.async { implicit request =>
+  def createTournament(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Forms.tournamentCreateForm.bindFromRequest().fold(
       formWithErrors => {
         logger.warn(s"Tournament creation form has errors: ${formWithErrors.errors}")

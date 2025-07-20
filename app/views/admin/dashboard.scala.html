@@ -1,0 +1,23 @@
+@import models.User
+@(user: User)(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("Admin Dashboard") {
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+        <p>Welcome, <strong>@user.userName</strong> (ID: @user.userId)</p>
+        
+        <div class="admin-menu">
+            <h2>Admin Functions</h2>
+            <ul>
+                <li><a href="@routes.TournamentController.createTournament()">Create Tournament</a></li>
+                <li><a href="@routes.HomeController.index()">Back to Main Site</a></li>
+            </ul>
+        </div>
+        
+        <div class="admin-stats">
+            <h3>Quick Stats</h3>
+            <p>Only administrators can see this information.</p>
+            <!-- Add more admin-specific content here -->
+        </div>
+    </div>
+}

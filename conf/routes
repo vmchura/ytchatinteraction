@@ -24,6 +24,9 @@ GET     /authenticate/:provider     controllers.AuthController.authenticate(prov
 GET     /signout                    controllers.AuthController.signOut
 GET     /api/user                   controllers.AuthController.userInfo
 
+# Admin routes (requires admin authorization)
+GET     /admin                      controllers.AdminController.adminDashboard()
+
 # YouTube Frontend routes
 GET     /youtube                    controllers.YoutubeFrontendController.showStreamIdForm()
 POST    /youtube/get-chat-id        controllers.YoutubeFrontendController.getLiveChatId()
