@@ -1,18 +1,15 @@
 package controllers
 
-import javax.inject.{Inject, Singleton}
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents}
+import play.api.i18n.I18nSupport
 
-/**
- * Controller for displaying the polls view
- */
+import javax.inject.{Inject, Singleton}
+import play.api.mvc.{Action, AnyContent}
+import utils.auth.WithAdmin
+
 @Singleton
-class PollsViewController @Inject()(cc: ControllerComponents) extends AbstractController(cc) {
+class PollsViewController @Inject()(components: DefaultSilhouetteControllerComponents) extends SilhouetteController(components) with I18nSupport with RequestMarkerContext {
   
-  /**
-   * Redirects to the static polls HTML page
-   */
-  def viewPolls: Action[AnyContent] = Action { implicit request =>
+  def viewPolls: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()) { implicit request =>
     Redirect(controllers.routes.Assets.versioned("polls_obs.html"))
   }
 }
