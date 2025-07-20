@@ -1,41 +1,32 @@
 package controllers
 
-import forms.{CurrencyTransferForm, Forms, StreamerToUserCurrencyForm}
+import forms.Forms
 import models.repository.{UserRepository, UserStreamerStateRepository, YtStreamerRepository}
-import play.api.data.Form
 import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents}
+import play.api.mvc.{Action, AnyContent}
 import services.CurrencyTransferService
 
+import utils.auth.WithAdmin
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Controller for managing currency transfers to YouTube streamers
- */
 @Singleton
 class CurrencyController @Inject()(
-  cc: ControllerComponents,
+  components: DefaultSilhouetteControllerComponents,
   ytStreamerRepository: YtStreamerRepository,
   userRepository: UserRepository,
   userStreamerStateRepository: UserStreamerStateRepository,
   currencyTransferService: CurrencyTransferService,
   override val messagesApi: MessagesApi
-)(implicit ec: ExecutionContext) extends AbstractController(cc) with I18nSupport with RequestMarkerContext {
+)(implicit ec: ExecutionContext) extends SilhouetteController(components) with I18nSupport with RequestMarkerContext {
   
-  /**
-   * Display the currency transfer form
-   */
-  def showCurrencyForm(): Action[AnyContent] = Action.async { implicit request =>
+  def showCurrencyForm(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     ytStreamerRepository.getAll().map { streamers =>
       Ok(views.html.currencyTransfer(Forms.currencyTransferForm, streamers))
     }
   }
   
-  /**
-   * Process the currency transfer form submission
-   */
-  def addCurrency(): Action[AnyContent] = Action.async { implicit request =>
+  def addCurrency(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Forms.currencyTransferForm.bindFromRequest().fold(
       formWithErrors => {
         ytStreamerRepository.getAll().map { streamers =>
@@ -44,11 +35,9 @@ class CurrencyController @Inject()(
       },
       formData => {
         for {
-          // Check if the streamer exists
           streamerOption <- ytStreamerRepository.getByChannelId(formData.channelId)
           result <- streamerOption match {
             case Some(streamer) =>
-              // Update the streamer's balance
               ytStreamerRepository.incrementBalance(formData.channelId, formData.amount).map { _ =>
                 Redirect(routes.CurrencyController.showCurrencyForm())
                   .flashing("success" -> s"Successfully added ${formData.amount} currency to ${streamer.channelTitle.getOrElse(streamer.channelId)}")
@@ -64,30 +53,20 @@ class CurrencyController @Inject()(
     )
   }
   
-  /**
-   * Get the current balance of a streamer
-   */
-  def getStreamerBalance(channelId: String): Action[AnyContent] = Action.async { implicit request =>
+  def getStreamerBalance(channelId: String): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     ytStreamerRepository.getBalance(channelId).map {
       case Some(balance) => Ok(s"Current balance: $balance")
       case None => NotFound(s"Streamer with channel ID $channelId not found")
     }
   }
-  
-  /**
-   * Display the streamer to user currency transfer form for the logged-in streamer
-   */
-  def showStreamerToUserForm(channelId: String): Action[AnyContent] = Action.async { implicit request =>
+
+  def showStreamerToUserForm(channelId: String): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     for {
-      // Get the streamer
       streamerOption <- ytStreamerRepository.getByChannelId(channelId)
       result <- streamerOption match {
         case Some(streamer) =>
-          // Get all users subscribed to this streamer's channel
           userStreamerStateRepository.getByStreamerChannelId(channelId).flatMap { userStates =>
             val userIds = userStates.map(_.userId)
-            
-            // Get user details for each user ID
             Future.sequence(userIds.map(userId => 
               userRepository.getById(userId).map(user => (userId, user, userStates.find(_.userId == userId).map(_.currentBalanceNumber).getOrElse(0)))
             )).map { userInfoList =>
@@ -105,10 +84,7 @@ class CurrencyController @Inject()(
     } yield result
   }
   
-  /**
-   * Process the streamer to user currency transfer form submission
-   */
-  def transferCurrencyToUser(channelId: String): Action[AnyContent] = Action.async { implicit request =>
+  def transferCurrencyToUser(channelId: String): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Forms.streamerToUserCurrencyForm.bindFromRequest().fold(
       formWithErrors => {
         for {
@@ -136,13 +112,10 @@ class CurrencyController @Inject()(
       },
       formData => {
         for {
-          // Check if the streamer exists
           streamerOption <- ytStreamerRepository.getByChannelId(channelId)
-          // Check if the user exists
           userOption <- userRepository.getById(formData.userId)
           result <- (streamerOption, userOption) match {
             case (Some(streamer), Some(user)) =>
-              // Transfer currency from streamer to user
               currencyTransferService.sendCurrencyFromStreamerToUser(channelId, formData.userId, formData.amount).map {
                 case true =>
                   Redirect(routes.CurrencyController.showStreamerToUserForm(channelId))
