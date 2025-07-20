@@ -1,31 +1,21 @@
 package controllers
 
-import java.net.URI
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.*
 import models.*
 import models.repository.*
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.event.{Logging, LoggingAdapter}
 import org.apache.pekko.stream.Materializer
-import org.apache.pekko.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Source}
-import play.api.Logger
 import play.api.mvc.*
-import play.api.i18n.I18nSupport
-import play.api.data.*
-import play.api.data.Forms.*
 import forms.Forms.*
 import play.api.libs.json._
 import services.{ActiveLiveStream, ChatService, PollService, EventUpdateService}
-
+import utils.auth.WithAdmin
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * A very simple chat client using websockets.
- */
 @Singleton
-class EventController @Inject()(val scc: SilhouetteControllerComponents,
+class EventController @Inject()(components: DefaultSilhouetteControllerComponents,
                                 inputSanitizer: InputSanitizer,
                                 streamerEventRepository: StreamerEventRepository,
                                 eventPollRepository: EventPollRepository,
@@ -41,35 +31,26 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                                (implicit mat: Materializer,
                                 executionContext: ExecutionContext,
                                 webJarsUtil: org.webjars.play.WebJarsUtil)
-  extends SilhouetteController(scc) with RequestMarkerContext {
+  extends SilhouetteController(components) with RequestMarkerContext {
 
   private def parseLocalDateTimeToInstant(dateTimeString: String): Instant = {
-    // Append ":00Z" to convert from "YYYY-MM-DDThh:mm" to "YYYY-MM-DDThh:mm:00Z"
     val isoFormatString = dateTimeString + ":00Z"
     Instant.parse(isoFormatString)
   }
 
-  // Event management page (now shows the rival teams form by default)
-  def eventManagement: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // Get user's streamers, all events, and poll options for active events
+  def eventManagement: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
     for {
       streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.list()
       validEvents = events.filter(_.endTime.isEmpty)
-      // Get all active event IDs (events that don't have an end time)
       activeEventIds = validEvents.flatMap(_.eventId)
-      // Get polls for all active events
       allPolls <- Future.sequence(activeEventIds.map(eventPollRepository.getByEventId))
-      // Flatten the sequence of polls
       polls = allPolls.flatten
-      // Get poll options for all polls
       allPollOptions <- Future.sequence(polls.flatMap(_.pollId).map(pollOptionRepository.getByPollId))
-      // Create a map of poll ID to options
       pollOptionsMap = polls.flatMap(_.pollId).zip(allPollOptions).toMap
-      // Create a map of event ID to poll
       eventPollMap = activeEventIds.zip(polls).toMap
-      
+
     } yield {
       Ok(views.html.rivalTeamsEventForm(
         eventWithPollForm,
@@ -83,10 +64,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       ))
     }
   }
-  
-  // Full event creation form
-  def fullEventForm: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // Get user's streamers and all events
+
+  def fullEventForm: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     for {
       streamers <- ytStreamerRepository.getAll()
       events <- streamerEventRepository.list()
@@ -100,8 +79,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     }
   }
 
-  // Create a new event with a poll
-  def createEvent: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def createEvent: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     forms.Forms.eventWithPollForm.bindFromRequest().fold(
       formWithErrors => {
         for {
@@ -117,10 +95,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         }
       },
       formData => {
-        // Parse the start time
         val startTime = parseLocalDateTimeToInstant(formData.event.startTime)
 
-        // Create the event
         val event = StreamerEvent(
           channelId = formData.event.channelId,
           eventName = formData.event.eventName,
@@ -130,11 +106,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           startTime = startTime
         )
 
-        // Process the event and poll creation
         (for {
-          // Create the event
           createdEvent <- pollService.createEvent(event, formData.poll)
-          // Broadcast the event creation to connected clients
           _ = eventUpdateService.broadcastNewEvent(createdEvent)
         } yield {
           Redirect(routes.EventController.eventManagement())
@@ -149,8 +122,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     )
   }
 
-  // Stop accepting new votes for an event
-  def endEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def endEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     pollService.endEvent(eventId).map { result =>
       if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
@@ -166,9 +138,8 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
           .flashing("error" -> s"Error stopping votes: ${e.getMessage}")
     }
   }
-  
-  // Close an event without setting a winner
-  def closeEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+
+  def closeEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     pollService.closeEvent(eventId).map { result =>
       if (result.forall(_ == true)) {
         Redirect(routes.EventController.eventManagement())
@@ -185,18 +156,15 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     }
   }
 
-  // Get all event history (including ended events)
-  def eventHistory: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def eventHistory: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     for {
-      // Get all events including those that are not active
       events <- streamerEventRepository.list()
     } yield {
       Ok(views.html.eventHistory(events, request.identity))
     }
   }
 
-  // Show form to select winner and close an event
-  def selectWinnerForm(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def selectWinnerForm(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     for {
       eventOpt <- streamerEventRepository.getById(eventId)
       polls <- eventPollRepository.getByEventId(eventId)
@@ -225,8 +193,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     }
   }
 
-  // Process winner selection and close the event
-  def setWinnerAndClose(eventId: Int): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def setWinnerAndClose(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     forms.Forms.setWinnerForm.bindFromRequest().fold(
       formWithErrors => {
         for {
@@ -255,22 +222,17 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
       },
       formData => {
         (for {
-          // Get the poll for this event
           polls <- eventPollRepository.getByEventId(eventId)
           pollId = polls.headOption.flatMap(_.pollId).getOrElse(
             throw new IllegalStateException("No poll found for this event")
           )
 
-          // Set the winner option
           _ <- eventPollRepository.setWinnerOption(pollId, formData.optionId)
-          // Close the event
           _ <- pollService.closeEvent(eventId)
-          
-          // Get the updated event to broadcast
+
           closedEvent <- streamerEventRepository.getById(eventId)
           _ = closedEvent.foreach(eventUpdateService.broadcastEventClosed)
-          
-          // Calculate confidence spread
+
           spread <- pollService.spreadPollConfidence(eventId, pollId)
         } yield {
           Redirect(routes.EventController.eventManagement())
@@ -285,46 +247,33 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
     )
   }
 
-  /**
-   * API endpoint that returns all current polls and polls from the past 24 hours
-   * in a JSON format with only essential data.
-   */
-  def recentPolls: Action[AnyContent] = Action.async { implicit request =>
-    // Define the cutoff time (24 hours ago)
+  def recentPolls: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val cutoffTime = Instant.now().minus(24, ChronoUnit.HOURS)
-    
-    // Get all active events and events in the last 24 hours
+
     val eventsQuery = for {
-      // Get all events
       allEvents <- streamerEventRepository.list()
-      
-      // Filter to get only active events or those created in last 24 hours
-      recentEvents = allEvents.filter(event => 
-        (event.createdAt.isDefined && event.createdAt.get.isAfter(cutoffTime))
+
+      recentEvents = allEvents.filter(event =>
+        event.createdAt.isDefined && event.createdAt.get.isAfter(cutoffTime)
       )
-      
-      // For each event, get its poll and options
+
       eventPollsWithOptions <- Future.sequence(
         recentEvents.flatMap(_.eventId).map { eventId =>
           for {
-            // Get polls for this event
             polls <- eventPollRepository.getByEventId(eventId)
-            
-            // For each poll, get its options and votes
+
             pollsWithOptions <- Future.sequence(
               polls.flatMap(_.pollId).map { pollId =>
                 for {
                   options <- pollOptionRepository.getByPollId(pollId)
                   votes <- pollVoteRepository.getByPollId(pollId)
-                  
-                  // Group votes by option and sum confidence
+
                   votesByOption = votes.groupBy(_.optionId)
-                  confidenceSumByOption = votesByOption.map { 
-                    case (optionId, votes) => 
-                      optionId -> votes.map(_.confidenceAmount).sum 
+                  confidenceSumByOption = votesByOption.map {
+                    case (optionId, votes) =>
+                      optionId -> votes.map(_.confidenceAmount).sum
                   }
-                  
-                  // Combine options with their total confidence
+
                   optionsWithConfidence = options.map { option =>
                     option.optionId.map { optionId =>
                       PollOptionData(
@@ -343,10 +292,9 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
                 } yield (pollId, polls, optionsWithConfidence)
               }
             )
-            
-            // Map event to a list of poll data objects
+
             eventData = polls.flatMap { poll =>
-              pollsWithOptions.find(_._1 == poll.pollId.getOrElse(-1)).map { 
+              pollsWithOptions.find(_._1 == poll.pollId.getOrElse(-1)).map {
                 case (_, pollList, options) =>
                   val matchingEvent = recentEvents.find(_.eventId.contains(eventId)).get
                   PollData(
@@ -361,8 +309,7 @@ class EventController @Inject()(val scc: SilhouetteControllerComponents,
         }
       )
     } yield eventPollsWithOptions.flatten
-    
-    // Return as JSON
+
     eventsQuery.map { pollDataList =>
       Ok(Json.toJson(pollDataList))
     }.recover {
