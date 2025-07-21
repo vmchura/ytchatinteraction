@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eo pipefail
+
+APP="$1"
+
+# Create the shared network if it doesn't exist
+docker network create dokku-shared-network 2>/dev/null || true
+
+echo "Shared network ready for $APP"
