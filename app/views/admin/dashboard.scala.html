@@ -1,7 +1,7 @@
 @import models.User
 @(user: User)(implicit request: RequestHeader, messages: Messages, flash: Flash)
 
-@main("Admin Dashboard") {
+@main("Admin Dashboard", Some(user)) {
     <div class="container">
         <h1>Admin Dashboard</h1>
         <p>Welcome, <strong>@user.userName</strong> (ID: @user.userId)</p>
@@ -9,7 +9,13 @@
         <div class="admin-menu">
             <h2>Admin Functions</h2>
             <ul>
-                <li><a href="@routes.TournamentController.createTournament()">Create Tournament</a></li>
+                <li><a href="@routes.EventController.eventManagement()">Event Management</a></li>
+                <li><a href="@routes.TournamentController.showCreateForm()">Create Tournament</a></li>
+                <li><a href="@routes.TournamentController.showOpenTournaments()">Manage Tournaments</a></li>
+                <li><a href="@routes.CurrencyController.showCurrencyForm()">Currency Management</a></li>
+                <li><a href="@routes.YoutubeFrontendController.showStreamIdForm()">YouTube Chat Monitoring</a></li>
+                <li><a href="@routes.PollsViewController.viewPolls()">View Polls</a></li>
+                <li><a href="@routes.ReplayParserHealthController.healthPage()">System Health</a></li>
                 <li><a href="@routes.HomeController.index()">Back to Main Site</a></li>
             </ul>
         </div>

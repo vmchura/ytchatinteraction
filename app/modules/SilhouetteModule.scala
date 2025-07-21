@@ -3,8 +3,7 @@ package modules
 import com.google.inject.{AbstractModule, Provides}
 import com.google.inject.name.Named
 import controllers.{DefaultRememberMeConfig, DefaultSilhouetteControllerComponents, RememberMeConfig, SilhouetteControllerComponents}
-import models.repository.{LoginInfoRepository, OAuth2InfoRepository, UserRepository}
-import models.User
+import models.repository.OAuth2InfoRepository
 import net.codingwell.scalaguice.ScalaModule
 import play.api.Configuration
 import play.api.libs.ws.WSClient
@@ -12,7 +11,7 @@ import play.api.mvc.{Cookie, CookieHeaderEncoding}
 import play.silhouette.api.{Environment, EventBus, Silhouette, SilhouetteProvider}
 import play.silhouette.api.crypto.{Crypter, CrypterAuthenticatorEncoder, Signer}
 import play.silhouette.api.repositories.AuthInfoRepository
-import play.silhouette.api.services.{AuthenticatorService, AvatarService, IdentityService}
+import play.silhouette.api.services.{AuthenticatorService, AvatarService}
 import play.silhouette.api.util.{Clock, FingerprintGenerator, HTTPLayer, IDGenerator, PasswordHasherRegistry, PlayHTTPLayer}
 import play.silhouette.crypto.{JcaCrypter, JcaCrypterSettings, JcaSigner, JcaSignerSettings}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService, CookieAuthenticatorSettings}
@@ -25,10 +24,12 @@ import play.silhouette.persistence.daos.DelegableAuthInfoDAO
 import play.silhouette.persistence.repositories.DelegableAuthInfoRepository
 import providers.YouTubeProvider
 import services.{UserService, UserServiceImpl}
+import utils.auth.{CustomSecuredErrorHandler, CustomUnsecuredErrorHandler}
+import play.silhouette.api.actions.{SecuredErrorHandler, UnsecuredErrorHandler}
+import play.api.i18n.MessagesApi
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
@@ -52,6 +53,8 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     
     // Explicitly bind the ClassTag for OAuth2Info
     bind[ClassTag[OAuth2Info]].toInstance(implicitly[ClassTag[OAuth2Info]])
+    
+    // Error handlers are provided via @Provides methods below
   }
 
   /**
@@ -198,8 +201,8 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
    * Provides the YouTube provider.
    *
    * @param httpLayer The HTTP layer implementation.
-   * @param stateHandler The social state handler.
-   * @param settings The YouTube OAuth2 settings.
+   * @param socialStateHandler The social state handler.
+   * @param configuration The YouTube OAuth2 settings.
    * @return The YouTube provider.
    */
   @Provides
@@ -262,5 +265,27 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
   @Provides
   def providesSilhouetteComponents(components: DefaultSilhouetteControllerComponents): SilhouetteControllerComponents = {
     components
+  }
+  
+  /**
+   * Provides the custom secured error handler.
+   *
+   * @param messagesApi The messages API.
+   * @return The secured error handler.
+   */
+  @Provides
+  def provideSecuredErrorHandler(messagesApi: MessagesApi): SecuredErrorHandler = {
+    new CustomSecuredErrorHandler(messagesApi)
+  }
+
+  /**
+   * Provides the custom unsecured error handler.
+   *
+   * @param messagesApi The messages API.
+   * @return The unsecured error handler.
+   */
+  @Provides  
+  def provideUnsecuredErrorHandler(messagesApi: MessagesApi): UnsecuredErrorHandler = {
+    new CustomUnsecuredErrorHandler(messagesApi)
   }
 }

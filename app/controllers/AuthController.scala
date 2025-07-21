@@ -41,19 +41,21 @@ class AuthController @Inject()(
 
   /**
    * Displays the login page with YouTube authentication button.
+   * Only accessible to non-authenticated users.
    *
    * @return The result to display.
    */
-  def login: Action[AnyContent] = Action { implicit request =>
+  def login: Action[AnyContent] = silhouette.UnsecuredAction { implicit request =>
     Ok(views.html.login())
   }
 
   /**
    * Handles the YouTube authentication.
+   * Only accessible to non-authenticated users.
    *
    * @return The result to display.
    */
-  def authenticate(provider: String) = Action.async { implicit request =>
+  def authenticate(provider: String) = silhouette.UnsecuredAction.async { implicit request =>
     (socialProviderRegistry.get[YouTubeProvider] match {
       case Some(p) => p.authenticate()
       case None => Future.failed(new ProviderException(s"Cannot authenticate with unknown provider $provider"))
