@@ -1,0 +1,28 @@
+@import models.FrontalStreamerEvent
+@import controllers.routes
+
+@(extraEvents: Seq[FrontalStreamerEvent])(implicit request: RequestHeader)
+
+@if(extraEvents.nonEmpty) {
+  <section>
+    <h2>Available Events</h2>
+    <p>Events you can join:</p>
+    
+    <div class="grid">
+      @for(event <- extraEvents) {
+        <article id="extra-@event.eventId">
+          <header>
+            <h3>@event.eventName</h3>
+            <p>@event.eventDescription</p>
+          </header>
+          
+          <footer>
+            <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button" class="contrast">
+              Join Event
+            </a>
+          </footer>
+        </article>
+      }
+    </div>
+  </section>
+}

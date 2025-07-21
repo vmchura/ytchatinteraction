@@ -1,0 +1,34 @@
+@import models.Tournament
+@import controllers.routes
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+
+@(tournament: Tournament, isRegistered: Boolean)(implicit request: RequestHeader)
+
+<article id="tournament-@tournament.id">
+  <header>
+    <h3>@tournament.name</h3>
+    @tournament.description.map { desc =>
+      <p>@desc</p>
+    }
+  </header>
+  
+  <div class="tournament-details">
+    <p><strong>Max participants:</strong> @tournament.maxParticipants</p>
+    <p><strong>Registration ends:</strong> @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+    @tournament.tournamentStartAt.map { startTime =>
+      <p><strong>Tournament starts:</strong> @startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+    }
+  </div>
+  
+  <footer>
+    @if(isRegistered) {
+      <button disabled>Already Registered</button>
+    } else {
+      <form action="@routes.UserEventsController.registerForTournament(tournament.id)" method="POST">
+        @helper.CSRF.formField
+        <button type="submit" class="contrast">Register for Tournament</button>
+      </form>
+    }
+  </footer>
+</article>

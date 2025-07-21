@@ -1,0 +1,63 @@
+@import models.UserMatchInfo
+@import models.viewmodels.{MatchDisplayData, MatchStatus}
+
+@(userMatches: List[UserMatchInfo])(implicit request: RequestHeader)
+
+@if(userMatches.nonEmpty) {
+  <section>
+    <h2>Your Tournament Matches</h2>
+    <p>Matches you are assigned to in active tournaments</p>
+    
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>Tournament</th>
+            <th>Match ID</th>
+            <th>Opponent</th>
+            <th>Status</th>
+            <th>Scheduled Time</th>
+            <th>Result</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(matchInfo <- userMatches) {
+            @defining(MatchDisplayData.fromUserMatchInfo(matchInfo)) { matchData =>
+              <tr>
+                <td>@matchData.tournament.name</td>
+                <td>#@matchData.matchId</td>
+                <td>@matchData.opponent</td>
+                <td>@renderMatchStatus(matchData.status)</td>
+                <td>@matchData.scheduledTime.getOrElse("Not scheduled")</td>
+                <td>
+                  @if(matchData.hasResult) {
+                    <span>See Result</span>
+                  } else {
+                    <span>Pending</span>
+                  }
+                </td>
+                <td>
+                  @if(matchData.canUploadReplay) {
+                    <a href="/match/@matchData.tournament.id/@matchData.challengeMatchId/upload" role="button" class="outline">
+                      Upload Replay
+                    </a>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+@renderMatchStatus(status: MatchStatus) = {
+  @status match {
+    case MatchStatus.Open => { <mark>@status.displayName</mark> }
+    case MatchStatus.Pending => { <mark>@status.displayName</mark> }
+    case MatchStatus.Complete => { <mark>@status.displayName</mark> }
+    case MatchStatus.Other(_) => { <mark>@status.displayName</mark> }
+  }
+}
