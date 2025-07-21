@@ -2,3 +2,9 @@ name = Name
 age = Age
 
 user.created = You have successfully created a user!
+
+# Authentication messages
+auth.login.required = You need to be logged in to access this page.
+auth.login.success = You have been successfully logged in.
+auth.logout.success = You have been logged out successfully.
+auth.access.denied = Access denied. You don''t have permission to access this resource.

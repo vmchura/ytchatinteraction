@@ -131,6 +131,7 @@ class AuthController @Inject()(
    */
   def signOut = silhouette.SecuredAction.async { implicit request =>
     val result = Redirect(routes.AuthController.login)
+      .flashing("success" -> "You have been logged out successfully.")
     silhouette.env.eventBus.publish(LogoutEvent(request.identity, request))
     silhouette.env.authenticatorService.discard(request.authenticator, result)
   }
