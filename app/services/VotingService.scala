@@ -1,10 +1,11 @@
 package services
 
+import forms.{Forms, VoteFormData}
 import models.*
 import models.repository.StreamerEventRepository
 import play.api.Logger
 import play.api.mvc.{AnyContent, Request}
-import utils.FormUtils
+import play.api.data.FormBinding.Implicits.formBinding
 
 import javax.inject.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,33 +18,25 @@ class VotingService @Inject()(
 
   private val logger = Logger(getClass)
 
-  case class VoteRequest(
-    optionId: Int,
-    confidence: Int,
-    eventId: Int,
-    pollId: Int
-  )
-
-  def parseVoteRequest(implicit request: Request[AnyContent]): Option[VoteRequest] = {
-    val formData = FormUtils.getFormData
-
-    for {
-      optionId <- FormUtils.getFormValueAsInt(formData, "optionId")
-      confidence <- FormUtils.getFormValueAsInt(formData, "confidence")
-      eventId <- FormUtils.getFormValueAsInt(formData, "eventId")
-      pollId <- FormUtils.getFormValueAsInt(formData, "pollId")
-    } yield VoteRequest(optionId, confidence, eventId, pollId)
+  def parseVoteRequest(implicit request: Request[AnyContent]): Option[VoteFormData] = {
+    Forms.voteForm.bindFromRequest().fold(
+      formWithErrors => {
+        logger.warn(s"Form binding failed: ${formWithErrors.errors}")
+        None
+      },
+      validVoteData => Some(validVoteData)
+    )
   }
 
-  def processVote(voteRequest: VoteRequest, userId: Long): Future[VoteResult] = {
-    streamerEventRepository.getById(voteRequest.eventId).flatMap {
+  def processVote(voteData: VoteFormData, userId: Long): Future[VoteResult] = {
+    streamerEventRepository.getById(voteData.eventId).flatMap {
       case Some(event) if event.endTime.isEmpty =>
         pollService.registerPollVote(
-          voteRequest.pollId,
-          voteRequest.optionId,
+          voteData.pollId,
+          voteData.optionId,
           userId,
           None,
-          voteRequest.confidence,
+          voteData.confidence,
           event.channelId
         ).map(_ => VoteResult.Success("Vote registered successfully"))
 
@@ -59,10 +52,10 @@ class VotingService @Inject()(
     }
   }
 
-  def validateVoteRequest(voteRequest: VoteRequest, userId: Long, userBalance: Int): Future[Either[String, Unit]] = {
-    if (voteRequest.confidence > userBalance) {
+  def validateVoteRequest(voteData: VoteFormData, userId: Long, userBalance: Int): Future[Either[String, Unit]] = {
+    if (voteData.confidence > userBalance) {
       Future.successful(Left("Insufficient balance for this vote"))
-    } else if (voteRequest.confidence <= 0) {
+    } else if (voteData.confidence <= 0) {
       Future.successful(Left("Confidence must be positive"))
     } else {
       Future.successful(Right(()))

@@ -80,8 +80,8 @@ class UserEventsController @Inject()(
    */
   def submitVote: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     votingService.parseVoteRequest match {
-      case Some(voteRequest) =>
-        votingService.processVote(voteRequest, request.identity.userId).map {
+      case Some(voteData) =>
+        votingService.processVote(voteData, request.identity.userId).map {
           case votingService.VoteResult.Success(message) =>
             Redirect(routes.UserEventsController.userEvents())
               .flashing("success" -> message)

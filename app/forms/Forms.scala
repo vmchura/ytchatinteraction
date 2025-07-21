@@ -48,6 +48,14 @@ case class TournamentCreateForm(
                                  name: String
                                )
 
+// Form for voting on polls
+case class VoteFormData(
+                         optionId: Int,
+                         confidence: Int,
+                         eventId: Int,
+                         pollId: Int
+                       )
+
 object Forms:
   val eventForm = Form(
     mapping(
@@ -110,4 +118,13 @@ object Forms:
     mapping(
       "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty)
     )(TournamentCreateForm.apply)(nn => Some(nn.name))
+  )
+  
+  val voteForm = Form(
+    mapping(
+      "optionId" -> number,
+      "confidence" -> number(min = 1),
+      "eventId" -> number,
+      "pollId" -> number
+    )(VoteFormData.apply)(nn => Some(nn.optionId, nn.confidence, nn.eventId, nn.pollId))
   )
