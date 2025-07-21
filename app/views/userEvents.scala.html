@@ -3,7 +3,7 @@
 @(viewData: UserEventViewData)(implicit request: RequestHeader, flash: Flash)
 
 @main("My Events", Some(viewData.user)) {
-  <h1>My Active Events</h1>
+  <h1 id="my_event_active">My Active Events</h1>
   
   @if(!viewData.userEvents.hasActiveEvents) {
     <article>

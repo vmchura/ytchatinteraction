@@ -29,7 +29,7 @@ class FileUploadController @Inject()(
                                       userRepository: models.repository.UserRepository
                                     )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
 
-  def uploadFormForMatch(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+  def uploadFormForMatch(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
       currentSessionOpt <- uploadSessionService.getSession(request.identity, matchId)
       currentSession <- currentSessionOpt.fold(uploadSessionService.startSession(request.identity, matchId))(session => Future.successful(session))
@@ -75,7 +75,7 @@ class FileUploadController @Inject()(
     }
   }
 
-  def uploadFile(tournamentId: Long, matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction(WithAdmin()).async(parse.multipartFormData) { implicit request =>
+  def uploadFile(tournamentId: Long, matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
     uploadSessionService.getOrCreateSession(request.identity, matchId).flatMap { session =>
       if (session.isFinalized) {
         renderUploadFormWithMatchDetails(request.identity, tournamentId, matchId, session)

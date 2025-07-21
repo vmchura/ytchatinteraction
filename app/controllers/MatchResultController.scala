@@ -25,7 +25,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
     )(MatchResultForm.apply)(r => Some((r.winnerId, r.resultType)))
   )
 
-  def submitResult(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+  def submitResult(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     matchResultForm.bindFromRequest().fold(
       formWithErrors => {
         Future.successful(

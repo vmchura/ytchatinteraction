@@ -3,7 +3,6 @@ package controllers
 import javax.inject.*
 import models.*
 import models.viewmodels.UserEventViewData
-import play.api.data.*
 import play.api.data.Forms.*
 import play.api.i18n.I18nSupport
 import play.api.mvc.*
@@ -15,10 +14,6 @@ import utils.auth.WithAdmin
 
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Refactored UserEventsController with separated concerns.
- * Uses dedicated services for data aggregation, voting, and WebSocket handling.
- */
 @Singleton
 class UserEventsController @Inject()(
   components: DefaultSilhouetteControllerComponents,
@@ -32,9 +27,6 @@ class UserEventsController @Inject()(
 
   private val logger = Logger(getClass)
   
-  /**
-   * Main user events page - simplified with service delegation
-   */
   def userEvents: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     val userId = request.identity.userId
 
@@ -62,9 +54,6 @@ class UserEventsController @Inject()(
     }
   }
 
-  /**
-   * WebSocket endpoint for real-time event updates - delegated to auth service
-   */
   def eventsUpdates: WebSocket = WebSocket.acceptOrResult[String, String] { implicit request =>
     Future.successful {
       if (webSocketAuthService.validateWebSocketRequest) {
@@ -75,9 +64,6 @@ class UserEventsController @Inject()(
     }
   }
 
-  /**
-   * Handle vote submission - delegated to voting service
-   */
   def submitVote: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     votingService.parseVoteRequest match {
       case Some(voteData) =>
@@ -98,13 +84,9 @@ class UserEventsController @Inject()(
     }
   }
 
-  /**
-   * Join an event - simplified with service calls
-   */
   def joinEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val userId = request.identity.userId
 
-    // Delegate to event data service
     userEventDataService.joinUserToEvent(userId, eventId)
 
     userEventDataService.joinUserToEvent(userId, eventId).map {
@@ -122,10 +104,7 @@ class UserEventsController @Inject()(
     }
   }
 
-  /**
-   * Register for tournament - delegated to tournament service
-   */
-  def registerForTournament(tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+  def registerForTournament(tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     val userId = request.identity.userId
 
     tournamentMatchService.registerUserForTournament(tournamentId, userId).map {

@@ -39,7 +39,7 @@
                 </td>
                 <td>
                   @if(matchData.canUploadReplay) {
-                    <a href="/match/@matchData.tournament.id/@matchData.challengeMatchId/upload" role="button" class="outline">
+                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournament.id, matchData.challengeMatchId)" role="button" class="outline">
                       Upload Replay
                     </a>
                   }

@@ -178,35 +178,37 @@ class UserEventsInterface {
     }
 
     showConnectionStatus(connected) {
+
         let statusIndicator = document.getElementById('connection-status');
         
         if (!statusIndicator) {
+            const h1Element = document.getElementById('my_event_active');
+            console.log(h1Element)
+             if (!h1Element) return null;
+
             statusIndicator = document.createElement('div');
             statusIndicator.id = 'connection-status';
             statusIndicator.style.cssText = `
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                padding: 5px 10px;
-                border-radius: 5px;
-                font-size: 12px;
-                z-index: 1000;
+                display: inline-block;
+                    margin-left: 15px;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    font-weight: normal;
+                    vertical-align: middle;
             `;
-            document.body.appendChild(statusIndicator);
+            h1Element.appendChild(statusIndicator);
         }
 
         if (connected) {
             statusIndicator.textContent = '🟢 Live Updates Connected';
             statusIndicator.style.backgroundColor = '#4CAF50';
             statusIndicator.style.color = 'white';
-            setTimeout(() => {
-                statusIndicator.style.display = 'none';
-            }, 3000);
+
         } else {
             statusIndicator.textContent = '🔴 Live Updates Disconnected';
             statusIndicator.style.backgroundColor = '#f44336';
             statusIndicator.style.color = 'white';
-            statusIndicator.style.display = 'block';
         }
     }
 
