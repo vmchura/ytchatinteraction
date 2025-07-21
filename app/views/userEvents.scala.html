@@ -4,7 +4,6 @@
 
 @(events: Seq[FrontalStreamerEvent],
   channelBalanceMap: Map[String, Int],
-  voteForm: Form[VoteFormData],
   user: User,
   extraEvents: Seq[FrontalStreamerEvent],
   webSocketUrl: String,
@@ -12,258 +11,290 @@
   tournamentsWithRegistrationStatus: Map[Tournament, Boolean],
   userMatches: List[UserMatchInfo])(implicit request: RequestHeader, flash: Flash)
 
+@* Helper template for rendering active events *@
+@renderActiveEvent(event: FrontalStreamerEvent) = {
+  <article id="current-@event.eventId">
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+      <h3>@event.eventName</h3>
+      <small>Balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</small>
+    </header>
+
+    @for(poll <- event.frontalPoll) {
+      @renderPollVoting(poll, event)
+    }
+  </article>
+}
+
+@* Helper template for rendering poll voting section *@
+@renderPollVoting(poll: FrontalPoll, event: FrontalStreamerEvent) = {
+  @if(poll.options.nonEmpty && event.endTime.isEmpty) {
+    <form action="@routes.UserEventsController.submitVote()" method="POST" id="vote-form-@poll.pollId">
+      @helper.CSRF.formField
+      <input type="hidden" name="eventId" value="@event.eventId">
+      <input type="hidden" name="pollId" value="@poll.pollId">
+
+      <fieldset>
+        <legend>Choose your option:</legend>
+        @for(option <- poll.options) {
+          @renderPollOption(option)
+        }
+      </fieldset>
+
+      @renderConfidenceSlider(poll, event)
+      
+      <button type="submit" class="submit-vote" id="submit-vote-@poll.pollId">
+        Submit Vote
+      </button>
+    </form>
+  }
+}
+
+@* Helper template for rendering poll options *@
+@renderPollOption(option: FrontalPollOption) = {
+  <label>
+    <input
+      type="radio"
+      name="optionId"
+      value="@option.optionId"
+      required
+      class="option-radio"
+      data-option-text="@option.optionText"
+    />
+    @option.optionText
+    <small>(@option.inverseConfidenceRatio)</small>
+  </label>
+}
+
+@* Helper template for rendering confidence slider *@
+@renderConfidenceSlider(poll: FrontalPoll, event: FrontalStreamerEvent) = {
+  <div class="confidence-section">
+    <label for="confidence-@poll.pollId">
+      Confidence (Points to bet): <span id="confidence-value-@poll.pollId">1</span>
+    </label>
+    <input
+      type="range"
+      id="confidence-@poll.pollId"
+      name="confidence"
+      min="1"
+      max="@channelBalanceMap.getOrElse(event.channelId, 0)"
+      value="1"
+      class="confidence-slider"
+      data-poll-id="@poll.pollId"
+      required
+    />
+  </div>
+}
+
+@* Helper template for rendering tournament matches *@
+@renderUserMatches() = {
+  @if(userMatches.nonEmpty) {
+    <section>
+      <h2>Your Tournament Matches</h2>
+      <p>Matches you are assigned to in active tournaments</p>
+      
+      <div class="overflow-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Tournament</th>
+              <th>Match ID</th>
+              <th>Opponent</th>
+              <th>Status</th>
+              <th>Scheduled Time</th>
+              <th>Result</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(matchInfo <- userMatches) {
+              @renderMatchRow(matchInfo)
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
+
+@* Helper template for rendering match row *@
+@renderMatchRow(matchInfo: UserMatchInfo) = {
+  <tr>
+    <td>@matchInfo.tournament.name</td>
+    <td>#@matchInfo.matchId</td>
+    <td>@matchInfo.opponent</td>
+    <td>@renderMatchStatus(matchInfo.status)</td>
+    <td>@matchInfo.scheduledTime.getOrElse("Not scheduled")</td>
+    <td>
+      @if(matchInfo.winnerId.isDefined) {
+        <span>See Result</span>
+      } else {
+        <span>Pending</span>
+      }
+    </td>
+    <td>
+      @if(matchInfo.status == "open") {
+        <a href="/match/@matchInfo.tournament.id/@matchInfo.challengeMatchId/upload" role="button" class="outline">
+          Upload Replay
+        </a>
+      }
+    </td>
+  </tr>
+}
+
+@* Helper template for rendering match status *@
+@renderMatchStatus(status: String) = {
+  @status match {
+    case "open" => { <mark>Open</mark> }
+    case "pending" => { <mark>Pending</mark> }
+    case "complete" => { <mark>Complete</mark> }
+    case _ => { <mark>@status</mark> }
+  }
+}
+
+@* Helper template for rendering extra events *@
+@renderExtraEvents() = {
+  @if(extraEvents.nonEmpty) {
+    <section>
+      <h2>Available Events</h2>
+      <p>Events you can join:</p>
+      
+      <div class="grid">
+        @for(event <- extraEvents) {
+          <article id="extra-@event.eventId">
+            <header>
+              <h3>@event.eventName</h3>
+              @event.eventDescription.map { desc =>
+                <p>@desc</p>
+              }
+            </header>
+            
+            <footer>
+              <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button" class="contrast">
+                Join Event
+              </a>
+            </footer>
+          </article>
+        }
+      </div>
+    </section>
+  }
+}
+
+@* Helper template for rendering open tournaments *@
+@renderOpenTournaments() = {
+  @if(openTournaments.nonEmpty) {
+    <section>
+      <h2>Open Tournaments</h2>
+      <p>Tournaments currently open for registration:</p>
+      
+      <div class="grid">
+        @for(tournament <- openTournaments) {
+          @renderTournament(tournament)
+        }
+      </div>
+    </section>
+  }
+}
+
+@* Helper template for rendering tournament card *@
+@renderTournament(tournament: Tournament) = {
+  <article id="tournament-@tournament.id">
+    <header>
+      <h3>@tournament.name</h3>
+      @tournament.description.map { desc =>
+        <p>@desc</p>
+      }
+    </header>
+    
+    <div class="tournament-details">
+      <p><strong>Max participants:</strong> @tournament.maxParticipants</p>
+      <p><strong>Registration ends:</strong> @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+      @tournament.tournamentStartAt.map { startTime =>
+        <p><strong>Tournament starts:</strong> @startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
+      }
+    </div>
+    
+    <footer>
+      @if(tournamentsWithRegistrationStatus.getOrElse(tournament, false)) {
+        <button disabled>Already Registered</button>
+      } else {
+        <form action="@routes.UserEventsController.registerForTournament(tournament.id)" method="POST">
+          @helper.CSRF.formField
+          <button type="submit" class="contrast">Register for Tournament</button>
+        </form>
+      }
+    </footer>
+  </article>
+}
+
+@* Main template *@
 @main("My Events", Some(user)) {
   <h1>My Active Events</h1>
   
-  <div class="container my-events-container">
-    @if(flash.get("error").isDefined) {
-      <div class="error-message">
-        @flash.get("error")
-      </div>
-    }
-    
-    @if(flash.get("success").isDefined) {
-      <div class="success-message">
-        @flash.get("success")
-      </div>
-    }
-    
-    @if(events.isEmpty) {
-      <article>
-        <p>You don't have any active events. Join a stream chat to participate in events!</p>
-      </article>
-    } else {
-      <div class="grid">
-        @for(event <- events) {
-          <div id="current-@event.eventId">
-            <article>
-              <header style="display: flex; justify-content: space-between; align-items: center;">
-                <h3>@event.eventName</h3>
-                <p>Your balance: @channelBalanceMap.getOrElse(event.channelId, 0) points</p>
-              </header>
-
-              @for(poll <- event.frontalPoll) {
-                <div class="poll-section">
-                    @if(poll.options.nonEmpty && event.endTime.isEmpty) {
-                      <form action="@routes.UserEventsController.submitVote()" method="POST" id="vote-form-@poll.pollId">
-                        @helper.CSRF.formField
-                        <input type="hidden" name="eventId" value="@event.eventId">
-                        <input type="hidden" name="pollId" value="@poll.pollId">
-
-                        <fieldset>
-                          @for(option <- poll.options) {
-                            <div class="radio-option">
-                              <input
-                                type="radio"
-                                id="option-@option.optionId"
-                                name="optionId"
-                                value="@option.optionId"
-                                required
-                                class="option-radio"
-                                data-option-text="@option.optionText"
-                              />
-                              <label for="option-@option.optionId">
-                                @option.optionText: (@option.inverseConfidenceRatio)
-                              </label>
-                            </div>
-                          }
-                        </fieldset>
-
-                        <div class="confidence-section">
-                          <input
-                            type="range"
-                            id="confidence-@poll.pollId"
-                            name="confidence"
-                            min="1"
-                            max="@channelBalanceMap.getOrElse(event.channelId, 0)"
-                            value="1"
-                            class="confidence-slider"
-                            data-poll-id="@poll.pollId"
-                            required
-                          />
-                        </div>
-
-                        <button type="submit" class="submit-vote" id="submit-vote-@poll.pollId">Submit vote</button>
-                      </form>
-                    }
-                </div>
-              }
-            </article>
-          </div>
-        }
-      </div>
-    }
-  </div>
-
-  <!-- User Matches Section -->
-  <div id="matches-section" style="@if(userMatches.isEmpty) {display: none;} else {display: block;}">
-    <h2>Your Tournament Matches</h2>
-    <p>Matches you are assigned to in active tournaments</p>
-    
-    <div id="matches-container">
-      @if(userMatches.isEmpty) {
-        <article>
-          <p>You don't have any assigned matches at the moment.</p>
-        </article>
-      } else {
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Tournament</th>
-                <th>Match ID</th>
-                <th>Opponent</th>
-                <th>Status</th>
-                <th>Scheduled Time</th>
-                <th>Result</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for(matchInfo <- userMatches) {
-                <tr>
-                  <td>@matchInfo.tournament.name</td>
-                  <td>#@matchInfo.matchId</td>
-                  <td>@matchInfo.opponent</td>
-                  <td>
-                    @matchInfo.status match {
-                      case "open" => { <mark>Open</mark> }
-                      case "pending" => { <mark>Pending</mark> }
-                      case "complete" => { <mark>Complete</mark> }
-                      case _ => { <mark>@matchInfo.status</mark> }
-                    }
-                  </td>
-                  <td>
-                    @matchInfo.scheduledTime.getOrElse("Not scheduled")
-                  </td>
-                  <td>
-                    @if(matchInfo.winnerId.isDefined) {
-                      <span>See Result</span>
-                    } else {
-                      <span>Pending</span>
-                    }
-                  </td>
-                  <td>
-                    @if(matchInfo.status == "open") {
-                      <a href="/match/@matchInfo.tournament.id/@matchInfo.challengeMatchId/upload" role="button">
-                        Upload Replay
-                      </a>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+  @if(events.isEmpty) {
+    <article>
+      <p>You don't have any active events. Join a stream chat to participate in events!</p>
+    </article>
+  } else {
+    <div class="grid">
+      @for(event <- events) {
+        @renderActiveEvent(event)
       }
     </div>
-  </div>
+  }
 
-  <div id="extra-events-section" style="@if(extraEvents.isEmpty) {display: none;} else {display: block;}">
-    <h2>Extra Events</h2>
-    <p>Events that you are not currently participating in:</p>
-    
-    <div id="extra-events-container">
-        @for(event <- extraEvents) {
-          <div id="extra-@event.eventId">
-            <article>
-              <header>
-                <h3>@event.eventName</h3>
-                <p>@event.eventDescription</p>
-              </header>
-              
-              <a href="@routes.UserEventsController.joinEvent(event.eventId)" class="join-event-button">
-                Join Event
-              </a>
-            </article>
-          </div>
-        }
-    </div>
-  </div>
-  
-  <div id="tournaments-section" style="@if(openTournaments.isEmpty) {display: none;} else {display: block;}">
-    <h2>Open Tournaments</h2>
-    <p>Tournaments currently open for registration:</p>
-    
-    <div id="tournaments-container">
-        @for(tournament <- openTournaments) {
-          <div id="tournament-@tournament.id">
-            <article>
-              <header>
-                <h3>@tournament.name</h3>
-                @tournament.description.map { desc =>
-                  <p>@desc</p>
-                }
-              </header>
-              
-              <div class="tournament-details">
-                <p><strong>Max participants:</strong> @tournament.maxParticipants</p>
-                <p><strong>Registration ends:</strong> @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
-                @tournament.tournamentStartAt.map { startTime =>
-                  <p><strong>Tournament starts:</strong> @startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
-                }
-              </div>
-              
-              @if(tournamentsWithRegistrationStatus.getOrElse(tournament, false)) {
-                <button disabled class="registered-button">Already Registered</button>
-              } else {
-                <form action="@routes.UserEventsController.registerForTournament(tournament.id)" method="POST" style="display: inline;">
-                  @helper.CSRF.formField
-                  <button type="submit" class="register-button">Register for Tournament</button>
-                </form>
-              }
-            </article>
-          </div>
-        }
-    </div>
-  </div>
+  @renderUserMatches()
+  @renderExtraEvents()
+  @renderOpenTournaments()
   
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Get all confidence sliders
+      initializeVotingInterface();
+    });
+    
+    function initializeVotingInterface() {
       const sliders = document.querySelectorAll('.confidence-slider');
       
-      // Add event listeners to each slider
       sliders.forEach(slider => {
         const pollId = slider.dataset.pollId;
-        const confidenceValueElement = document.getElementById(`confidence-value-${pollId}`);
-        const submitButton = document.getElementById(`submit-vote-${pollId}`);
         const form = document.getElementById(`vote-form-${pollId}`);
         
-        // Update confidence value and button text when slider changes
+        // Update confidence value display
         slider.addEventListener('input', function() {
-          const confidenceValue = this.value;
-          if (confidenceValueElement) {
-            confidenceValueElement.textContent = confidenceValue;
-          }
-          updateSubmitButtonText(form, pollId);
+          updateConfidenceDisplay(pollId, this.value);
+          updateSubmitButton(form, pollId);
         });
         
-        // Add event listeners to radio buttons
+        // Handle option changes
         const radioButtons = form.querySelectorAll('.option-radio');
         radioButtons.forEach(radio => {
-          radio.addEventListener('change', function() {
-            updateSubmitButtonText(form, pollId);
-          });
+          radio.addEventListener('change', () => updateSubmitButton(form, pollId));
         });
-      });
-      
-      // Function to update submit button text
-      function updateSubmitButtonText(form, pollId) {
-        const submitButton = document.getElementById(`submit-vote-${pollId}`);
-        const confidenceValue = document.getElementById(`confidence-${pollId}`).value;
-        const selectedOption = form.querySelector('input[name="optionId"]:checked');
         
-        if (selectedOption) {
-          const optionText = selectedOption.dataset.optionText;
-          submitButton.textContent = `${confidenceValue} points for ${optionText}`;
-        } else {
-          submitButton.textContent = `Submit vote`;
-        }
+        // Initialize display
+        updateConfidenceDisplay(pollId, slider.value);
+      });
+    }
+    
+    function updateConfidenceDisplay(pollId, value) {
+      const displayElement = document.getElementById(`confidence-value-${pollId}`);
+      if (displayElement) {
+        displayElement.textContent = value;
       }
-    });
+    }
+    
+    function updateSubmitButton(form, pollId) {
+      const submitButton = document.getElementById(`submit-vote-${pollId}`);
+      const confidenceValue = document.getElementById(`confidence-${pollId}`).value;
+      const selectedOption = form.querySelector('input[name="optionId"]:checked');
+      
+      if (selectedOption && submitButton) {
+        const optionText = selectedOption.dataset.optionText;
+        submitButton.textContent = `${confidenceValue} points for ${optionText}`;
+      }
+    }
   </script>
   
-  <!-- Add WebSocket for event updates -->
+  <!-- WebSocket for real-time updates -->
   <script type='text/javascript' src='@routes.Assets.versioned("javascripts/events_updates.js")' data-url='@webSocketUrl'></script>
 }

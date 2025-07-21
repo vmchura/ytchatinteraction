@@ -35,21 +35,41 @@ class UserEventsController @Inject()(
   extends SilhouetteController(components) with I18nSupport with RequestMarkerContext {
 
   private val logger = Logger(getClass)
-
-  val voteForm: Form[VoteFormData] = Form(
-    mapping(
-      "optionId" -> number,
-      "confidence" -> number(min = 1),
-      "eventId" -> number,
-      "pollId" -> number
-    )(VoteFormData.apply)(nn => Some(nn.optionId, nn.confidence, nn.eventId, nn.pollId))
-  )
-
-  def userEvents: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+  
+  def userEvents: Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     val userId = request.identity.userId
 
-    val webSocketUrl = routes.UserEventsController.eventsUpdates.webSocketURL()
+    for {
+      userEventData <- getUserEventData(userId)
+      tournamentData <- getTournamentData(userId)
+      userMatches <- getUserMatches(userId, tournamentData.inProgressTournaments)
+    } yield {
+      Ok(views.html.userEvents(
+        userEventData.frontalEventsComplete,
+        userEventData.channelBalanceMap,
+        request.identity,
+        userEventData.extraActiveEventsWithFrontal,
+        routes.UserEventsController.eventsUpdates.webSocketURL(),
+        tournamentData.openTournaments,
+        tournamentData.tournamentsWithRegistrationStatus,
+        userMatches
+      ))
+    }
+  }
 
+  private case class UserEventData(
+    frontalEventsComplete: Seq[FrontalStreamerEvent],
+    channelBalanceMap: Map[String, Int],
+    extraActiveEventsWithFrontal: Seq[FrontalStreamerEvent]
+  )
+
+  private case class TournamentData(
+    openTournaments: List[Tournament],
+    tournamentsWithRegistrationStatus: Map[Tournament, Boolean],
+    inProgressTournaments: List[Tournament]
+  )
+
+  private def getUserEventData(userId: Long): Future[UserEventData] = {
     for {
       userStreamerStates <- userStreamerStateRepository.getByUserId(userId)
       channelIds = userStreamerStates.map(_.streamerChannelId)
@@ -65,30 +85,18 @@ class UserEventsController @Inject()(
       extraActiveEvents = allActiveEvents.filter(event =>
         event.eventId.isDefined && !userEventIds.contains(event.eventId.get))
       extraActiveEventsWithFrontal = extraActiveEvents.flatMap(FrontalStreamerEvent.apply)
+    } yield UserEventData(frontalEventsComplete, channelBalanceMap, extraActiveEventsWithFrontal)
+  }
 
+  private def getTournamentData(userId: Long): Future[TournamentData] = {
+    for {
       openTournaments <- tournamentService.getOpenTournaments
-
       userRegistrations <- Future.sequence(openTournaments.map { tournament =>
         tournamentService.isUserRegistered(tournament.id, userId).map(tournament -> _)
       })
       tournamentsWithRegistrationStatus = userRegistrations.toMap
-
       inProgressTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.InProgress)
-      userMatches <- getUserMatches(userId, inProgressTournaments)
-
-    } yield {
-      Ok(views.html.userEvents(
-        frontalEventsComplete,
-        channelBalanceMap,
-        voteForm,
-        request.identity,
-        extraActiveEventsWithFrontal,
-        webSocketUrl,
-        openTournaments,
-        tournamentsWithRegistrationStatus,
-        userMatches
-      ))
-    }
+    } yield TournamentData(openTournaments, tournamentsWithRegistrationStatus, inProgressTournaments)
   }
 
   private def getUserMatches(userId: Long, tournaments: List[Tournament]): Future[List[UserMatchInfo]] = {
@@ -148,94 +156,96 @@ class UserEventsController @Inject()(
   private def originMatches(origin: String): Boolean = {
     try {
       val url = new URI(origin)
-      (url.getHost == "localhost" || url.getHost == "evolutioncomplete.com" || url.getHost == "91.99.13.219") &&
-        (url.getPort match {
-          case 9000 | 5000 | 19001 => true;
-          case _ => false
-        })
+      val allowedHosts = Set("localhost", "evolutioncomplete.com", "91.99.13.219")
+      val allowedPorts = Set(9000, 5000, 19001)
+      
+      allowedHosts.contains(url.getHost) && allowedPorts.contains(url.getPort)
     } catch {
-      case e: Exception => false
+      case _: Exception => false
     }
   }
 
   def submitVote: Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
-    voteForm.bindFromRequest().fold(
-      formWithErrors => {
-        Future.successful(Redirect(routes.UserEventsController.userEvents())
-          .flashing("error" -> "Invalid form submission"))
-      },
-      voteData => {
-        val userId = request.identity.userId
+    val formData = request.body.asFormUrlEncoded
 
-        (for {
-          event <- streamerEventRepository.getById(voteData.eventId)
+    val result = for {
+      optionId <- getFormValue(formData, "optionId").flatMap(_.toIntOption)
+      confidence <- getFormValue(formData, "confidence").flatMap(_.toIntOption)
+      eventId <- getFormValue(formData, "eventId").flatMap(_.toIntOption)
+      pollId <- getFormValue(formData, "pollId").flatMap(_.toIntOption)
+    } yield VoteFormData(optionId, confidence, eventId, pollId)
 
-          result <- event match {
-            case Some(evt) if evt.endTime.isEmpty =>
-              pollService.registerPollVote(
-                voteData.pollId,
-                voteData.optionId,
-                userId,
-                None,
-                voteData.confidence,
-                evt.channelId
-              ).map(_ =>
-                Redirect(routes.UserEventsController.userEvents())
-                  .flashing("success" -> "Vote registered successfully")
-              )
+    result match {
+      case Some(voteData) => processVote(voteData, request.identity.userId)
+      case None => Future.successful(
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("error" -> "Invalid form submission")
+      )
+    }
+  }
 
-            case Some(_) =>
-              Future.successful(
-                Redirect(routes.UserEventsController.userEvents())
-                  .flashing("error" -> "This event is no longer accepting votes")
-              )
+  private def getFormValue(formData: Option[Map[String, Seq[String]]], key: String): Option[String] = {
+    formData.flatMap(_.get(key)).flatMap(_.headOption)
+  }
 
-            case None =>
-              Future.successful(
-                Redirect(routes.UserEventsController.userEvents())
-                  .flashing("error" -> "Event not found")
-              )
-          }
-        } yield result).recover {
-          case e: Exception =>
-            Redirect(routes.UserEventsController.userEvents())
-              .flashing("error" -> s"Error registering vote: ${e.getMessage}")
-        }
-      }
-    )
+  private def processVote(voteData: VoteFormData, userId: Long): Future[Result] = {
+    streamerEventRepository.getById(voteData.eventId).flatMap {
+      case Some(evt) if evt.endTime.isEmpty =>
+        pollService.registerPollVote(
+          voteData.pollId,
+          voteData.optionId,
+          userId,
+          None,
+          voteData.confidence,
+          evt.channelId
+        ).map(_ =>
+          Redirect(routes.UserEventsController.userEvents())
+            .flashing("success" -> "Vote registered successfully")
+        )
+
+      case Some(_) =>
+        Future.successful(
+          Redirect(routes.UserEventsController.userEvents())
+            .flashing("error" -> "This event is no longer accepting votes")
+        )
+
+      case None =>
+        Future.successful(
+          Redirect(routes.UserEventsController.userEvents())
+            .flashing("error" -> "Event not found")
+        )
+    }.recover {
+      case e: Exception =>
+        logger.error(s"Error registering vote for user $userId", e)
+        Redirect(routes.UserEventsController.userEvents())
+          .flashing("error" -> s"Error registering vote: ${e.getMessage}")
+    }
   }
 
   def joinEvent(eventId: Int): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val userId = request.identity.userId
 
-    (for {
-      eventOpt <- streamerEventRepository.getById(eventId)
+    streamerEventRepository.getById(eventId).flatMap {
+      case Some(event) =>
+        userStreamerStateRepository.getUserStreamerBalance(userId, event.channelId).flatMap {
+          case None =>
+            userStreamerStateRepository.create(userId, event.channelId).map { _ =>
+              Redirect(routes.UserEventsController.userEvents())
+                .flashing("success" -> s"Te uniste al evento: ${event.eventName}")
+            }
+          case Some(_) =>
+            Future.successful(
+              Redirect(routes.UserEventsController.userEvents())
+                .flashing("info" -> "Ya eras parte del evento")
+            )
+        }
 
-      result <- eventOpt match {
-        case Some(event) =>
-          userStreamerStateRepository.getUserStreamerBalance(userId, event.channelId).flatMap {
-            existingBalance =>
-              if (existingBalance.isEmpty) {
-                userStreamerStateRepository.create(userId, event.channelId).map { _ =>
-                  Redirect(routes.UserEventsController.userEvents())
-                    .flashing("success" -> s"Te uniste al evento: ${event.eventName}")
-                }
-              } else {
-                Future.successful(
-                  Redirect(routes.UserEventsController.userEvents())
-                    .flashing("info" -> "Ya eras parte del evento")
-                )
-              }
-          }
-
-
-        case None =>
-          Future.successful(
-            Redirect(routes.UserEventsController.userEvents())
-              .flashing("error" -> "Event not found")
-          )
-      }
-    } yield result).recover {
+      case None =>
+        Future.successful(
+          Redirect(routes.UserEventsController.userEvents())
+            .flashing("error" -> "Event not found")
+        )
+    }.recover {
       case e: Exception =>
         Redirect(routes.UserEventsController.userEvents())
           .flashing("error" -> s"Error joining event: ${e.getMessage}")
