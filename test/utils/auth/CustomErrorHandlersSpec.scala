@@ -16,7 +16,7 @@ class CustomErrorHandlersSpec extends PlaySpec with MockitoSugar {
     
     "redirect to index with error flash message when user is not authenticated" in {
       val messagesApi = mock[MessagesApi]
-      val errorHandler = new CustomSecuredErrorHandler()(messagesApi)
+      val errorHandler = new CustomSecuredErrorHandler(messagesApi)
       
       implicit val request: RequestHeader = FakeRequest("GET", "/admin")
       
@@ -29,7 +29,7 @@ class CustomErrorHandlersSpec extends PlaySpec with MockitoSugar {
     
     "redirect to index with authorization error flash message when user is not authorized" in {
       val messagesApi = mock[MessagesApi]
-      val errorHandler = new CustomSecuredErrorHandler()(messagesApi)
+      val errorHandler = new CustomSecuredErrorHandler(messagesApi)
       
       implicit val request: RequestHeader = FakeRequest("GET", "/admin")
       
@@ -45,7 +45,7 @@ class CustomErrorHandlersSpec extends PlaySpec with MockitoSugar {
     
     "redirect to index when authenticated user tries to access unsecured-only endpoint" in {
       val messagesApi = mock[MessagesApi]
-      val errorHandler = new CustomUnsecuredErrorHandler()(messagesApi)
+      val errorHandler = new CustomUnsecuredErrorHandler(messagesApi)
       
       implicit val request: RequestHeader = FakeRequest("GET", "/login")
       
