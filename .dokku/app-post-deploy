@@ -1,0 +1,20 @@
+#!/bin/bash
+set -eo pipefail
+
+APP="$1"
+
+# Wait a moment for containers to be ready
+sleep 2
+
+# Get the current container names
+YTCHAT_CONTAINER=$(docker ps --filter "name=$APP.web" --format "{{.Names}}" | head -1)
+REPLAY_CONTAINER=$(docker ps --filter "name=replay-parser.web" --format "{{.Names}}" | head -1)
+
+if [ -n "$YTCHAT_CONTAINER" ] && [ -n "$REPLAY_CONTAINER" ]; then
+    echo "Connecting containers to shared network..."
+    docker network connect dokku-shared-network "$YTCHAT_CONTAINER" 2>/dev/null || true
+    docker network connect dokku-shared-network "$REPLAY_CONTAINER" 2>/dev/null || true
+    echo "Network connections established"
+else
+    echo "Warning: Could not find one or both containers"
+fi
