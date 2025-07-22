@@ -6,8 +6,7 @@ APP="$1"
 # Wait a moment for containers to be ready
 sleep 2
 
-# Get the current container names
-YTCHAT_CONTAINER=$(docker ps --filter "name=$APP.web" --format "{{.Names}}" | head -1)
+YTCHAT_CONTAINER=$(docker ps --filter "name=${APP}.web" --format "{{.Names}}" | head -1)
 REPLAY_CONTAINER=$(docker ps --filter "name=replay-parser.web" --format "{{.Names}}" | head -1)
 
 if [ -n "$YTCHAT_CONTAINER" ] && [ -n "$REPLAY_CONTAINER" ]; then
@@ -17,4 +16,6 @@ if [ -n "$YTCHAT_CONTAINER" ] && [ -n "$REPLAY_CONTAINER" ]; then
     echo "Network connections established"
 else
     echo "Warning: Could not find one or both containers"
+    echo "YTCHAT_CONTAINER=$YTCHAT_CONTAINER"
+    echo "REPLAY_CONTAINER=$REPLAY_CONTAINER"
 fi
