@@ -1,16 +1,20 @@
 package models.repository
 
-import models.User
-import models.component.UserComponent
+import models.{User, UserAliasHistory}
+import models.component.{UserComponent, UserAliasComponent}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio.DBIO
 import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import java.time.Instant
+import scala.util.Random
+import play.api.Logging
 
 @Singleton
-class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) extends UserComponent {
+class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) 
+    extends UserComponent with UserAliasComponent with Logging {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
   import dbConfig.*
@@ -19,11 +23,34 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
   // Expose the TableQuery for foreign key references
   def getTableQuery = usersTable
 
-  def create(userName: String): Future[User] = db.run {
+  def createAction(userName: String): DBIO[User] = {
     (usersTable.map(u => u.userName)
       returning usersTable.map(_.userId)
       into ((userName, userId) => User(userId, userName))
     ) += userName
+  }
+  def addAlias(alias: String, user: User): DBIO[Int] = {
+    userAliasHistoryTable += UserAliasHistory(
+      id = 0L, // Will be auto-generated
+      userId = user.userId,
+      alias = alias,
+      isCurrent = true,
+      assignedAt = Instant.now(),
+      replacedAt = None,
+      generationMethod = "random_registration"
+    )
+  }
+
+  /**
+   * Creates a user with a randomly generated StarCraft alias.
+   */
+  def createWithAlias(userName: String): Future[User] = {
+    val action = for {
+      user <- createAction(userName)
+      updatedUser <- addAlias(userName, user)
+    } yield user
+    
+    db.run(action.transactionally)
   }
 
   def list(): Future[Seq[User]] = db.run {

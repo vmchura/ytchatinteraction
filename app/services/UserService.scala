@@ -1,6 +1,6 @@
 package services
 
-import models.repository.{LoginInfoRepository, UserRepository, YtUserRepository}
+import models.repository.{LoginInfoRepository, UserRepository, YtUserRepository, UserAliasRepository}
 import javax.inject.Inject
 import models.User
 import play.silhouette.api.LoginInfo
@@ -22,12 +22,12 @@ trait UserService extends IdentityService[User] {
   def retrieve(loginInfo: LoginInfo): Future[Option[User]]
 
   /**
-   * Saves a user.
+   * Creates a user with a randomly generated StarCraft alias.
    *
-   * @param user The user to save.
-   * @return The saved user.
+   * @param userName The original username.
+   * @return The created user with alias.
    */
-  def save(user: User): Future[User]
+  def createUserWithAlias(): Future[User]
 
   /**
    * Creates the link between a user and a login info.
@@ -61,13 +61,20 @@ trait UserService extends IdentityService[User] {
  * @param userRepository The user repository implementation.
  * @param loginInfoRepository The login info repository implementation.
  * @param ytUserRepository The YouTube user repository implementation.
+ * @param userAliasRepository The user alias repository implementation.
  * @param ec The execution context.
  */
 class UserServiceImpl @Inject() (
   userRepository: UserRepository,
   loginInfoRepository: LoginInfoRepository,
-  ytUserRepository: YtUserRepository
+  ytUserRepository: YtUserRepository,
+  userAliasRepository: UserAliasRepository
 )(implicit ec: ExecutionContext) extends UserService {
+
+  private val alias_prefix: Array[String] = Array("Zealot", "Dragoon", "HighTemplar", "DarkTemplar", "Archon", "DarkArchon",
+    "Scout", "Corsair", "Carrier", "Arbiter", "Reaver",
+    "Marine", "Firebat", "Ghost", "Vulture", "Tank", "Goliath", "Wraith", "Battlecruiser", "ScienceVessel",
+    "Zergling", "Hydralisk", "Lurker", "Ultralisk", "Mutalisk", "Guardian", "Devourer", "Defiler")
 
   /**
    * Retrieves a user that matches the specified login info.
@@ -80,13 +87,13 @@ class UserServiceImpl @Inject() (
   }
 
   /**
-   * Saves a user.
+   * Creates a user with a randomly generated StarCraft alias.
    *
-   * @param user The user to save.
-   * @return The saved user.
+   * @return The created user with alias.
    */
-  override def save(user: User): Future[User] = {
-    userRepository.create(user.userName)
+  override def createUserWithAlias(): Future[User] = {
+    val alias = s"${alias_prefix(scala.util.Random.nextInt(alias_prefix.length))}-${String.format("%08d",scala.util.Random.nextInt(99999999)+1)}"
+    userRepository.createWithAlias(alias)
   }
 
   /**

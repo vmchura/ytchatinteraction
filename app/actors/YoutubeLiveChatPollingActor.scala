@@ -6,7 +6,7 @@ import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import models.*
 import models.repository.{PollVoteRepository, UserRepository, UserStreamerStateRepository, YoutubeChatMessageRepository, YtStreamerRepository, YtUserRepository}
-import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
+import _root_.services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService, UserService}
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
@@ -62,7 +62,7 @@ object YoutubeLiveChatPollingActor {
              apiKey: String,
              ytStreamerRepository: YtStreamerRepository,
              userStreamerStateRepository: UserStreamerStateRepository,
-             userRepository: UserRepository,
+             userService: UserService,
              ytUserRepository: YtUserRepository,
              startTime: Instant,
              pollService: PollService,
@@ -73,7 +73,7 @@ object YoutubeLiveChatPollingActor {
              youtubeChatMessageRepository: YoutubeChatMessageRepository
            ): Behavior[Command] = {
     Behaviors.withTimers { timers =>
-      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userRepository,
+      active(ws, apiKey, ytStreamerRepository, userStreamerStateRepository, userService,
         ytUserRepository, startTime, timers, pollService, inferUserOptionService, chatService, pollVoteRepository, liveStream, youtubeChatMessageRepository)
     }
   }
@@ -86,7 +86,7 @@ object YoutubeLiveChatPollingActor {
                       apiKey: String,
                       ytStreamerRepository: YtStreamerRepository,
                       userStreamerStateRepository: UserStreamerStateRepository,
-                      userRepository: UserRepository,
+                      userService: UserService,
                       ytUserRepository: YtUserRepository,
                       startTime: Instant,
                       timers: TimerScheduler[Command],
@@ -173,7 +173,7 @@ object YoutubeLiveChatPollingActor {
               case (accFuture, singleMessage) =>
                 for {
                   acc <- accFuture
-                  registeredUser <- registerChatUser(singleMessage.authorChannelId, singleMessage.authorDisplayName, userRepository, ytUserRepository)
+                  registeredUser <- registerChatUser(singleMessage.authorChannelId, userService, ytUserRepository)
                   relationExists <- userStreamerStateRepository.exists(registeredUser.userId, channelID)
                   _ <- if (!relationExists) userStreamerStateRepository.create(registeredUser.userId, channelID, 0) else Future.successful(())
                 } yield acc :+ registeredUser
@@ -239,7 +239,7 @@ object YoutubeLiveChatPollingActor {
           Future.sequence(
           messages.map { message =>
             val f = processMessageInActor(message, liveChatId, channelID, ytStreamerRepository, userStreamerStateRepository,
-              userRepository, ytUserRepository, messageStartTime, pollEvent,
+              userService, ytUserRepository, messageStartTime, pollEvent,
               inferUserOptionService, chatService, context, pollService)
             f.onComplete{
               case Success(u) => println(s"Saved $u")
@@ -256,7 +256,7 @@ object YoutubeLiveChatPollingActor {
           // Process each message without poll functionality - just broadcast them
           Future.sequence(
             messages.map { message =>
-              val f = processMessageWithoutPoll(message, liveChatId, channelID, userRepository, ytUserRepository,
+              val f = processMessageWithoutPoll(message, liveChatId, channelID, userService, ytUserRepository,
                 userStreamerStateRepository, messageStartTime, chatService, context)
               f.onComplete{
                 case Success(u) => println(s"Broadcasted message: $u")
@@ -315,7 +315,7 @@ object YoutubeLiveChatPollingActor {
                                      channelID: String,
                                      ytStreamerRepository: YtStreamerRepository,
                                      userStreamerStateRepository: UserStreamerStateRepository,
-                                     userRepository: UserRepository,
+                                     userService: UserService,
                                      ytUserRepository: YtUserRepository,
                                      startTime: Instant,
                                      pollEvent: (EventPoll, List[PollOption]),
@@ -342,7 +342,7 @@ object YoutubeLiveChatPollingActor {
 
         // Register the message author as a user if they don't already exist
         val voteRegistered = for {
-          user <- registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
+          user <- registerChatUser(authorChannelId, userService, ytUserRepository)
           relationExists <- userStreamerStateRepository.exists(user.userId, channelID)
           _ <- if (!relationExists) userStreamerStateRepository.create(user.userId, channelID, 0) else Future.successful(())
           confidence <- inferUserOptionService.inferencePollResponse(
@@ -422,7 +422,7 @@ object YoutubeLiveChatPollingActor {
                                          message: JsValue,
                                          liveChatId: String,
                                          channelID: String,
-                                         userRepository: UserRepository,
+                                         userService: UserService,
                                          ytUserRepository: YtUserRepository,
                                          userStreamerStateRepository: UserStreamerStateRepository,
                                          startTime: Instant,
@@ -447,7 +447,7 @@ object YoutubeLiveChatPollingActor {
 
         // Register the message author as a user if they don't already exist
         val messageProcessed = for {
-          user <- registerChatUser(authorChannelId, displayName, userRepository, ytUserRepository)
+          user <- registerChatUser(authorChannelId, userService, ytUserRepository)
           relationExists <- userStreamerStateRepository.exists(user.userId, channelID)
           _ <- if (!relationExists) userStreamerStateRepository.create(user.userId, channelID, 0) else Future.successful(())
         } yield {
@@ -475,8 +475,7 @@ object YoutubeLiveChatPollingActor {
    */
   private def registerChatUser(
                                 channelId: String,
-                                displayName: String,
-                                userRepository: UserRepository,
+                                userService: UserService,
                                 ytUserRepository: YtUserRepository
                               )(implicit ec: ExecutionContext): Future[YtUser] = {
     // First, check if the YouTube user already exists
@@ -489,7 +488,7 @@ object YoutubeLiveChatPollingActor {
         // User doesn't exist, create a new user and link it to a YouTube user
         for {
           // Create a new User with the display name as username
-          newUser <- userRepository.create(displayName).map { user =>
+          newUser <- userService.createUserWithAlias().map { user =>
             user
           }
 
@@ -497,7 +496,7 @@ object YoutubeLiveChatPollingActor {
           ytUser <- ytUserRepository.createFull(YtUser(
             userChannelId = channelId,
             userId = newUser.userId,
-            displayName = Some(displayName),
+            displayName = Some(newUser.userName),
             email = None, // We don't have email from chat messages
             profileImageUrl = None, // We don't have profile image from chat messages
             activated = true // Automatically activate users from chat

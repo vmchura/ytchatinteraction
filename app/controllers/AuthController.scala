@@ -32,7 +32,6 @@ class AuthController @Inject()(
   userService: UserService,
   authInfoRepository: AuthInfoRepository,
   socialProviderRegistry: SocialProviderRegistry,
-  userRepository: UserRepository,
   ytUserRepository: YtUserRepository,
   loginInfoRepository: LoginInfoRepository,
   oauth2InfoRepository: OAuth2InfoRepository,
@@ -65,7 +64,7 @@ class AuthController @Inject()(
         profile <- socialProviderRegistry.get[YouTubeProvider].get.retrieveProfile(authInfo)
         user <- loginInfoRepository.findUser(profile.loginInfo) flatMap {
           case Some(existingUser) => Future.successful(existingUser)
-          case None => userRepository.create(profile.fullName.getOrElse("Unknown Name"))
+          case None => userService.createUserWithAlias()
         }
         
         // Check if the channel exists as a YtStreamer

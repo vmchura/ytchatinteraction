@@ -2,7 +2,7 @@ package modules
 
 import play.api.inject._
 import services.{ParseReplayFileService, DefaultParseReplayFileService, UploadSessionService, TournamentService, TournamentServiceImpl, TournamentChallongeService, TournamentChallongeServiceImpl}
-import models.repository.{TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl}
+import models.repository.{TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, UserAliasRepository}
 import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
 
 /**
@@ -14,5 +14,6 @@ class ServicesModule extends SimpleModule(
   bind[TournamentService].to[TournamentServiceImpl],
   bind[TournamentChallongeService].to[TournamentChallongeServiceImpl],
   bind[TournamentChallongeParticipantRepository].to[TournamentChallongeParticipantRepositoryImpl],
-  bind[TournamentChallongeDAO].to[TournamentChallongeDAOImpl]
+  bind[TournamentChallongeDAO].to[TournamentChallongeDAOImpl],
+  bind[UserAliasRepository].toSelf.eagerly()
 )
