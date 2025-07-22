@@ -20,7 +20,7 @@ import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.test.Helpers.*
-import services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService}
+import _root_.services.{ActiveLiveStream, ChatService, InferUserOptionService, PollService, UserService}
 
 import java.time.Instant
 import scala.concurrent.{Await, Future}
@@ -78,7 +78,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
 
   // Components we need from the app
   lazy val dbConfigProvider = app.injector.instanceOf[DatabaseConfigProvider]
-  lazy val userRepository = app.injector.instanceOf[UserRepository]
+  lazy val userService = app.injector.instanceOf[UserService]
   lazy val ytUserRepository = app.injector.instanceOf[YtUserRepository]
   lazy val ytStreamerRepository = app.injector.instanceOf[YtStreamerRepository]
   lazy val userStreamerStateRepository = app.injector.instanceOf[UserStreamerStateRepository]
@@ -257,7 +257,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         apiKey,
         ytStreamerRepository,
         userStreamerStateRepository,
-        userRepository,
+        userService,
         ytUserRepository,
         testStartTime,
         pollService,
@@ -319,7 +319,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         apiKey,
         ytStreamerRepository,
         userStreamerStateRepository,
-        userRepository,
+        userService,
         ytUserRepository,
         testStartTime,
         pollService,
@@ -384,7 +384,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         apiKey,
         ytStreamerRepository,
         userStreamerStateRepository,
-        userRepository,
+        userService,
         ytUserRepository,
         testStartTime,
         pollService,
@@ -459,7 +459,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
         apiKey,
         ytStreamerRepository,
         userStreamerStateRepository,
-        userRepository,
+        userService,
         ytUserRepository,
         testStartTime,
         pollService,

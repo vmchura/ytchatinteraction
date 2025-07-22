@@ -68,7 +68,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a new user
-      val createdF = repository.create(testUserName)
+      val createdF = repository.createWithAlias(testUserName)
       val created = Await.result(createdF, 5.seconds)
       
       // Verify the result
@@ -80,8 +80,8 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create multiple users
-      val user1 = Await.result(repository.create(testUserName), 5.seconds)
-      val user2 = Await.result(repository.create(testUserName2), 5.seconds)
+      val user1 = Await.result(repository.createWithAlias(testUserName), 5.seconds)
+      val user2 = Await.result(repository.createWithAlias(testUserName2), 5.seconds)
       
       // List all users
       val usersF = repository.list()
@@ -96,7 +96,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a user
-      val created = Await.result(repository.create(testUserName), 5.seconds)
+      val created = Await.result(repository.createWithAlias(testUserName), 5.seconds)
       
       // Get user by ID
       val foundF = repository.getById(created.userId)
@@ -112,7 +112,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a user
-      Await.result(repository.create(testUserName), 5.seconds)
+      Await.result(repository.createWithAlias(testUserName), 5.seconds)
       
       // Get user by username
       val foundF = repository.getByUsername(testUserName)
@@ -127,7 +127,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a user
-      val created = Await.result(repository.create(testUserName), 5.seconds)
+      val created = Await.result(repository.createWithAlias(testUserName), 5.seconds)
       
       // Update the user
       val updatedUser = User(created.userId, updatedUserName)
@@ -149,7 +149,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a user
-      val created = Await.result(repository.create(testUserName), 5.seconds)
+      val created = Await.result(repository.createWithAlias(testUserName), 5.seconds)
       
       // Check if user exists
       val existsF = repository.exists(created.userId)
@@ -170,7 +170,7 @@ class UserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Injectin
       val repository = new UserRepository(dbConfigProvider)
       
       // Create a user
-      val created = Await.result(repository.create(testUserName), 5.seconds)
+      val created = Await.result(repository.createWithAlias(testUserName), 5.seconds)
       
       // Verify the user exists before deletion
       val existsBeforeF = repository.exists(created.userId)

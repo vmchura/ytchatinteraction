@@ -1,9 +1,9 @@
 package services
 
-import models.repository.{LoginInfoRepository, UserRepository, YtUserRepository}
+import models.repository.{LoginInfoRepository, UserAliasRepository, UserRepository, YtUserRepository}
 import models.User
-import org.mockito.Mockito._
-import org.mockito.ArgumentMatchers._
+import org.mockito.Mockito.*
+import org.mockito.ArgumentMatchers.*
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.matchers.must.Matchers
@@ -11,12 +11,12 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.RecoverMethods
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.play.PlaySpec
-import play.api.test.Helpers._
+import play.api.test.Helpers.*
 import play.silhouette.api.LoginInfo
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach with ScalaFutures with RecoverMethods {
 
@@ -24,6 +24,7 @@ class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
   private val mockUserRepository = mock[UserRepository]
   private val mockLoginInfoRepository = mock[LoginInfoRepository]
   private val mockYtUserRepository = mock[YtUserRepository]
+  private val mockUserAliasRepository = mock[UserAliasRepository]
   
   // Service under test
   private var userService: UserService = _
@@ -38,8 +39,8 @@ class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
   
   override def beforeEach(): Unit = {
     super.beforeEach()
-    reset(mockUserRepository, mockLoginInfoRepository, mockYtUserRepository)
-    userService = new UserServiceImpl(mockUserRepository, mockLoginInfoRepository, mockYtUserRepository)
+    reset(mockUserRepository, mockLoginInfoRepository, mockYtUserRepository, mockUserAliasRepository)
+    userService = new UserServiceImpl(mockUserRepository, mockLoginInfoRepository, mockYtUserRepository, mockUserAliasRepository)
   }
 
   "UserService#retrieve" should {
@@ -82,24 +83,24 @@ class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
   "UserService#save" should {
     "delegate to UserRepository to create a new user" in {
       // Arrange
-      when(mockUserRepository.create(any[String]())).thenReturn(Future.successful(testUser))
+      when(mockUserRepository.createWithAlias(any[String]())).thenReturn(Future.successful(testUser))
       
       // Act
-      val result = userService.save(testUser).futureValue
+      val result = userService.createUserWithAlias().futureValue
       
       // Assert
       result must be(testUser)
-      verify(mockUserRepository).create(testUserName)
+      verify(mockUserRepository).createWithAlias(any[String]())
     }
     
     "handle exceptions from repository gracefully" in {
       // Arrange
-      when(mockUserRepository.create(any[String]()))
+      when(mockUserRepository.createWithAlias(any[String]()))
         .thenReturn(Future.failed(new RuntimeException("Database error")))
       
       // Act & Assert
       recoverToExceptionIf[RuntimeException] {
-        userService.save(testUser)
+        userService.createUserWithAlias()
       }.futureValue
     }
   }
@@ -244,7 +245,7 @@ class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       // Arrange
       when(mockLoginInfoRepository.findUser(any[play.silhouette.api.LoginInfo]()))
         .thenReturn(Future.successful(Some(testUser)))
-      when(mockUserRepository.create(any[String]()))
+      when(mockUserRepository.createWithAlias(any[String]()))
         .thenReturn(Future.successful(testUser))
       when(mockLoginInfoRepository.add(any[Long](), any[play.silhouette.api.LoginInfo]()))
         .thenReturn(Future.successful(models.LoginInfo(Some(testUser.userId), providerId, providerKey, testUserId)))
@@ -253,7 +254,7 @@ class UserServiceSpec extends PlaySpec with MockitoSugar with BeforeAndAfterEach
       
       // Act
       userService.retrieve(testLoginInfo).futureValue
-      userService.save(testUser).futureValue
+      userService.createUserWithAlias().futureValue
       userService.link(testUser, testLoginInfo).futureValue
       userService.unlink(testUser, testLoginInfo).futureValue
       
