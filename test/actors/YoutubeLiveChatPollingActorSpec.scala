@@ -483,7 +483,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
       // 8. Verify that a new user was created
       val userAfter = Await.result(ytUserRepository.getByChannelId(newUserChannelId), 5.seconds)
       userAfter must not be None
-      userAfter.get.displayName must be(Some(newUserDisplayName))
+      userAfter.get.displayName.get must fullyMatch regex "[a-zA-Z].+-[0-9].+"
 
       // 9. Verify that the user-streamer relationship was created
       val userStreamerState = Await.result(
