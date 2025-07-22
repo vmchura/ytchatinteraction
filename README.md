@@ -102,3 +102,32 @@ The configuration follows a hierarchical approach where:
 3. Environment variables can override any setting at runtime
 
 This structure ensures your application can run securely in any environment while keeping sensitive information protected.
+
+
+## Installation
+
+...
+### Connection ytchatinteraciton with replay-parser
+
+#### On your Dokku host:
+dokku plugin:install https://github.com/baikunz/dokku-post-deploy-script.git post-deploy-script
+
+#### Copy the POST_DEPLOY_SCRIPT file to the correct location
+sudo cp POST_DEPLOY_SCRIPT /home/dokku/ytchatinteraction/POST_DEPLOY_SCRIPT
+sudo chmod +x /home/dokku/ytchatinteraction/POST_DEPLOY_SCRIPT
+sudo chown dokku:dokku /home/dokku/ytchatinteraction/POST_DEPLOY_SCRIPT
+
+### After deploying, output expected:
+
+```
+-----> Executing post deploy script...
+       Running post-deploy network setup for ytchatinteraction...
+Found containers:
+YTCHAT_CONTAINER: ytchatinteraction.web.1
+REPLAY_CONTAINER: replay-parser.web.1
+Connecting ytchatinteraction.web.1 to dokku-shared-network...
+Connecting replay-parser.web.1 to dokku-shared-network...
+Already connected or connection failed
+Post-deploy network setup completed
+-----> Updated schedule file
+```
