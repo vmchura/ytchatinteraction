@@ -1,0 +1,37 @@
+#!/bin/bash
+set -eo pipefail
+
+APP="ytchatinteraction"  # Replace with your actual app name
+
+# Wait a moment for containers to be ready
+sleep 5
+
+echo "Running post-deploy network setup for $APP..."
+
+# Create the shared network if it doesn't exist
+docker network ls -q -f name=dokku-shared-network | grep -q . || docker network create dokku-shared-network
+
+# Find the current running containers
+YTCHAT_CONTAINER=$(docker ps --filter "name=${APP}.web" --format "{{.Names}}" | head -1)
+REPLAY_CONTAINER=$(docker ps --filter "name=replay-parser.web" --format "{{.Names}}" | head -1)
+
+echo "Found containers:"
+echo "YTCHAT_CONTAINER: $YTCHAT_CONTAINER"
+echo "REPLAY_CONTAINER: $REPLAY_CONTAINER"
+
+# Connect containers to shared network
+if [ -n "$YTCHAT_CONTAINER" ]; then
+    echo "Connecting $YTCHAT_CONTAINER to dokku-shared-network..."
+    docker network connect dokku-shared-network "$YTCHAT_CONTAINER" 2>/dev/null || echo "Already connected or connection failed"
+else
+    echo "Warning: YTCHAT container not found"
+fi
+
+if [ -n "$REPLAY_CONTAINER" ]; then
+    echo "Connecting $REPLAY_CONTAINER to dokku-shared-network..."
+    docker network connect dokku-shared-network "$REPLAY_CONTAINER" 2>/dev/null || echo "Already connected or connection failed"
+else
+    echo "Warning: REPLAY_PARSER container not found"
+fi
+
+echo "Post-deploy network setup completed"
