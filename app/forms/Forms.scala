@@ -56,6 +56,11 @@ case class VoteFormData(
                          pollId: Int
                        )
 
+// Form for changing user alias
+case class AliasChangeForm(
+                            newAlias: String
+                          )
+
 object Forms:
   val eventForm = Form(
     mapping(
@@ -127,4 +132,14 @@ object Forms:
       "eventId" -> number,
       "pollId" -> number
     )(VoteFormData.apply)(nn => Some(nn.optionId, nn.confidence, nn.eventId, nn.pollId))
+  )
+  
+  val aliasChangeForm = Form(
+    mapping(
+      "newAlias" -> nonEmptyText
+        .verifying("Alias cannot be empty", _.trim.nonEmpty)
+        .verifying("Alias must be between 1 and 50 characters", alias => alias.trim.length >= 1 && alias.trim.length <= 50)
+        .verifying("Alias can only contain letters, numbers, spaces, and basic punctuation", alias => 
+          alias.matches("^[a-zA-Z0-9\\s\\-_\\.]+$"))
+    )(AliasChangeForm.apply)(nn => Some(nn.newAlias))
   )
