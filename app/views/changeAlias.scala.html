@@ -1,0 +1,64 @@
+@import play.api.data.Form
+@import forms.AliasChangeForm
+@import models.User
+
+@(aliasForm: Form[AliasChangeForm], user: User)(implicit request: RequestHeader, flash: Flash)
+
+@main("Change Alias", Some(user)) {
+    <article>
+        <header>
+            <h1>Change Your Alias</h1>
+            <p>Update your display name to personalize your profile.</p>
+        </header>
+
+        @if(flash.get("success").isDefined) {
+            <div role="alert" class="success">
+                @flash.get("success")
+            </div>
+        }
+
+        @if(flash.get("error").isDefined) {
+            <div role="alert" class="error">
+                @flash.get("error")
+            </div>
+        }
+
+        <div class="current-alias">
+            <p><strong>Current Alias:</strong> @user.userName</p>
+        </div>
+
+        @helper.form(action = routes.HomeController.index()) {
+            @helper.CSRF.formField
+            
+            <fieldset>
+                <label for="newAlias">
+                    New Alias *
+                    <input type="text" 
+                           id="newAlias" 
+                           name="newAlias" 
+                           value="@aliasForm("newAlias").value.getOrElse("")" 
+                           placeholder="Enter your new alias"
+                           @if(aliasForm("newAlias").hasErrors) {aria-invalid="true"}
+                           required>
+                    @if(aliasForm("newAlias").hasErrors) {
+                        <small class="error">@aliasForm("newAlias").errors.map(_.message).mkString(", ")</small>
+                    } else {
+                        <small>Choose a unique name between 1-50 characters. Only letters, numbers, spaces, hyphens, underscores, and dots are allowed.</small>
+                    }
+                </label>
+            </fieldset>
+
+            <div class="action-buttons">
+                <button type="submit" class="primary">Update Alias</button>
+                <a href="@routes.HomeController.index()" role="button" class="secondary">Cancel</a>
+            </div>
+        }
+
+        <footer>
+            <small>
+                <strong>Note:</strong> Your alias is used to preserve your privacy while displaying your name to other users. 
+                It can be changed at any time.
+            </small>
+        </footer>
+    </article>
+}
