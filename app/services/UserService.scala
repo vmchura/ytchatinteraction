@@ -32,7 +32,7 @@ trait UserService extends IdentityService[User] {
   /**
    * Creates the link between a user and a login info.
    *
-   * @param user The user to link.
+   * @param user      The user to link.
    * @param loginInfo The login info to link with the user.
    * @return The updated user.
    */
@@ -41,7 +41,7 @@ trait UserService extends IdentityService[User] {
   /**
    * Removes the link between a user and a login info.
    *
-   * @param user The user to unlink.
+   * @param user      The user to unlink.
    * @param loginInfo The login info to unlink from the user.
    * @return The updated user.
    */
@@ -57,28 +57,38 @@ trait UserService extends IdentityService[User] {
   /**
    * Updates a user's alias.
    *
-   * @param userId The ID of the user to update.
+   * @param userId   The ID of the user to update.
    * @param newAlias The new alias for the user.
    * @return A Future containing the number of rows affected (should be 1 if successful).
    */
   def updateUserAlias(userId: Long, newAlias: String): Future[Int]
+
+  /**
+   * Checks if a user can use a specific alias.
+   * An alias can be used if it's either new or was previously used by the same user.
+   *
+   * @param userId The ID of the user.
+   * @param alias  The alias to check.
+   * @return A Future containing true if the user can use this alias.
+   */
+  def canUserUseAlias(userId: Long, alias: String): Future[Boolean]
 }
 
 /**
  * Handles actions to users.
  *
- * @param userRepository The user repository implementation.
+ * @param userRepository      The user repository implementation.
  * @param loginInfoRepository The login info repository implementation.
- * @param ytUserRepository The YouTube user repository implementation.
+ * @param ytUserRepository    The YouTube user repository implementation.
  * @param userAliasRepository The user alias repository implementation.
- * @param ec The execution context.
+ * @param ec                  The execution context.
  */
-class UserServiceImpl @Inject() (
-  userRepository: UserRepository,
-  loginInfoRepository: LoginInfoRepository,
-  ytUserRepository: YtUserRepository,
-  userAliasRepository: UserAliasRepository
-)(implicit ec: ExecutionContext) extends UserService {
+class UserServiceImpl @Inject()(
+                                 userRepository: UserRepository,
+                                 loginInfoRepository: LoginInfoRepository,
+                                 ytUserRepository: YtUserRepository,
+                                 userAliasRepository: UserAliasRepository
+                               )(implicit ec: ExecutionContext) extends UserService {
 
   private val alias_prefix: Array[String] = Array("Zealot", "Dragoon", "HighTemplar", "DarkTemplar", "Archon", "DarkArchon",
     "Scout", "Corsair", "Carrier", "Arbiter", "Reaver",
@@ -101,14 +111,14 @@ class UserServiceImpl @Inject() (
    * @return The created user with alias.
    */
   override def createUserWithAlias(): Future[User] = {
-    val alias = s"${alias_prefix(scala.util.Random.nextInt(alias_prefix.length))}-${String.format("%08d",scala.util.Random.nextInt(99999999)+1)}"
+    val alias = s"${alias_prefix(scala.util.Random.nextInt(alias_prefix.length))}-${String.format("%08d", scala.util.Random.nextInt(99999999) + 1)}"
     userRepository.createWithAlias(alias)
   }
 
   /**
    * Creates the link between a user and a login info.
    *
-   * @param user The user to link.
+   * @param user      The user to link.
    * @param loginInfo The login info to link with the user.
    * @return The updated user.
    */
@@ -119,7 +129,7 @@ class UserServiceImpl @Inject() (
   /**
    * Removes the link between a user and a login info.
    *
-   * @param user The user to unlink.
+   * @param user      The user to unlink.
    * @param loginInfo The login info to unlink from the user.
    * @return The updated user.
    */
@@ -139,11 +149,35 @@ class UserServiceImpl @Inject() (
   /**
    * Updates a user's alias.
    *
-   * @param userId The ID of the user to update.
+   * @param userId   The ID of the user to update.
    * @param newAlias The new alias for the user.
    * @return A Future containing the number of rows affected (should be 1 if successful).
    */
   override def updateUserAlias(userId: Long, newAlias: String): Future[Int] = {
-    ???
+    for {
+      // First verify the user exists
+      userExists <- userRepository.exists(userId)
+      result <- if (userExists) {
+        // Attempt to change the alias
+        userAliasRepository.changeUserAlias(userId, newAlias.trim).map {
+          case true => 1 // Success
+          case false => 0 // Failed (alias not available for this user)
+        }
+      } else {
+        Future.successful(0) // User doesn't exist
+      }
+    } yield result
+  }
+
+  /**
+   * Checks if a user can use a specific alias.
+   * An alias can be used if it's either new or was previously used by the same user.
+   *
+   * @param userId The ID of the user.
+   * @param alias  The alias to check.
+   * @return A Future containing true if the user can use this alias.
+   */
+  override def canUserUseAlias(userId: Long, alias: String): Future[Boolean] = {
+    userAliasRepository.canUserUseAlias(userId, alias.trim)
   }
 }
