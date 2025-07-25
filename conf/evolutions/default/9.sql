@@ -7,7 +7,7 @@ CREATE TABLE uploaded_files (
     user_id BIGINT NOT NULL,
     tournament_id BIGINT NOT NULL,
     match_id BIGINT NOT NULL,
-    sha256_hash VARCHAR(64) NOT NULL,
+    sha256_hash VARCHAR(64) NOT NULL UNIQUE,
     original_name VARCHAR(500) NOT NULL,
     relative_directory_path VARCHAR(1000) NOT NULL,
     saved_file_name VARCHAR(500) NOT NULL,
