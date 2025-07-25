@@ -27,6 +27,7 @@ class FileUploadController @Inject()(
                                       parseReplayFileService: ParseReplayFileService,
                                       uploadSessionService: UploadSessionService,
                                       fileStorageService: FileStorageService,
+                                      uploadedFileRepository: models.repository.UploadedFileRepository,
                                       tournamentService: services.TournamentService,
                                       userRepository: models.repository.UserRepository
                                     )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
@@ -106,24 +107,54 @@ class FileUploadController @Inject()(
   }
 
   /**
-   * Store a processed file using FileStorageService
+   * Store a processed file using FileStorageService and save record to database
    */
   private def storeProcessedFile(
     user: User,
+    tournamentId: Long,
     matchId: Long,
     sessionId: String,
     fileResult: services.FileProcessResult,
     fileBytes: Array[Byte]
   ): Future[Either[String, StoredFileInfo]] = {
-    if (fileResult.success && fileBytes.nonEmpty) {
-      fileStorageService.storeFile(
-        fileBytes = fileBytes,
-        originalFileName = fileResult.fileName,
-        contentType = fileResult.contentType,
-        userId = user.userId,
-        matchId = matchId,
-        sessionId = sessionId
-      )
+    if (fileResult.success && fileBytes.nonEmpty && fileResult.sha256Hash.isDefined) {
+      for {
+        // Store the file on disk
+        storageResult <- fileStorageService.storeFile(
+          fileBytes = fileBytes,
+          originalFileName = fileResult.fileName,
+          contentType = fileResult.contentType,
+          userId = user.userId,
+          matchId = matchId,
+          sessionId = sessionId
+        )
+        
+        // If storage successful, save record to database
+        dbResult <- storageResult match {
+          case Right(storedInfo) =>
+            val uploadedFile = models.UploadedFile(
+              userId = user.userId,
+              tournamentId = tournamentId,
+              matchId = matchId,
+              sha256Hash = fileResult.sha256Hash.get,
+              originalName = fileResult.fileName,
+              relativeDirectoryPath = "uploads", // Based on configuration
+              savedFileName = storedInfo.storedFileName,
+              uploadedAt = storedInfo.storedAt
+            )
+            
+            uploadedFileRepository.create(uploadedFile).map { createdFile =>
+              logger.info(s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}")
+              Right(storedInfo)
+            }.recover { case ex =>
+              logger.error(s"Failed to save file record to database for ${fileResult.fileName}: ${ex.getMessage}", ex)
+              // File was stored but DB record failed - this is a partial success
+              Right(storedInfo)
+            }
+          case Left(error) =>
+            Future.successful(Left(error))
+        }
+      } yield dbResult
     } else {
       Future.successful(Left(s"Cannot store failed file: ${fileResult.errorMessage.getOrElse("Unknown error")}"))
     }
@@ -192,7 +223,7 @@ class FileUploadController @Inject()(
           }
           
           // Store the file if processing was successful
-          storageResult <- storeProcessedFile(user, matchId, session.sessionId, fileResult, fileBytes)
+          storageResult <- storeProcessedFile(user, tournamentId, matchId, session.sessionId, fileResult, fileBytes)
           
           // Add to session
           sessionResult <- uploadSessionService.addFileToSession(user, matchId, fileResult)

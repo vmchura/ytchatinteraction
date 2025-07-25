@@ -7,7 +7,10 @@ import services.{
   TournamentChallongeService, TournamentChallongeServiceImpl,
   FileStorageService, DefaultFileStorageService
 }
-import models.repository.{TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, UserAliasRepository}
+import models.repository.{
+  TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, 
+  UserAliasRepository, UploadedFileRepository, UploadedFileRepositoryImpl
+}
 import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
 
 /**
@@ -21,5 +24,6 @@ class ServicesModule extends SimpleModule(
   bind[TournamentChallongeService].to[TournamentChallongeServiceImpl],
   bind[TournamentChallongeParticipantRepository].to[TournamentChallongeParticipantRepositoryImpl],
   bind[TournamentChallongeDAO].to[TournamentChallongeDAOImpl],
-  bind[UserAliasRepository].toSelf.eagerly()
+  bind[UserAliasRepository].toSelf.eagerly(),
+  bind[UploadedFileRepository].to[UploadedFileRepositoryImpl]
 )
