@@ -27,7 +27,7 @@
             <p><strong>Current Alias:</strong> @user.userName</p>
         </div>
 
-        @helper.form(action = routes.HomeController.index()) {
+        @helper.form(action = routes.AliasController.changeAlias()) {
             @helper.CSRF.formField
             
             <fieldset>

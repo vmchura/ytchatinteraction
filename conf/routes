@@ -24,6 +24,10 @@ GET     /authenticate/:provider     controllers.AuthController.authenticate(prov
 GET     /signout                    controllers.AuthController.signOut
 GET     /api/user                   controllers.AuthController.userInfo
 
+# User profile routes
+GET     /profile/change-alias       controllers.AliasController.showChangeAliasForm()
+POST    /profile/change-alias       controllers.AliasController.changeAlias()
+
 # Admin routes (requires admin authorization)
 GET     /admin                      controllers.AdminController.adminDashboard()
 

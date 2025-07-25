@@ -53,6 +53,15 @@ trait UserService extends IdentityService[User] {
    * @return A list of all users.
    */
   def getAllUsers(): Future[Seq[User]]
+
+  /**
+   * Updates a user's alias.
+   *
+   * @param userId The ID of the user to update.
+   * @param newAlias The new alias for the user.
+   * @return A Future containing the number of rows affected (should be 1 if successful).
+   */
+  def updateUserAlias(userId: Long, newAlias: String): Future[Int]
 }
 
 /**
@@ -125,5 +134,16 @@ class UserServiceImpl @Inject() (
    */
   override def getAllUsers(): Future[Seq[User]] = {
     userRepository.list()
+  }
+
+  /**
+   * Updates a user's alias.
+   *
+   * @param userId The ID of the user to update.
+   * @param newAlias The new alias for the user.
+   * @return A Future containing the number of rows affected (should be 1 if successful).
+   */
+  override def updateUserAlias(userId: Long, newAlias: String): Future[Int] = {
+    ???
   }
 }
