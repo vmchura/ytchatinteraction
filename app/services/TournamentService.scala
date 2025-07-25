@@ -5,6 +5,7 @@ import models.repository.{TournamentRepository, TournamentMatchRepository, Tourn
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import java.time.Instant
+import play.api.Logger
 
 /**
  * Service interface for Tournament operations including tournaments, registrations, and matches.
@@ -260,6 +261,8 @@ trait TournamentService {
  * @param tournamentRegistrationRepository The tournament registration repository implementation.
  * @param tournamentChallongeService The Challonge service for API interactions.
  * @param tournamentChallongeParticipantRepository The repository for Challonge participant mappings.
+ * @param uploadSessionService The upload session service for managing file upload sessions.
+ * @param uploadedFileRepository The uploaded file repository for persisting file records.
  * @param ec The execution context.
  */
 @Singleton
@@ -268,7 +271,9 @@ class TournamentServiceImpl @Inject() (
   tournamentMatchRepository: TournamentMatchRepository,
   tournamentRegistrationRepository: TournamentRegistrationRepository,
   tournamentChallongeService: TournamentChallongeService,
-  tournamentChallongeParticipantRepository: TournamentChallongeParticipantRepository
+  tournamentChallongeParticipantRepository: TournamentChallongeParticipantRepository,
+  uploadSessionService: UploadSessionService,
+  uploadedFileRepository: models.repository.UploadedFileRepository
 )(implicit ec: ExecutionContext) extends TournamentService {
 
   // Tournament management methods
@@ -628,6 +633,7 @@ class TournamentServiceImpl @Inject() (
 
   /**
    * Submits match result and updates both local database and Challonge.
+   * Also closes upload sessions and registers uploaded files in the database.
    */
   override def submitMatchResult(tournamentId: Long, matchId: Long, winnerId: Option[Long], resultType: String): Future[Either[String, TournamentMatch]] = {
     for {
@@ -646,6 +652,9 @@ class TournamentServiceImpl @Inject() (
           if (!isValidWinner) {
             Future.successful(Left("Invalid winner ID"))
           } else {
+            // Only process uploaded files for winner and tie cases
+            val shouldProcessUploadedFiles = resultType == "with_winner" || resultType == "tie"
+            
             // Determine new status and winner
             val (newStatus, finalWinnerId) = resultType match {
               case "with_winner" => (MatchStatus.Completed, winnerId)
@@ -654,8 +663,14 @@ class TournamentServiceImpl @Inject() (
               case _ => (MatchStatus.Completed, winnerId)
             }
             
-            // Update local database
             for {
+              // Process upload sessions and register files in database if needed
+              uploadProcessingResult <- if (shouldProcessUploadedFiles) {
+                processUploadSessionsForMatch(tournamentId, matchId, tournamentMatch)
+              } else {
+                Future.successful(Right("No file processing needed for cancelled matches"))
+              }
+              
               // Update in local database with both winner and status
               localUpdateResult <- tournamentMatchRepository.updateWinnerAndStatus(matchId, finalWinnerId, newStatus)
               
@@ -667,13 +682,15 @@ class TournamentServiceImpl @Inject() (
                   Future.successful(true) // No Challonge integration, consider successful
               }
               
-              finalResult <- (localUpdateResult, challongeUpdateResult) match {
-                case (Some(match_), true) =>
+              finalResult <- (localUpdateResult, challongeUpdateResult, uploadProcessingResult) match {
+                case (Some(match_), true, Right(_)) =>
                   Future.successful(Right(match_))
-                case (None, _) =>
+                case (None, _, _) =>
                   Future.successful(Left("Failed to update match in local database"))
-                case (_, false) =>
+                case (_, false, _) =>
                   Future.successful(Left("Failed to update match in Challonge"))
+                case (_, _, Left(uploadError)) =>
+                  Future.successful(Left(s"Failed to process uploaded files: $uploadError"))
               }
             } yield finalResult
           }
@@ -684,6 +701,141 @@ class TournamentServiceImpl @Inject() (
           Future.successful(Left("Match not found"))
       }
     } yield result
+  }
+
+  /**
+   * Processes upload sessions for both players in a match and registers files in the database.
+   * This method closes the sessions and persists file information to the database.
+   */
+  private def processUploadSessionsForMatch(
+    tournamentId: Long, 
+    matchId: Long, 
+    tournamentMatch: TournamentMatch
+  ): Future[Either[String, String]] = {
+    val logger = Logger(getClass)
+    
+    for {
+      // Get upload sessions for both players
+      player1Sessions <- uploadSessionService.getSessionsForMatch(matchId).map(_.filter(_.userId == tournamentMatch.firstUserId))
+      player2Sessions <- uploadSessionService.getSessionsForMatch(matchId).map(_.filter(_.userId == tournamentMatch.secondUserId))
+      
+      allSessions = player1Sessions ++ player2Sessions
+      
+      result <- if (allSessions.isEmpty) {
+        logger.info(s"No upload sessions found for match $matchId")
+        Future.successful(Right("No upload sessions to process"))
+      } else {
+        // Process each session and register files
+        val sessionProcessingFutures = allSessions.map { session =>
+          processSessionFiles(tournamentId, session)
+        }
+        
+        Future.sequence(sessionProcessingFutures).flatMap { results =>
+          val errors = results.collect { case Left(error) => error }
+          val successes = results.collect { case Right(message) => message }
+          
+          if (errors.nonEmpty) {
+            logger.error(s"Errors processing upload sessions for match $matchId: ${errors.mkString(", ")}")
+            Future.successful(Left(s"Failed to process some upload sessions: ${errors.mkString(", ")}"))
+          } else {
+            logger.info(s"Successfully processed ${allSessions.length} upload sessions for match $matchId")
+            
+            // Close all sessions after successful processing
+            val closeFutures = allSessions.map { session =>
+              uploadSessionService.clearSession(session.userId, matchId)
+            }
+            
+            Future.sequence(closeFutures).map { closeResults =>
+              val successfulCloses = closeResults.count(identity)
+              logger.info(s"Closed $successfulCloses out of ${allSessions.length} upload sessions for match $matchId")
+              Right(s"Processed ${allSessions.length} upload sessions and registered files in database")
+            }
+          }
+        }
+      }
+    } yield result
+  }
+
+  /**
+   * Processes files from a single upload session and registers them in the database.
+   */
+  private def processSessionFiles(
+    tournamentId: Long, 
+    session: UploadSession
+  ): Future[Either[String, String]] = {
+    val logger = Logger(getClass)
+    
+    if (session.successfulFiles.isEmpty) {
+      logger.debug(s"No successful files to process in session ${session.sessionId}")
+      return Future.successful(Right("No files to process"))
+    }
+    
+    val filesToRegister = session.successfulFiles.filter { fileResult =>
+      // Only register files that have required information
+      fileResult.sha256Hash.isDefined && fileResult.storedFileInfo.isDefined
+    }
+    
+    if (filesToRegister.isEmpty) {
+      logger.warn(s"No files with complete information to register in session ${session.sessionId}")
+      return Future.successful(Right("No complete files to register"))
+    }
+    
+    val registrationFutures = filesToRegister.map { fileResult =>
+      val sha256Hash = fileResult.sha256Hash.get
+      val storedFileInfo = fileResult.storedFileInfo.get
+      
+      // Create UploadedFile record
+      val uploadedFile = models.UploadedFile(
+        userId = session.userId,
+        tournamentId = tournamentId,
+        matchId = session.matchId,
+        sha256Hash = sha256Hash,
+        originalName = fileResult.fileName,
+        relativeDirectoryPath = extractRelativeDirectory(storedFileInfo.storedPath),
+        savedFileName = storedFileInfo.storedFileName,
+        uploadedAt = storedFileInfo.storedAt
+      )
+      
+      // Check if file with this SHA256 already exists to avoid duplicates
+      uploadedFileRepository.findBySha256Hash(sha256Hash).flatMap {
+        case Some(existingFile) =>
+          logger.debug(s"File with SHA256 $sha256Hash already exists in database, skipping")
+          Future.successful(Right(s"File ${fileResult.fileName} already registered"))
+        case None =>
+          uploadedFileRepository.create(uploadedFile).map { createdFile =>
+            logger.info(s"Registered file ${fileResult.fileName} in database with ID ${createdFile.id}")
+            Right(s"Registered file ${fileResult.fileName}")
+          }.recover { case ex =>
+            logger.error(s"Failed to register file ${fileResult.fileName} in database: ${ex.getMessage}", ex)
+            Left(s"Failed to register file ${fileResult.fileName}: ${ex.getMessage}")
+          }
+      }
+    }
+    
+    Future.sequence(registrationFutures).map { results =>
+      val errors = results.collect { case Left(error) => error }
+      val successes = results.collect { case Right(message) => message }
+      
+      if (errors.nonEmpty) {
+        Left(s"Failed to register some files from session ${session.sessionId}: ${errors.mkString(", ")}")
+      } else {
+        Right(s"Successfully registered ${successes.length} files from session ${session.sessionId}")
+      }
+    }
+  }
+
+  /**
+   * Extracts the relative directory path from the full stored path.
+   * This assumes the stored path is within the configured upload directory.
+   */
+  private def extractRelativeDirectory(storedPath: String): String = {
+    val path = java.nio.file.Paths.get(storedPath)
+    val parent = path.getParent
+    if (parent != null) {
+      parent.getFileName.toString
+    } else {
+      "uploads" // fallback directory name
+    }
   }
 
   /**
