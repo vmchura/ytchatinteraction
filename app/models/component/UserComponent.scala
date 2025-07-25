@@ -15,4 +15,10 @@ trait UserComponent {
   }
 
   val usersTable = TableQuery[UsersTable]
+
+  def updateUserAction(user: User): DBIO[Int] = {
+    usersTable.filter(_.userId === user.userId)
+      .map(u => u.userName)
+      .update(user.userName)
+  }
 }

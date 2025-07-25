@@ -28,4 +28,16 @@ trait UserAliasComponent {
       ((UserAliasHistory.apply _).tupled, UserAliasHistory.unapply)
   }
   val userAliasHistoryTable = TableQuery[UserAliasHistoryTable]
+
+  def addAlias(alias: String, userId: Long, method: String="random_registration"): DBIO[Int] = {
+    userAliasHistoryTable += UserAliasHistory(
+      id = 0L, // Will be auto-generated
+      userId = userId,
+      alias = alias,
+      isCurrent = true,
+      assignedAt = Instant.now(),
+      replacedAt = None,
+      generationMethod = method
+    )
+  }
 }

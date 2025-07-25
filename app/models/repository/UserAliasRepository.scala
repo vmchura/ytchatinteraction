@@ -1,7 +1,7 @@
 package models.repository
 
-import models.UserAliasHistory
-import models.component.UserAliasComponent
+import models.{User, UserAliasHistory}
+import models.component.{UserAliasComponent, UserComponent}
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 import slick.dbio.DBIO
@@ -12,7 +12,7 @@ import java.time.Instant
 
 @Singleton
 class UserAliasRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)
-                                   (implicit ec: ExecutionContext) extends UserAliasComponent {
+                                   (implicit ec: ExecutionContext) extends UserAliasComponent with UserComponent {
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
 
@@ -63,20 +63,6 @@ class UserAliasRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)
       .map { existingRecords =>
         existingRecords.isEmpty || existingRecords.forall(_.userId == userId)
       }
-  }
-
-  /**
-   * Creates a history entry for an alias assignment.
-   *
-   * @param userId           The user ID
-   * @param alias            The alias being assigned
-   * @param generationMethod The method used to assign the alias
-   * @return DBIO action that creates the history entry
-   */
-  def createHistoryEntryAction(userId: Long, alias: String, generationMethod: String): DBIO[Long] = {
-    (userAliasHistoryTable.map(h => (h.userId, h.alias, h.isCurrent, h.assignedAt, h.generationMethod))
-      returning userAliasHistoryTable.map(_.id)
-      ) += (userId, alias, true, Instant.now(), generationMethod)
   }
 
   /**
@@ -132,8 +118,9 @@ class UserAliasRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)
             case Some(_) =>
               reactivateAliasAction(userId, newAlias)
             case None =>
-              createHistoryEntryAction(userId, newAlias, "user_change").map(_ => 1)
+              addAlias(newAlias, userId, method="user_change").map(_ => 1)
           }
+          _ <- updateUserAction(User(userId, newAlias))
         } yield true
       } else {
         DBIO.successful(false)

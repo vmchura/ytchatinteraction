@@ -29,17 +29,6 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
       into ((userName, userId) => User(userId, userName))
     ) += userName
   }
-  def addAlias(alias: String, user: User): DBIO[Int] = {
-    userAliasHistoryTable += UserAliasHistory(
-      id = 0L, // Will be auto-generated
-      userId = user.userId,
-      alias = alias,
-      isCurrent = true,
-      assignedAt = Instant.now(),
-      replacedAt = None,
-      generationMethod = "random_registration"
-    )
-  }
 
   /**
    * Creates a user with a randomly generated StarCraft alias.
@@ -47,7 +36,7 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
   def createWithAlias(userName: String): Future[User] = {
     val action = for {
       user <- createAction(userName)
-      updatedUser <- addAlias(userName, user)
+      updatedUser <- addAlias(userName, user.userId)
     } yield user
     
     db.run(action.transactionally)
@@ -66,9 +55,7 @@ class UserRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implici
   }
   
   def update(user: User): Future[Int] = db.run {
-    usersTable.filter(_.userId === user.userId)
-      .map(u => u.userName)
-      .update(user.userName)
+    updateUserAction(user)
   }
   
   def existsAction(userId: Long): DBIO[Boolean] = {
