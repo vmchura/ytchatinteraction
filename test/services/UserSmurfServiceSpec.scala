@@ -61,6 +61,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
             --- !Downs
 
             --- Remove test data
+            DELETE FROM user_smurfs WHERE match_id IN (1);
             DELETE FROM users WHERE user_id IN (1, 2);
             DELETE FROM tournaments WHERE id IN (1);
             DELETE FROM tournament_matches WHERE match_id IN (1);
@@ -80,19 +81,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
   "UserSmurfService" should {
 
     "record match smurfs for two players" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
-      val userSmurfRepository = app.injector.instanceOf[UserSmurfRepository]
-      val tmr = app.injector.instanceOf[TournamentMatchRepository]
-      println("************* - A")
-      val myMatch = await(tmr.list())
-      myMatch.foreach(println)
-      println("************* - B")
-      val usersService = app.injector.instanceOf[UserService]
-      println("************* - X")
-      val allUsers = await(usersService.getAllUsers())
-      allUsers.foreach(println)
-      println("************* - Y")
 
       val matchId = 1
       val tournamentId = 1
@@ -115,7 +104,6 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     }
 
     "get match smurfs" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
       val matchId = 1L
@@ -137,7 +125,6 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     }
 
     "get user smurf in match" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
       val matchId = 1L
@@ -160,7 +147,6 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     }
 
     "check if match smurfs are recorded" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
       val matchId = 1L
@@ -181,7 +167,6 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     }
 
     "get match smurf count" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
       val matchId = 1L
@@ -202,7 +187,6 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     }
 
     "delete match smurfs" in {
-      val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
       val matchId = 1L
