@@ -23,7 +23,8 @@ case class FileProcessResult(
                               success: Boolean,
                               errorMessage: Option[String] = None,
                               gameInfo: Option[GameInfo] = None,
-                              sha256Hash: Option[String] = None
+                              sha256Hash: Option[String] = None,
+                              storedFileInfo: Option[StoredFileInfo] = None
                             )
 
 case class MultiFileUploadResult(

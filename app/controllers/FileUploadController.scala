@@ -4,9 +4,10 @@ import javax.inject.*
 import play.api.mvc.*
 import play.api.libs.json.Json
 import play.api.libs.Files.TemporaryFile
+import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
-import services.{ParseReplayFileService, UploadSession, UploadSessionService}
+import services.{ParseReplayFileService, UploadSession, UploadSessionService, FileStorageService, StoredFileInfo}
 import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
@@ -25,9 +26,12 @@ class FileUploadController @Inject()(
                                       components: DefaultSilhouetteControllerComponents,
                                       parseReplayFileService: ParseReplayFileService,
                                       uploadSessionService: UploadSessionService,
+                                      fileStorageService: FileStorageService,
                                       tournamentService: services.TournamentService,
                                       userRepository: models.repository.UserRepository
                                     )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
+
+  private val logger = Logger(getClass)
 
   def uploadFormForMatch(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     for {
@@ -101,6 +105,29 @@ class FileUploadController @Inject()(
     }
   }
 
+  /**
+   * Store a processed file using FileStorageService
+   */
+  private def storeProcessedFile(
+    user: User,
+    matchId: Long,
+    sessionId: String,
+    fileResult: services.FileProcessResult,
+    fileBytes: Array[Byte]
+  ): Future[Either[String, StoredFileInfo]] = {
+    if (fileResult.success && fileBytes.nonEmpty) {
+      fileStorageService.storeFile(
+        fileBytes = fileBytes,
+        originalFileName = fileResult.fileName,
+        contentType = fileResult.contentType,
+        userId = user.userId,
+        matchId = matchId,
+        sessionId = sessionId
+      )
+    } else {
+      Future.successful(Left(s"Cannot store failed file: ${fileResult.errorMessage.getOrElse("Unknown error")}"))
+    }
+  }
 
   private def renderUploadFormWithMatchDetails(
                                                 user: User,
@@ -147,22 +174,54 @@ class FileUploadController @Inject()(
                                           uploadedFiles: Seq[MultipartFormData.FilePart[TemporaryFile]]
                                          )(implicit request: SecuredRequest[EnvType, MultipartFormData[TemporaryFile]]): Future[Result] = {
 
-    val futureResults = uploadedFiles.map { file =>
-      parseReplayFileService.validateAndProcessSingleFile(file)
-    }.toList
+    // Get or create session first
+    uploadSessionService.getOrCreateSession(user, matchId).flatMap { session =>
+      
+      val futureResults = uploadedFiles.map { file =>
+        for {
+          // Process the file
+          fileResult <- parseReplayFileService.validateAndProcessSingleFile(file)
+          
+          // Read file bytes for storage
+          fileBytes = try {
+            java.nio.file.Files.readAllBytes(file.ref.path)
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Failed to read file ${file.filename}: ${ex.getMessage}", ex)
+              Array.empty[Byte]
+          }
+          
+          // Store the file if processing was successful
+          storageResult <- storeProcessedFile(user, matchId, session.sessionId, fileResult, fileBytes)
+          
+          // Add to session
+          sessionResult <- uploadSessionService.addFileToSession(user, matchId, fileResult)
+          
+        } yield (fileResult, storageResult, sessionResult)
+      }.toList
 
-    Future.sequence(futureResults).flatMap { fileResults =>
-      val addFutures = fileResults.map { fileResult =>
-        uploadSessionService.addFileToSession(user, matchId, fileResult)
-      }
+      Future.sequence(futureResults).flatMap { results =>
+        // Log storage results
+        results.foreach { case (fileResult, storageResult, _) =>
+          storageResult match {
+            case Right(storedInfo) =>
+              logger.info(s"Successfully stored file: ${storedInfo.originalFileName} at ${storedInfo.storedPath} (${storedInfo.size} bytes)")
+            case Left(error) =>
+              logger.error(s"Failed to store file ${fileResult.fileName}: $error")
+          }
+        }
 
-      Future.sequence(addFutures).flatMap { sessionResults =>
+        // Render the updated form
         uploadSessionService.getSession(user, matchId).flatMap {
-          case Some(session) =>
-            renderUploadFormWithMatchDetails(user, tournamentId, matchId, session)
+          case Some(updatedSession) =>
+            renderUploadFormWithMatchDetails(user, tournamentId, matchId, updatedSession)
           case None =>
+            logger.warn(s"Session not found after processing files for user ${user.userId}, match $matchId")
             Future.successful(Ok(views.html.index(Some(user))))
         }
+      }.recover { case ex: Exception =>
+        logger.error(s"Error processing files for user ${user.userId}, match $matchId: ${ex.getMessage}", ex)
+        Ok(views.html.index(Some(user)))
       }
     }
   }
