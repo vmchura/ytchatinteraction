@@ -70,7 +70,9 @@ case class SessionKey(userId: Long, matchId: Long) {
  * In-memory service for managing upload sessions
  */
 @Singleton
-class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
+class UploadSessionService @Inject()(
+  uploadedFileRepository: models.repository.UploadedFileRepository
+)(implicit ec: ExecutionContext) {
   
   private val logger = Logger(getClass)
   private val sessions = new ConcurrentHashMap[SessionKey, UploadSession]()
@@ -121,25 +123,37 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
   }
   
   /**
-   * Add a file to an existing session with duplicate detection
+   * Add a file to an existing session with duplicate detection (both local and global)
    */
   def addFileToSession(user: User, matchId: Long, fileResult: FileProcessResult): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !session.isFinalized && !isSessionExpired(session) =>
-        val updatedSession = session.addFile(fileResult)
-        sessions.put(sessionKey, updatedSession)
+        // Check for duplicates before adding
+        checkForDuplicateFile(fileResult).map { isDuplicate =>
+          if (isDuplicate) {
+            logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
+            // Return session without changes but update timestamp
+            val updatedSession = session.copy(lastUpdated = java.time.Instant.now())
+            sessions.put(sessionKey, updatedSession)
+            Some(updatedSession)
+          } else {
+            // File is unique, add it to session
+            val updatedSession = session.addFile(fileResult)
+            sessions.put(sessionKey, updatedSession)
 
-        // Log based on whether file was actually added or was a duplicate
-        val wasAdded = updatedSession.uploadedFiles.length > session.uploadedFiles.length
-        if (wasAdded) {
-          logger.info(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
-        } else {
-          logger.debug(s"File ${fileResult.fileName} already exists in session: ${session.sessionId} (duplicate SHA256)")
+            // Log based on whether file was actually added or was a local duplicate
+            val wasAdded = updatedSession.uploadedFiles.length > session.uploadedFiles.length
+            if (wasAdded) {
+              logger.info(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
+            } else {
+              logger.debug(s"File ${fileResult.fileName} already exists in session: ${session.sessionId} (local duplicate)")
+            }
+
+            Some(updatedSession)
+          }
         }
-
-        Future.successful(Some(updatedSession))
       case Some(session) if session.isFinalized =>
         logger.warn(s"Attempted to add file to finalized session: ${session.sessionId}")
         Future.successful(None)
@@ -150,6 +164,19 @@ class UploadSessionService @Inject()()(implicit ec: ExecutionContext) {
       case None =>
         logger.warn(s"No session found for user: ${user.userId}, match: $matchId")
         Future.successful(None)
+    }
+  }
+
+  /**
+   * Check if a file already exists globally in the UploadedFileRepository
+   */
+  private def checkForDuplicateFile(fileResult: FileProcessResult): Future[Boolean] = {
+    fileResult.sha256Hash match {
+      case Some(sha256) =>
+        uploadedFileRepository.findBySha256Hash(sha256).map(_.isDefined)
+      case None =>
+        // If no SHA256 hash available, we can't check for duplicates globally
+        Future.successful(false)
     }
   }
   
