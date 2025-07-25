@@ -22,7 +22,7 @@ ALTER TABLE uploaded_files ADD CONSTRAINT uploaded_files_tournament_fk
     FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON UPDATE RESTRICT ON DELETE CASCADE;
 
 ALTER TABLE uploaded_files ADD CONSTRAINT uploaded_files_match_fk 
-    FOREIGN KEY (match_id) REFERENCES tournament_matches(id) ON UPDATE RESTRICT ON DELETE CASCADE;
+    FOREIGN KEY (match_id) REFERENCES tournament_matches(match_id) ON UPDATE RESTRICT ON DELETE CASCADE;
 
 -- Indexes for performance
 CREATE INDEX idx_uploaded_files_user_id ON uploaded_files(user_id);

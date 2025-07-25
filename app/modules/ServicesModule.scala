@@ -5,11 +5,13 @@ import services.{
   ParseReplayFileService, DefaultParseReplayFileService, 
   UploadSessionService, TournamentService, TournamentServiceImpl, 
   TournamentChallongeService, TournamentChallongeServiceImpl,
-  FileStorageService, DefaultFileStorageService
+  FileStorageService, DefaultFileStorageService,
+  UserSmurfService
 }
 import models.repository.{
   TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, 
-  UserAliasRepository, UploadedFileRepository, UploadedFileRepositoryImpl
+  UserAliasRepository, UploadedFileRepository, UploadedFileRepositoryImpl,
+  UserSmurfRepository
 }
 import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
 
