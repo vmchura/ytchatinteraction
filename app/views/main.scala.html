@@ -26,6 +26,8 @@
                             <summary>@u.userName</summary>
                             <ul>
                                 <li><a href="@routes.AliasController.showChangeAliasForm()">@messages("nav.change.alias")</a></li>
+                                <li><a href="@routes.LanguageController.changeLanguage("es")">Español</a></li>
+                                <li><a href="@routes.LanguageController.changeLanguage("en")">English</a></li>
                             </ul>
                         </details>
                     </li>
@@ -33,15 +35,6 @@
                 }.getOrElse {
                     <li><a href="@routes.AuthController.authenticate("youtube")" role="button">@messages("nav.login")</a></li>
                 }
-                <li>
-                    <details class="dropdown language-switcher">
-                        <summary>@messages("nav.language")</summary>
-                        <ul>
-                            <li><a href="@routes.LanguageController.changeLanguage("es")">Español</a></li>
-                            <li><a href="@routes.LanguageController.changeLanguage("en")">English</a></li>
-                        </ul>
-                    </details>
-                </li>
             </ul>
         </nav>
         <main class="container">
