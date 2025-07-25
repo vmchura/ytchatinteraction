@@ -1,13 +1,13 @@
 @import models.viewmodels.UserEventViewData
 
-@(viewData: UserEventViewData)(implicit request: RequestHeader, flash: Flash)
+@(viewData: UserEventViewData)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
-@main("My Events", Some(viewData.user)) {
-  <h1 id="my_event_active">My Active Events</h1>
+@main(messages("events.title"), Some(viewData.user)) {
+  <h1 id="my_event_active">@messages("events.active.title")</h1>
   
   @if(!viewData.userEvents.hasActiveEvents) {
     <article>
-      <p>You don't have any active events. Join a stream chat to participate in events!</p>
+      <p>@messages("events.no.active")</p>
     </article>
   } else {
     <div class="grid">
@@ -26,8 +26,8 @@
   @* Open Tournaments Section *@
   @if(viewData.tournaments.hasOpenTournaments) {
     <section>
-      <h2>Open Tournaments</h2>
-      <p>Tournaments currently open for registration:</p>
+      <h2>@messages("events.tournaments.open.title")</h2>
+      <p>@messages("events.tournaments.open.description")</p>
       
       <div class="grid">
         @for(tournament <- viewData.tournaments.openTournaments) {

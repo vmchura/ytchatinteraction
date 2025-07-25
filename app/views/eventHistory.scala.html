@@ -3,7 +3,7 @@
 @import java.time.ZoneId
 @import java.time.Instant
 
-@(events: Seq[StreamerEvent], user: User)(implicit request: RequestHeader, flash: Flash)
+@(events: Seq[StreamerEvent], user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("Event History", Some(user)) {
   <h1>Event History</h1>

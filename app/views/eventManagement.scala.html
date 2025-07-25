@@ -4,7 +4,7 @@
 @import play.api.data.Form
 @import forms.EventWithPollForm
 
-@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash)
+@(form: Form[EventWithPollForm], events: Seq[StreamerEvent], streamers: Seq[YtStreamer], user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("Complete Event Form", Some(user)) {
   <h1>Complete Event Form</h1>

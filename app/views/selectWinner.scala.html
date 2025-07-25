@@ -4,7 +4,7 @@
 @import play.api.data.Form
 @import forms.SetWinnerForm
 
-@(form: Form[SetWinnerForm], event: StreamerEvent, poll: EventPoll, options: Seq[PollOption], user: User)(implicit request: RequestHeader, flash: Flash)
+@(form: Form[SetWinnerForm], event: StreamerEvent, poll: EventPoll, options: Seq[PollOption], user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("Select Event Winner", Some(user)) {
   <h1>Select Event Winner</h1>

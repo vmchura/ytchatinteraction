@@ -1,4 +1,4 @@
-@(webSocketUrl: String, user: Option[models.User] = None)(implicit messages: Messages, flash: Flash, webJarsUtil: org.webjars.play.WebJarsUtil)
+@(webSocketUrl: String, user: Option[models.User] = None)(implicit request: RequestHeader, messages: Messages, flash: Flash, webJarsUtil: org.webjars.play.WebJarsUtil)
 
 @main("Chat Room", user) {
   <div class="container">

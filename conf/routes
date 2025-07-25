@@ -6,6 +6,9 @@
 GET     /                           controllers.HomeController.index()
 GET     /streamerevents                       controllers.HomeController.streamerevents()
 
+# Language management
+GET     /language/:lang             controllers.LanguageController.changeLanguage(lang: String)
+
 # Event management
 GET     /events                     controllers.EventController.eventManagement()
 POST    /events                     controllers.EventController.createEvent()

@@ -1,4 +1,4 @@
-# Mensajes por defecto (español)
+# Mensajes en español (idioma por defecto)
 name = Nombre
 age = Edad
 

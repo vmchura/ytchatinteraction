@@ -42,7 +42,7 @@ class HomeController @Inject()(val scc: SilhouetteControllerComponents,
         Redirect(routes.UserEventsController.userEvents())
       case None =>
         // User is not logged in, show welcome/landing page
-        Ok(views.html.welcome())
+        Ok(views.html.index(None))
     }
   }
 

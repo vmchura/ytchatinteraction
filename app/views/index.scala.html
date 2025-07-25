@@ -1,27 +1,27 @@
-@(user: Option[models.User])(implicit messages: Messages, flash: Flash)
+@(user: Option[models.User])(implicit messages: Messages, flash: Flash, request: RequestHeader)
 
-@main("Welcome to YT Chat Interaction", user) {
+@main(messages("home.welcome.title"), user) {
     <div class="container">
         <header>
-            <h1>Welcome to YT Chat Interaction</h1>
-            <p>Connect with your YouTube audience in real-time.</p>
+            <h1>@messages("home.welcome.title")</h1>
+            <p>@messages("home.welcome.subtitle")</p>
         </header>
         
         <section>
             <article>
-                <h2>What is YT Chat Interaction?</h2>
-                <p>YT Chat Interaction allows you to engage with your YouTube livestream chat directly through this application.</p>
+                <h2>@messages("home.what.is.title")</h2>
+                <p>@messages("home.what.is.description")</p>
                 
-                <a href="@routes.AuthController.authenticate("youtube")" role="button" class="primary">Get Started with YouTube</a>
+                <a href="@routes.AuthController.authenticate("youtube")" role="button" class="primary">@messages("home.get.started")</a>
             </article>
             
             <article>
-                <h2>Features</h2>
+                <h2>@messages("home.features.title")</h2>
                 <ul>
-                    <li>Real-time chat interaction</li>
-                    <li>Viewer statistics and engagement metrics</li>
-                    <li>Streamlined moderation tools</li>
-                    <li>Custom alerts and notifications</li>
+                    <li>@messages("home.features.realtime")</li>
+                    <li>@messages("home.features.stats")</li>
+                    <li>@messages("home.features.moderation")</li>
+                    <li>@messages("home.features.alerts")</li>
                 </ul>
             </article>
         </section>

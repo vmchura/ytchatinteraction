@@ -2,13 +2,13 @@
 @import forms.AliasChangeForm
 @import models.User
 
-@(aliasForm: Form[AliasChangeForm], user: User)(implicit request: RequestHeader, flash: Flash)
+@(aliasForm: Form[AliasChangeForm], user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
-@main("Change Alias", Some(user)) {
+@main(messages("alias.title"), Some(user)) {
     <article>
         <header>
-            <h1>Change Your Alias</h1>
-            <p>Update your display name to personalize your profile.</p>
+            <h1>@messages("alias.title")</h1>
+            <p>@messages("alias.subtitle")</p>
         </header>
 
         @if(flash.get("success").isDefined) {
@@ -24,7 +24,7 @@
         }
 
         <div class="current-alias">
-            <p><strong>Current Alias:</strong> @user.userName</p>
+            <p><strong>@messages("alias.current")</strong> @user.userName</p>
         </div>
 
         @helper.form(action = routes.AliasController.changeAlias()) {
@@ -32,32 +32,31 @@
             
             <fieldset>
                 <label for="newAlias">
-                    New Alias *
+                    @messages("alias.new.label")
                     <input type="text" 
                            id="newAlias" 
                            name="newAlias" 
                            value="@aliasForm("newAlias").value.getOrElse("")" 
-                           placeholder="Enter your new alias"
+                           placeholder="@messages("alias.new.placeholder")"
                            @if(aliasForm("newAlias").hasErrors) {aria-invalid="true"}
                            required>
                     @if(aliasForm("newAlias").hasErrors) {
                         <small class="error">@aliasForm("newAlias").errors.map(_.message).mkString(", ")</small>
                     } else {
-                        <small>Choose a unique name between 1-50 characters. Only letters, numbers, spaces, hyphens, underscores, and dots are allowed.</small>
+                        <small>@messages("alias.new.help")</small>
                     }
                 </label>
             </fieldset>
 
             <div class="action-buttons">
-                <button type="submit" class="primary">Update Alias</button>
-                <a href="@routes.HomeController.index()" role="button" class="secondary">Cancel</a>
+                <button type="submit" class="primary">@messages("alias.update.button")</button>
+                <a href="@routes.HomeController.index()" role="button" class="secondary">@messages("alias.cancel.button")</a>
             </div>
         }
 
         <footer>
             <small>
-                <strong>Note:</strong> Your alias is used to preserve your privacy while displaying your name to other users. 
-                It can be changed at any time. You can reuse any alias you've previously used.
+                <strong>@messages("status.info"):</strong> @messages("alias.note")
             </small>
         </footer>
     </article>

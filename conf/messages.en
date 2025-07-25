@@ -1,0 +1,77 @@
+# English messages
+name = Name
+age = Age
+
+user.created = You have successfully created a user!
+
+# Authentication messages
+auth.login.required = You need to be logged in to access this page.
+auth.login.success = You have been successfully logged in.
+auth.logout.success = You have been logged out successfully.
+auth.access.denied = Access denied. You don''t have permission to access this resource.
+
+# Main application messages
+app.title = YT Chat Interaction
+app.welcome = Welcome to YT Chat Interaction
+app.subtitle = Connect with your YouTube audience in real-time.
+
+# Navigation
+nav.home = Home
+nav.my.events = My Events
+nav.login = Login with YouTube
+nav.logout = Logout
+nav.change.alias = Change Alias
+nav.language = Language
+
+# Home page
+home.welcome.title = Welcome to YT Chat Interaction
+home.welcome.subtitle = Connect with your YouTube audience in real-time.
+home.what.is.title = What is YT Chat Interaction?
+home.what.is.description = YT Chat Interaction allows you to engage with your YouTube livestream chat directly through this application.
+home.get.started = Get Started with YouTube
+home.features.title = Features
+home.features.realtime = Real-time chat interaction
+home.features.stats = Viewer statistics and engagement metrics
+home.features.moderation = Streamlined moderation tools
+home.features.alerts = Custom alerts and notifications
+
+# Login page
+login.title = Login
+login.signin.title = Sign In
+login.signin.youtube = Sign in with YouTube
+
+# User events
+events.title = My Events
+events.active.title = My Active Events
+events.no.active = You don't have any active events. Join a stream chat to participate in events!
+events.available.title = Available Events
+events.tournaments.open.title = Open Tournaments
+events.tournaments.open.description = Tournaments currently open for registration:
+
+# Change alias
+alias.title = Change Your Alias
+alias.subtitle = Update your display name to personalize your profile.
+alias.current = Current Alias:
+alias.new.label = New Alias *
+alias.new.placeholder = Enter your new alias
+alias.new.help = Choose a unique name between 1-50 characters. Only letters, numbers, spaces, hyphens, underscores, and dots are allowed.
+alias.update.button = Update Alias
+alias.cancel.button = Cancel
+alias.note = Note: Your alias is used to preserve your privacy while displaying your name to other users. It can be changed at any time. You can reuse any alias you've previously used.
+
+# Common buttons and actions
+button.submit = Submit
+button.cancel = Cancel
+button.save = Save
+button.delete = Delete
+button.edit = Edit
+button.back = Back
+
+# Status messages
+status.success = Success
+status.error = Error
+status.info = Information
+status.warning = Warning
+
+# Footer
+footer.copyright = &copy; 2025 Evolution Complete

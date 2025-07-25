@@ -91,3 +91,45 @@
     transform: translateY(0);
   }
 }
+
+/* Language switcher styles */
+.language-switcher {
+  font-size: 0.9rem;
+}
+
+.language-switcher summary {
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.language-switcher summary:before {
+  content: "🌐 ";
+  margin-right: 0.25rem;
+}
+
+.language-switcher ul {
+  min-width: 120px;
+}
+
+.language-switcher a {
+  display: block;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.language-switcher a:hover {
+  background-color: var(--muted-color);
+}
+
+/* Flag icons for languages */
+.language-switcher a[href*="es"]:before {
+  content: "🇪🇸 ";
+  margin-right: 0.5rem;
+}
+
+.language-switcher a[href*="en"]:before {
+  content: "🇺🇸 ";
+  margin-right: 0.5rem;
+}

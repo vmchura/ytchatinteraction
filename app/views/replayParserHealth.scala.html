@@ -1,6 +1,6 @@
 @import models.User
 @import controllers.{StorageHealthStatus, HealthStatus}
-@(user: Option[User], parserHealth: Option[HealthStatus] = None, storageHealth: Option[StorageHealthStatus] = None)(implicit flash: Flash)
+@(user: Option[User], parserHealth: Option[HealthStatus] = None, storageHealth: Option[StorageHealthStatus] = None)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("System Health", user) {
     <div id="health-container">
