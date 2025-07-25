@@ -1,19 +1,81 @@
 package services
 
 import models.UserSmurf
-import models.repository.UserSmurfRepository
-import org.scalatestplus.play._
-import org.scalatestplus.play.guice._
-import play.api.test._
+import models.repository.{TournamentMatchRepository, UserSmurfRepository}
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatestplus.play.*
+import org.scalatestplus.play.guice.*
+import play.api.test.*
 import play.api.inject.guice.GuiceApplicationBuilder
-import org.scalatest.BeforeAndAfterEach
-import scala.concurrent.duration._
+import org.scalatest.{BeforeAndAfterEach, RecoverMethods}
+import org.scalatestplus.mockito.MockitoSugar
+import play.api.Application
+import play.api.db.DBApi
+
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import java.time.Instant
+import play.api.db.evolutions.{Evolution, Evolutions, SimpleEvolutionsReader}
 
-class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeAndAfterEach {
-
+class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Injecting with BeforeAndAfterEach with MockitoSugar with RecoverMethods with ScalaFutures {
+  // We'll use an in-memory H2 database for testing
+  override def fakeApplication(): Application = {
+    GuiceApplicationBuilder()
+      .configure(
+        "slick.dbs.default.profile" -> "slick.jdbc.H2Profile$",
+        "slick.dbs.default.db.driver" -> "org.h2.Driver",
+        "slick.dbs.default.db.url" -> "jdbc:h2:mem:test;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1",
+        "slick.dbs.default.db.user" -> "sa",
+        "slick.dbs.default.db.password" -> "",
+        // Makes sure evolutions are enabled for tests
+        "play.evolutions.db.default.enabled" -> true,
+        "play.evolutions.db.default.autoApply" -> true
+      )
+      .build()
+  }
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
+  lazy val db = app.injector.instanceOf[DBApi].database("default")
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+
+    // Apply the standard evolutions
+    Evolutions.applyEvolutions(db)
+
+    // Add test-specific data - only users, we'll create streamers in tests
+    Evolutions.applyEvolutions(db,
+      SimpleEvolutionsReader.forDefault(
+        Evolution(
+          21,
+          """
+            --- !Ups
+
+            --- Add test data for YtStreamerRepositorySpec
+            INSERT INTO users (user_id, user_name) VALUES (1, 'Test User 1');
+            INSERT INTO users (user_id, user_name) VALUES (2, 'Test User 2');
+            INSERT INTO tournaments (name, max_participants, registration_start_at, registration_end_at) VALUES ('Dummy Tournament', 8, '2025-08-01 10:00:00', '2025-08-05 10:00:00');
+            INSERT INTO tournament_matches (match_id, tournament_id, first_user_id, second_user_id) VALUES (1, 1, 1, 2);
+
+            """,
+          s"""
+            --- !Downs
+
+            --- Remove test data
+            DELETE FROM users WHERE user_id IN (1, 2);
+            DELETE FROM tournaments WHERE id IN (1);
+            DELETE FROM tournament_matches WHERE match_id IN (1);
+            """
+        )
+      )
+    )
+  }
+
+  override def afterEach(): Unit = {
+    // Clean up the database after each test
+    Evolutions.cleanupEvolutions(db)
+
+    super.afterEach()
+  }
 
   "UserSmurfService" should {
 
@@ -21,12 +83,22 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
       val userSmurfRepository = app.injector.instanceOf[UserSmurfRepository]
+      val tmr = app.injector.instanceOf[TournamentMatchRepository]
+      println("************* - A")
+      val myMatch = await(tmr.list())
+      myMatch.foreach(println)
+      println("************* - B")
+      val usersService = app.injector.instanceOf[UserService]
+      println("************* - X")
+      val allUsers = await(usersService.getAllUsers())
+      allUsers.foreach(println)
+      println("************* - Y")
 
-      val matchId = 1L
-      val tournamentId = 1L
-      val firstUserId = 100L
+      val matchId = 1
+      val tournamentId = 1
+      val firstUserId = 1
       val firstUserSmurf = "PlayerOne"
-      val secondUserId = 200L
+      val secondUserId = 2
       val secondUserSmurf = "PlayerTwo"
 
       val result = await(userSmurfService.recordMatchSmurfs(
@@ -46,11 +118,11 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
-      val matchId = 2L
+      val matchId = 1L
       val tournamentId = 1L
-      val firstUserId = 101L
+      val firstUserId = 1L
       val firstUserSmurf = "TestPlayer1"
-      val secondUserId = 201L
+      val secondUserId = 2L
       val secondUserSmurf = "TestPlayer2"
 
       // First record the smurfs
@@ -68,11 +140,11 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
-      val matchId = 3L
+      val matchId = 1L
       val tournamentId = 1L
-      val userId = 102L
+      val userId = 1L
       val userSmurf = "UniquePlayer"
-      val otherUserId = 202L
+      val otherUserId = 2L
       val otherUserSmurf = "OtherPlayer"
 
       // Record smurfs for a match
@@ -91,7 +163,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
-      val matchId = 4L
+      val matchId = 1L
       val tournamentId = 1L
 
       // Initially no smurfs should be recorded
@@ -100,7 +172,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
 
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 103L, "Player1", 203L, "Player2"
+        matchId, tournamentId, 1L, "Player1", 2L, "Player2"
       ))
 
       // Now smurfs should be recorded
@@ -112,7 +184,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
-      val matchId = 5L
+      val matchId = 1L
       val tournamentId = 1L
 
       // Initially count should be 0
@@ -121,7 +193,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
 
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 104L, "TestPlayer1", 204L, "TestPlayer2"
+        matchId, tournamentId, 1L, "TestPlayer1", 2L, "TestPlayer2"
       ))
 
       // Count should be 2
@@ -133,12 +205,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerTest with BeforeA
       val app = GuiceApplicationBuilder().build()
       val userSmurfService = app.injector.instanceOf[UserSmurfService]
 
-      val matchId = 6L
+      val matchId = 1L
       val tournamentId = 1L
 
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 105L, "PlayerA", 205L, "PlayerB"
+        matchId, tournamentId, 1L, "PlayerA", 2L, "PlayerB"
       ))
 
       // Verify they exist
