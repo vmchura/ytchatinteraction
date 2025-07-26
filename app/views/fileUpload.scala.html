@@ -163,10 +163,31 @@
                     </label>
                 </fieldset>
 
+                <fieldset id="smurf-selection-fieldset">
+                    <legend>Select in-game smurfs:</legend>
+                    <div class="grid">
+                        <div>
+                            <label for="in_game_smurf_first">@firstUser.get.userName smurf:</label>
+                            <select name="in_game_smurf_first" id="in_game_smurf_first"
+                                    onchange="updateSmurfSelection('first')" disabled>
+                                <option value="">Select smurf...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="in_game_smurf_second">@secondUser.get.userName smurf:</label>
+                            <select name="in_game_smurf_second" id="in_game_smurf_second"
+                                    onchange="updateSmurfSelection('second')" disabled>
+                                <option value="">Select smurf...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <small>Select one smurf and the other will be filled automatically based on replay data.</small>
+                </fieldset>
+
                 <input type="hidden" name="winnerId" id="winnerIdField"/>
                 <input type="hidden" name="resultType" id="resultTypeField"/>
 
-                <button type="submit">Submit Result</button>
+                <button type="submit" id="submit-result-btn" disabled>Submit Result</button>
 
 
             </form>
@@ -228,10 +249,149 @@
 </div>
 
 <script>
+    // Global variables to store replay data and smurfs
+    let replaySmurfs = new Set();
+    let smurfPairs = [];
+
     function updateHiddenFields(winnerId, resultType) {
         document.getElementById('resultTypeField').value = resultType;
         document.getElementById('winnerIdField').value = winnerId;
+        checkFormValidity();
     }
+
+    function extractSmurfsFromReplays() {
+        // Clear previous data
+        replaySmurfs.clear();
+        smurfPairs = [];
+
+        // Get all successful files and extract smurfs
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.children;
+            if (cells.length >= 3) {
+                // Extract player names from the table cells (removing race info)
+                const player1Text = cells[1].textContent.trim();
+                const player2Text = cells[2].textContent.trim();
+                
+                // Extract just the name part (before the race indicator in parentheses)
+                const player1Name = player1Text.split('(')[0].trim();
+                const player2Name = player2Text.split('(')[0].trim();
+                
+                if (player1Name && player1Name !== 'Unknown Player') {
+                    replaySmurfs.add(player1Name);
+                }
+                if (player2Name && player2Name !== 'Unknown Player') {
+                    replaySmurfs.add(player2Name);
+                }
+                
+                // Store the pair for later use
+                if (player1Name && player2Name && 
+                    player1Name !== 'Unknown Player' && player2Name !== 'Unknown Player') {
+                    smurfPairs.push({
+                        player1: player1Name,
+                        player2: player2Name
+                    });
+                }
+            }
+        });
+
+        populateSmurfSelectors();
+    }
+
+    function populateSmurfSelectors() {
+        const firstSelect = document.getElementById('in_game_smurf_first');
+        const secondSelect = document.getElementById('in_game_smurf_second');
+        
+        // Clear existing options (keep the first default option)
+        firstSelect.innerHTML = '<option value="">Select smurf...</option>';
+        secondSelect.innerHTML = '<option value="">Select smurf...</option>';
+
+        // Add all unique smurfs to both selectors
+        Array.from(replaySmurfs).sort().forEach(smurf => {
+            const option1 = document.createElement('option');
+            option1.value = smurf;
+            option1.textContent = smurf;
+            firstSelect.appendChild(option1);
+
+            const option2 = document.createElement('option');
+            option2.value = smurf;
+            option2.textContent = smurf;
+            secondSelect.appendChild(option2);
+        });
+
+        // Enable the selectors if we have smurfs
+        if (replaySmurfs.size > 0) {
+            firstSelect.disabled = false;
+            secondSelect.disabled = false;
+        }
+    }
+
+    function updateSmurfSelection(selectedPlayer) {
+        const firstSelect = document.getElementById('in_game_smurf_first');
+        const secondSelect = document.getElementById('in_game_smurf_second');
+        
+        let selectedSmurf, otherSelect;
+        
+        if (selectedPlayer === 'first') {
+            selectedSmurf = firstSelect.value;
+            otherSelect = secondSelect;
+        } else {
+            selectedSmurf = secondSelect.value;
+            otherSelect = firstSelect;
+        }
+
+        if (selectedSmurf) {
+            // Find the corresponding smurf from replay pairs
+            const matchingPair = smurfPairs.find(pair => 
+                pair.player1 === selectedSmurf || pair.player2 === selectedSmurf
+            );
+            
+            if (matchingPair) {
+                const otherSmurf = matchingPair.player1 === selectedSmurf ? 
+                    matchingPair.player2 : matchingPair.player1;
+                
+                // Set the other selector to the paired smurf
+                otherSelect.value = otherSmurf;
+                otherSelect.disabled = true;
+            } else {
+                // If no pair found, just disable the other selector but don't set a value
+                otherSelect.disabled = true;
+            }
+        } else {
+            // If no smurf selected, re-enable the other selector
+            otherSelect.disabled = false;
+            otherSelect.value = '';
+        }
+        
+        checkFormValidity();
+    }
+
+    function checkFormValidity() {
+        const firstSmurfSelect = document.getElementById('in_game_smurf_first');
+        const secondSmurfSelect = document.getElementById('in_game_smurf_second');
+        const resultTypeField = document.getElementById('resultTypeField');
+        const submitBtn = document.getElementById('submit-result-btn');
+        
+        // Check if result type is selected and both smurfs are selected
+        const hasResultType = resultTypeField && resultTypeField.value;
+        const hasFirstSmurf = firstSmurfSelect.value;
+        const hasSecondSmurf = secondSmurfSelect.value;
+        
+        // Enable submit button only if result type and both smurfs are selected
+        if (hasResultType && hasFirstSmurf && hasSecondSmurf) {
+            submitBtn.disabled = false;
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+
+    // Initialize smurf extraction when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Only extract smurfs if we have successful files
+        if (document.querySelector('tbody tr')) {
+            extractSmurfsFromReplays();
+        }
+    });
 </script>
 
 <script>

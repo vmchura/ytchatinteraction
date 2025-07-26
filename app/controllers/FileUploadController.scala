@@ -7,7 +7,7 @@ import play.api.libs.Files.TemporaryFile
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
-import services.{ParseReplayFileService, UploadSession, UploadSessionService, FileStorageService, StoredFileInfo}
+import services.{FileProcessResult, FileStorageService, ParseReplayFileService, StoredFileInfo, UploadSession, UploadSessionService}
 import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
@@ -128,33 +128,7 @@ class FileUploadController @Inject()(
           matchId = matchId,
           sessionId = sessionId
         )
-        
-        // If storage successful, save record to database
-        dbResult <- storageResult match {
-          case Right(storedInfo) =>
-            val uploadedFile = models.UploadedFile(
-              userId = user.userId,
-              tournamentId = tournamentId,
-              matchId = matchId,
-              sha256Hash = fileResult.sha256Hash.get,
-              originalName = fileResult.fileName,
-              relativeDirectoryPath = "uploads", // Based on configuration
-              savedFileName = storedInfo.storedFileName,
-              uploadedAt = storedInfo.storedAt
-            )
-            
-            uploadedFileRepository.create(uploadedFile).map { createdFile =>
-              logger.info(s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}")
-              Right(storedInfo)
-            }.recover { case ex =>
-              logger.error(s"Failed to save file record to database for ${fileResult.fileName}: ${ex.getMessage}", ex)
-              // File was stored but DB record failed - this is a partial success
-              Right(storedInfo)
-            }
-          case Left(error) =>
-            Future.successful(Left(error))
-        }
-      } yield dbResult
+      } yield storageResult
     } else {
       Future.successful(Left(s"Cannot store failed file: ${fileResult.errorMessage.getOrElse("Unknown error")}"))
     }
@@ -208,8 +182,9 @@ class FileUploadController @Inject()(
     // Get or create session first
     uploadSessionService.getOrCreateSession(user, matchId).flatMap { session =>
       
-      val futureResults = uploadedFiles.map { file =>
+      val futureResults = uploadedFiles.foldLeft(Future.successful(List.empty[FileProcessResult])){ case (previousFiles, file) =>
         for {
+          filesProcessed <- previousFiles
           // Process the file
           fileResult <- parseReplayFileService.validateAndProcessSingleFile(file)
           
@@ -221,38 +196,27 @@ class FileUploadController @Inject()(
               logger.error(s"Failed to read file ${file.filename}: ${ex.getMessage}", ex)
               Array.empty[Byte]
           }
-          
-          // Store the file if processing was successful
-          storageResult <- storeProcessedFile(user, tournamentId, matchId, session.sessionId, fileResult, fileBytes)
-          
-          // Add to session
-          sessionResult <- uploadSessionService.addFileToSession(user, matchId, fileResult)
-          
-        } yield (fileResult, storageResult, sessionResult)
-      }.toList
-
-      Future.sequence(futureResults).flatMap { results =>
-        // Log storage results
-        results.foreach { case (fileResult, storageResult, _) =>
-          storageResult match {
-            case Right(storedInfo) =>
-              logger.info(s"Successfully stored file: ${storedInfo.originalFileName} at ${storedInfo.storedPath} (${storedInfo.size} bytes)")
-            case Left(error) =>
-              logger.error(s"Failed to store file ${fileResult.fileName}: $error")
+          storageResult <- if(fileResult.success) storeProcessedFile(user, tournamentId, matchId, session.sessionId, fileResult, fileBytes) else Future.successful(Left("Not saved, error parsing"))
+          fileRulestWithStorage = storageResult match {
+            case Left(_) => fileResult
+            case Right(storeFileInfo) => fileResult.copy(storedFileInfo = Some(storeFileInfo))
           }
-        }
-
-        // Render the updated form
-        uploadSessionService.getSession(user, matchId).flatMap {
+          sessionResult <- if(fileRulestWithStorage.success && fileRulestWithStorage.storedFileInfo.isDefined) uploadSessionService.addFileToSession(user, matchId, fileRulestWithStorage) else Future.successful(None)
+          
+        } yield filesProcessed :+ fileRulestWithStorage
+      }
+      for{
+        _ <- futureResults
+        updatedSession <- uploadSessionService.getSession(user, matchId)
+        renderResult <- updatedSession match {
           case Some(updatedSession) =>
             renderUploadFormWithMatchDetails(user, tournamentId, matchId, updatedSession)
           case None =>
             logger.warn(s"Session not found after processing files for user ${user.userId}, match $matchId")
             Future.successful(Ok(views.html.index(Some(user))))
         }
-      }.recover { case ex: Exception =>
-        logger.error(s"Error processing files for user ${user.userId}, match $matchId: ${ex.getMessage}", ex)
-        Ok(views.html.index(Some(user)))
+      }yield {
+        renderResult
       }
     }
   }
