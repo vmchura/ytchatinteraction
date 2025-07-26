@@ -73,5 +73,45 @@ status.error = Error
 status.info = Information
 status.warning = Warning
 
+# File Upload
+upload.title = File Upload
+upload.subtitle = Upload and analyze files automatically (.rep)
+upload.match.title = Match
+upload.session.status = Session Status
+upload.processing.completed = Processing completed for {0} file(s)
+upload.successfully.processed = Successfully Processed Files ({0})
+upload.failed.files = Failed Files ({0})
+upload.table.map = Map
+upload.table.player1 = Player 1
+upload.table.player2 = Player 2
+upload.table.start.time = Start Time
+upload.table.filename = File Name
+upload.table.error = Error
+upload.unknown.player = Unknown Player
+upload.unknown.error = Unknown error
+upload.match.result = Match Result
+upload.select.outcome = Select the match outcome:
+upload.tie = Tie
+upload.cancelled = Cancelled
+upload.select.smurfs = Select in-game smurfs:
+upload.smurf.first = {0} smurf:
+upload.smurf.second = {0} smurf:
+upload.select.smurf = Select smurf...
+upload.smurf.help = Select one smurf and the other will be filled automatically based on replay data.
+upload.submit.result = Submit Result
+upload.add.more.files = Add More Files
+upload.select.files = Select Files for Analysis
+upload.validation.problems = Validation Problems:
+upload.selected.files = Selected files:
+upload.files.count = {0} file(s)
+upload.upload.files = Upload Files
+upload.max.size = .rep files with maximum 1MB each
+upload.error.title = Upload Error
+upload.try.again = Try Again
+upload.vs = vs
+upload.js.extension.error = File must have .rep extension
+upload.js.size.error = File size ({0}MB) exceeds 1MB limit
+upload.js.unknown.player = Unknown Player
+
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete

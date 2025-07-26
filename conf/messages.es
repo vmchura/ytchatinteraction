@@ -73,5 +73,42 @@ status.error = Error
 status.info = Información
 status.warning = Advertencia
 
+# Subida de archivos
+upload.title = Subida de Archivos
+upload.subtitle = Sube y analiza archivos automáticamente (.rep)
+upload.match.title = Partida
+upload.session.status = Estado de la Sesión
+upload.processing.completed = Procesamiento completado para {0} archivo(s)
+upload.successfully.processed = Archivos Procesados Exitosamente ({0})
+upload.failed.files = Archivos Fallidos ({0})
+upload.table.map = Mapa
+upload.table.player1 = Jugador 1
+upload.table.player2 = Jugador 2
+upload.table.start.time = Hora de Inicio
+upload.table.filename = Nombre de Archivo
+upload.table.error = Error
+upload.unknown.player = Jugador Desconocido
+upload.unknown.error = Error desconocido
+upload.match.result = Resultado de la Partida
+upload.select.outcome = Selecciona el resultado de la partida:
+upload.tie = Empate
+upload.cancelled = Cancelado
+upload.select.smurfs = Selecciona smurfs en el juego:
+upload.smurf.first = Smurf de {0}:
+upload.smurf.second = Smurf de {0}:
+upload.select.smurf = Seleccionar smurf...
+upload.smurf.help = Selecciona un smurf y el otro se completará automáticamente basado en los datos del replay.
+upload.submit.result = Enviar Resultado
+upload.add.more.files = Agregar Más Archivos
+upload.select.files = Seleccionar Archivos para Análisis
+upload.validation.problems = Problemas de Validación:
+upload.selected.files = Archivos seleccionados:
+upload.files.count = {0} archivo(s)
+upload.upload.files = Subir Archivos
+upload.max.size = Archivos .rep de máximo 1MB cada uno
+upload.error.title = Error de Subida
+upload.try.again = Intentar de Nuevo
+upload.vs = vs
+
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete

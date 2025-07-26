@@ -5,15 +5,15 @@
 @import models.{Tournament, TournamentMatch}
 @(user: User, tournamentID: Long, matchID: Long, uploadSession: UploadSession, errorMessage: Option[String] = None, tournament: Option[Tournament] = None, tournamentMatch: Option[TournamentMatch] = None, firstUser: Option[User] = None, secondUser: Option[User] = None)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
-@main("File Upload", Some(user)) {
+@main(messages("upload.title"), Some(user)) {
 <div id="file-upload-container">
     <header>
-        <h1>File Upload</h1>
+        <h1>@messages("upload.title")</h1>
         @if(tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined && secondUser.isDefined) {
         <div class="match-info">
             <h2>@tournament.get.name</h2>
             <p class="match-details">
-                <strong>Match:</strong> @firstUser.get.userName vs @secondUser.get.userName
+                <strong>@messages("upload.match.title"):</strong> @firstUser.get.userName @messages("upload.vs") @secondUser.get.userName
             </p>
             <div class="match-metadata" style="display: none;">
                 <span id="tournament-id">@tournament.get.id</span>
@@ -21,7 +21,7 @@
             </div>
         </div>
         }
-        <p>Upload and analyze files automatically (.rep)</p>
+        <p>@messages("upload.subtitle")</p>
     </header>
 
     @if(uploadSession.hasFiles && tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined &&
@@ -30,21 +30,21 @@
     <section>
         <article>
             <header>
-                <h3>Session Status</h3>
+                <h3>@messages("upload.session.status")</h3>
             </header>
-            <p>Processing completed for @uploadSession.totalFiles file(s)</p>
+            <p>@messages("upload.processing.completed", uploadSession.totalFiles.toString)</p>
 
             @if(uploadSession.successfulFiles.nonEmpty) {
             <details open>
-                <summary>Successfully Processed Files (@uploadSession.successfulFiles.length)</summary>
+                <summary>@messages("upload.successfully.processed", uploadSession.successfulFiles.length.toString)</summary>
                 <div class="table-container">
                     <table>
                         <thead>
                         <tr>
-                            <th>Map</th>
-                            <th>Jugador 1</th>
-                            <th>Jugador 2</th>
-                            <th>Hora inicio</th>
+                            <th>@messages("upload.table.map")</th>
+                            <th>@messages("upload.table.player1")</th>
+                            <th>@messages("upload.table.player2")</th>
+                            <th>@messages("upload.table.start.time")</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -65,7 +65,7 @@
                                 })
                                 }
                                 } else {
-                                Unknown Player
+                                @messages("upload.unknown.player")
                                 }
                             </td>
                             <td>
@@ -80,7 +80,7 @@
                                 })
                                 }
                                 } else {
-                                Unknown Player
+                                @messages("upload.unknown.player")
                                 }
                             </td>
                             <td>
@@ -104,20 +104,20 @@
 
             @if(uploadSession.failedFiles.nonEmpty) {
             <details open>
-                <summary>Failed Files (@uploadSession.failedFiles.length)</summary>
+                <summary>@messages("upload.failed.files", uploadSession.failedFiles.length.toString)</summary>
                 <div class="table-container">
                     <table>
                         <thead>
                         <tr>
-                            <th>File Name</th>
-                            <th>Error</th>
+                            <th>@messages("upload.table.filename")</th>
+                            <th>@messages("upload.table.error")</th>
                         </tr>
                         </thead>
                         <tbody>
                         @for(file <- uploadSession.failedFiles) {
                         <tr>
                             <td>@file.fileName</td>
-                            <td>@file.errorMessage.getOrElse("Unknown error")</td>
+                            <td>@file.errorMessage.getOrElse(messages("upload.unknown.error"))</td>
                         </tr>
                         }
                         </tbody>
@@ -134,14 +134,14 @@
     <section>
         <article>
             <header>
-                <h3>Match Result</h3>
+                <h3>@messages("upload.match.result")</h3>
             </header>
             <form id="match_result_form" method="post"
                   action="@routes.MatchResultController.submitResult(tournamentID, matchID)">
                 @helper.CSRF.formField
 
                 <fieldset>
-                    <legend>Select the match outcome:</legend>
+                    <legend>@messages("upload.select.outcome")</legend>
                     <label>
                         <input type="radio" name="selection" value="@firstUser.get.userId"
                                onclick="updateHiddenFields('@firstUser.get.userId', 'with_winner')" required/>
@@ -154,40 +154,40 @@
                     </label>
                     <label>
                         <input type="radio" name="selection" value="tie" onclick="updateHiddenFields(null, 'tie')"/>
-                        Tie
+                        @messages("upload.tie")
                     </label>
                     <label>
                         <input type="radio" name="selection" value="cancelled"
                                onclick="updateHiddenFields(null, 'cancelled')"/>
-                        Cancelled
+                        @messages("upload.cancelled")
                     </label>
                 </fieldset>
 
                 <fieldset id="smurf-selection-fieldset">
-                    <legend>Select in-game smurfs:</legend>
+                    <legend>@messages("upload.select.smurfs")</legend>
                     <div class="grid">
                         <div>
-                            <label for="in_game_smurf_first">@firstUser.get.userName smurf:</label>
+                            <label for="in_game_smurf_first">@messages("upload.smurf.first", firstUser.get.userName)</label>
                             <select name="in_game_smurf_first" id="in_game_smurf_first"
                                     onchange="updateSmurfSelection('first')" disabled>
-                                <option value="">Select smurf...</option>
+                                <option value="">@messages("upload.select.smurf")</option>
                             </select>
                         </div>
                         <div>
-                            <label for="in_game_smurf_second">@secondUser.get.userName smurf:</label>
+                            <label for="in_game_smurf_second">@messages("upload.smurf.second", secondUser.get.userName)</label>
                             <select name="in_game_smurf_second" id="in_game_smurf_second"
                                     onchange="updateSmurfSelection('second')" disabled>
-                                <option value="">Select smurf...</option>
+                                <option value="">@messages("upload.select.smurf")</option>
                             </select>
                         </div>
                     </div>
-                    <small>Select one smurf and the other will be filled automatically based on replay data.</small>
+                    <small>@messages("upload.smurf.help")</small>
                 </fieldset>
 
                 <input type="hidden" name="winnerId" id="winnerIdField"/>
                 <input type="hidden" name="resultType" id="resultTypeField"/>
 
-                <button type="submit" id="submit-result-btn" disabled>Submit Result</button>
+                <button type="submit" id="submit-result-btn" disabled>@messages("upload.submit.result")</button>
 
 
             </form>
@@ -204,11 +204,11 @@
     <section>
         <article>
             <header>
-                <h3>@if(uploadSession.hasFiles) {Add More Files} else {Select Files for Analysis}</h3>
+                <h3>@if(uploadSession.hasFiles) {@messages("upload.add.more.files")} else {@messages("upload.select.files")}</h3>
             </header>
 
             <div id="validation-flash" style="display: none;">
-                <h4>Validation Problems:</h4>
+                <h4>@messages("upload.validation.problems")</h4>
                 <div id="validation-messages"></div>
             </div>
 
@@ -223,15 +223,15 @@
                             accept=".rep"
                             multiple
                     />
-                    <small>Archivos .rep de máximo 1MB cada uno</small>
+                    <small>@messages("upload.max.size")</small>
                 </div>
 
                 <div id="file-info" style="display: none;">
-                    <strong>Selected files:</strong> <span id="selected-files-count">0</span> file(s)
+                    <strong>@messages("upload.selected.files")</strong> <span id="selected-files-count">0</span> <span id="files-text">@messages("upload.files.count", "0").split(" ")(1)</span>
                 </div>
 
                 <button type="submit" id="submit-btn" style="display: none;">
-                    Upload Files
+                    @messages("upload.upload.files")
                 </button>
             </form>
         </article>
@@ -240,9 +240,9 @@
     @if(errorMessage.isDefined) {
     <section>
         <article>
-            <h3>Upload Error</h3>
+            <h3>@messages("upload.error.title")</h3>
             <p>@errorMessage.get</p>
-            <a href="/upload" role="button" class="secondary">Try Again</a>
+            <a href="/upload" role="button" class="secondary">@messages("upload.try.again")</a>
         </article>
     </section>
     }
