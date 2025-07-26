@@ -1,60 +1,60 @@
 @import models.{FrontalStreamerEvent, FrontalPoll, FrontalPollOption}
 @import controllers.routes
 
-@(event: FrontalStreamerEvent, channelBalance: Int)(implicit request: RequestHeader)
+@(event: FrontalStreamerEvent, channelBalance: Int)(implicit request: RequestHeader, messages: Messages)
 
 <article id="current-@event.eventId">
-  <header style="display: flex; justify-content: space-between; align-items: center;">
-    <h3>@event.eventName</h3>
-    <small>Balance: @channelBalance points</small>
-  </header>
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>@event.eventName</h3>
+        <small>@messages("partials.event.balance"): @channelBalance @messages("partials.event.points")</small>
+    </header>
 
-  @for(poll <- event.frontalPoll) {
+    @for(poll <- event.frontalPoll) {
     @if(poll.options.nonEmpty && event.endTime.isEmpty) {
-      <form action="@routes.UserEventsController.submitVote()" method="POST" id="vote-form-@poll.pollId">
+    <form action="@routes.UserEventsController.submitVote()" method="POST" id="vote-form-@poll.pollId">
         @helper.CSRF.formField
         <input type="hidden" name="eventId" value="@event.eventId">
         <input type="hidden" name="pollId" value="@poll.pollId">
 
         <fieldset>
-          <legend>Choose your option:</legend>
-          @for(option <- poll.options) {
+            <legend>@messages("partials.event.choose.option")</legend>
+            @for(option <- poll.options) {
             <label>
-              <input
-                type="radio"
-                name="optionId"
-                value="@option.optionId"
-                required
-                class="option-radio"
-                data-option-text="@option.optionText"
-              />
-              @option.optionText
-              <small>(@option.inverseConfidenceRatio)</small>
+                <input
+                        type="radio"
+                        name="optionId"
+                        value="@option.optionId"
+                        required
+                        class="option-radio"
+                        data-option-text="@option.optionText"
+                />
+                @option.optionText
+                <small>(@option.inverseConfidenceRatio)</small>
             </label>
-          }
+            }
         </fieldset>
 
         <div class="confidence-section">
-          <label for="confidence-@poll.pollId">
-            Confidence (Points to bet): <span id="confidence-value-@poll.pollId">1</span>
-          </label>
-          <input
-            type="range"
-            id="confidence-@poll.pollId"
-            name="confidence"
-            min="1"
-            max="@channelBalance"
-            value="1"
-            class="confidence-slider"
-            data-poll-id="@poll.pollId"
-            required
-          />
+            <label for="confidence-@poll.pollId">
+                @messages("partials.event.confidence") <span id="confidence-value-@poll.pollId">1</span>
+            </label>
+            <input
+                    type="range"
+                    id="confidence-@poll.pollId"
+                    name="confidence"
+                    min="1"
+                    max="@channelBalance"
+                    value="1"
+                    class="confidence-slider"
+                    data-poll-id="@poll.pollId"
+                    required
+            />
         </div>
-        
+
         <button type="submit" class="submit-vote" id="submit-vote-@poll.pollId">
-          Submit Vote
+            @messages("partials.event.submit.vote")
         </button>
-      </form>
+    </form>
     }
-  }
+    }
 </article>

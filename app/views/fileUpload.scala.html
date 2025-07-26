@@ -13,7 +13,8 @@
         <div class="match-info">
             <h2>@tournament.get.name</h2>
             <p class="match-details">
-                <strong>@messages("upload.match.title"):</strong> @firstUser.get.userName @messages("upload.vs") @secondUser.get.userName
+                <strong>@messages("upload.match.title"):</strong> @firstUser.get.userName @messages("upload.vs")
+                @secondUser.get.userName
             </p>
             <div class="match-metadata" style="display: none;">
                 <span id="tournament-id">@tournament.get.id</span>
@@ -36,7 +37,8 @@
 
             @if(uploadSession.successfulFiles.nonEmpty) {
             <details open>
-                <summary>@messages("upload.successfully.processed", uploadSession.successfulFiles.length.toString)</summary>
+                <summary>@messages("upload.successfully.processed", uploadSession.successfulFiles.length.toString)
+                </summary>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -167,14 +169,16 @@
                     <legend>@messages("upload.select.smurfs")</legend>
                     <div class="grid">
                         <div>
-                            <label for="in_game_smurf_first">@messages("upload.smurf.first", firstUser.get.userName)</label>
+                            <label for="in_game_smurf_first">@messages("upload.smurf.first",
+                                firstUser.get.userName)</label>
                             <select name="in_game_smurf_first" id="in_game_smurf_first"
                                     onchange="updateSmurfSelection('first')" disabled>
                                 <option value="">@messages("upload.select.smurf")</option>
                             </select>
                         </div>
                         <div>
-                            <label for="in_game_smurf_second">@messages("upload.smurf.second", secondUser.get.userName)</label>
+                            <label for="in_game_smurf_second">@messages("upload.smurf.second",
+                                secondUser.get.userName)</label>
                             <select name="in_game_smurf_second" id="in_game_smurf_second"
                                     onchange="updateSmurfSelection('second')" disabled>
                                 <option value="">@messages("upload.select.smurf")</option>
@@ -204,7 +208,8 @@
     <section>
         <article>
             <header>
-                <h3>@if(uploadSession.hasFiles) {@messages("upload.add.more.files")} else {@messages("upload.select.files")}</h3>
+                <h3>@if(uploadSession.hasFiles) {@messages("upload.add.more.files")} else
+                    {@messages("upload.select.files")}</h3>
             </header>
 
             <div id="validation-flash" style="display: none;">
@@ -227,7 +232,8 @@
                 </div>
 
                 <div id="file-info" style="display: none;">
-                    <strong>@messages("upload.selected.files")</strong> <span id="selected-files-count">0</span> <span id="files-text">@messages("upload.files.count", "0").split(" ")(1)</span>
+                    <strong>@messages("upload.selected.files")</strong> <span id="selected-files-count">0</span> <span
+                        id="files-text">@messages("upload.files.count", "0").split(" ")(1)</span>
                 </div>
 
                 <button type="submit" id="submit-btn" style="display: none;">
@@ -253,6 +259,14 @@
     let replaySmurfs = new Set();
     let smurfPairs = [];
 
+    // Internationalized messages for JavaScript
+    const i18nMessages = {
+        unknownPlayer: '@Html(messages("upload.js.unknown.player"))',
+        selectSmurf: '@Html(messages("upload.select.smurf"))',
+        extensionError: '@Html(messages("upload.js.extension.error"))',
+        sizeError: '@Html(messages("upload.js.size.error"))'
+    };
+
     function updateHiddenFields(winnerId, resultType) {
         document.getElementById('resultTypeField').value = resultType;
         document.getElementById('winnerIdField').value = winnerId;
@@ -277,16 +291,16 @@
                 const player1Name = player1Text.split('(')[0].trim();
                 const player2Name = player2Text.split('(')[0].trim();
                 
-                if (player1Name && player1Name !== 'Unknown Player') {
+                if (player1Name && player1Name !== i18nMessages.unknownPlayer) {
                     replaySmurfs.add(player1Name);
                 }
-                if (player2Name && player2Name !== 'Unknown Player') {
+                if (player2Name && player2Name !== i18nMessages.unknownPlayer) {
                     replaySmurfs.add(player2Name);
                 }
                 
                 // Store the pair for later use
                 if (player1Name && player2Name && 
-                    player1Name !== 'Unknown Player' && player2Name !== 'Unknown Player') {
+                    player1Name !== i18nMessages.unknownPlayer && player2Name !== i18nMessages.unknownPlayer) {
                     smurfPairs.push({
                         player1: player1Name,
                         player2: player2Name
@@ -303,8 +317,8 @@
         const secondSelect = document.getElementById('in_game_smurf_second');
         
         // Clear existing options (keep the first default option)
-        firstSelect.innerHTML = '<option value="">Select smurf...</option>';
-        secondSelect.innerHTML = '<option value="">Select smurf...</option>';
+        firstSelect.innerHTML = `<option value="">${i18nMessages.selectSmurf}</option>`;
+        secondSelect.innerHTML = `<option value="">${i18nMessages.selectSmurf}</option>`;
 
         // Add all unique smurfs to both selectors
         Array.from(replaySmurfs).sort().forEach(smurf => {
@@ -446,13 +460,13 @@
 
                 // Check file extension
                 if (!file.name.toLowerCase().endsWith('.rep')) {
-                    errors.push('File must have .rep extension');
+                    errors.push(i18nMessages.extensionError);
                 }
 
                 // Check file size
                 if (file.size > maxSizeBytes) {
                     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-                    errors.push(`File size (${sizeInMB}MB) exceeds 1MB limit`);
+                    errors.push(i18nMessages.sizeError.replace('{0}', sizeInMB));
                 }
 
                 results.push({

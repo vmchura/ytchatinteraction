@@ -73,6 +73,40 @@ status.error = Error
 status.info = Information
 status.warning = Warning
 
+# Partials - Match Table
+partials.matches.title = Your Tournament Matches
+partials.matches.description = Matches you are assigned to in active tournaments
+partials.matches.tournament = Tournament
+partials.matches.match.id = Match ID
+partials.matches.opponent = Opponent
+partials.matches.status = Status
+partials.matches.scheduled.time = Scheduled Time
+partials.matches.result = Result
+partials.matches.actions = Actions
+partials.matches.not.scheduled = Not scheduled
+partials.matches.see.result = See Result
+partials.matches.pending = Pending
+partials.matches.upload.replay = Upload Replay
+
+# Partials - Event Card
+partials.event.balance = Balance
+partials.event.points = points
+partials.event.choose.option = Choose your option:
+partials.event.confidence = Confidence (Points to bet):
+partials.event.submit.vote = Submit Vote
+
+# Partials - Available Events
+partials.available.events.title = Available Events
+partials.available.events.description = Events you can join:
+partials.available.events.join = Join Event
+
+# Partials - Tournament Card
+partials.tournament.max.participants = Max participants:
+partials.tournament.registration.ends = Registration ends:
+partials.tournament.starts = Tournament starts:
+partials.tournament.already.registered = Already Registered
+partials.tournament.register = Register for Tournament
+
 # File Upload
 upload.title = File Upload
 upload.subtitle = Upload and analyze files automatically (.rep)

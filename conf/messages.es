@@ -109,6 +109,43 @@ upload.max.size = Archivos .rep de máximo 1MB cada uno
 upload.error.title = Error de Subida
 upload.try.again = Intentar de Nuevo
 upload.vs = vs
+upload.js.extension.error = El archivo debe tener extensión .rep
+upload.js.size.error = El tamaño del archivo ({0}MB) excede el límite de 1MB
+upload.js.unknown.player = Jugador Desconocido
+
+# Partiales - Tabla de Partidas
+partials.matches.title = Tus Partidas del Torneo
+partials.matches.description = Partidas asignadas en torneos activos
+partials.matches.tournament = Torneo
+partials.matches.match.id = ID de Partida
+partials.matches.opponent = Oponente
+partials.matches.status = Estado
+partials.matches.scheduled.time = Hora Programada
+partials.matches.result = Resultado
+partials.matches.actions = Acciones
+partials.matches.not.scheduled = No programado
+partials.matches.see.result = Ver Resultado
+partials.matches.pending = Pendiente
+partials.matches.upload.replay = Subir Replay
+
+# Partiales - Tarjeta de Evento
+partials.event.balance = Balance
+partials.event.points = puntos
+partials.event.choose.option = Elige tu opción:
+partials.event.confidence = Confianza (Puntos a apostar):
+partials.event.submit.vote = Enviar Voto
+
+# Partiales - Eventos Disponibles
+partials.available.events.title = Eventos Disponibles
+partials.available.events.description = Eventos a los que puedes unirte:
+partials.available.events.join = Unirse al Evento
+
+# Partiales - Tarjeta de Torneo
+partials.tournament.max.participants = Máximo de participantes:
+partials.tournament.registration.ends = Registro termina:
+partials.tournament.starts = Torneo comienza:
+partials.tournament.already.registered = Ya Registrado
+partials.tournament.register = Registrarse al Torneo
 
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete

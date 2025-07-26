@@ -1,63 +1,68 @@
 @import models.UserMatchInfo
 @import models.viewmodels.{MatchDisplayData, MatchStatus}
 
-@(userMatches: List[UserMatchInfo])(implicit request: RequestHeader)
+@(userMatches: List[UserMatchInfo])(implicit request: RequestHeader, messages: Messages)
 
 @if(userMatches.nonEmpty) {
-  <section>
-    <h2>Your Tournament Matches</h2>
-    <p>Matches you are assigned to in active tournaments</p>
-    
+<section>
+    <h2>@messages("partials.matches.title")</h2>
+    <p>@messages("partials.matches.description")</p>
+
     <div>
-      <table>
-        <thead>
-          <tr>
-            <th>Tournament</th>
-            <th>Match ID</th>
-            <th>Opponent</th>
-            <th>Status</th>
-            <th>Scheduled Time</th>
-            <th>Result</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for(matchInfo <- userMatches) {
+        <table>
+            <thead>
+            <tr>
+                <th>@messages("partials.matches.tournament")</th>
+                <th>@messages("partials.matches.match.id")</th>
+                <th>@messages("partials.matches.opponent")</th>
+                <th>@messages("partials.matches.status")</th>
+                <th>@messages("partials.matches.scheduled.time")</th>
+                <th>@messages("partials.matches.result")</th>
+                <th>@messages("partials.matches.actions")</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for(matchInfo <- userMatches) {
             @defining(MatchDisplayData.fromUserMatchInfo(matchInfo)) { matchData =>
-              <tr>
+            <tr>
                 <td>@matchData.tournament.name</td>
                 <td>#@matchData.matchId</td>
                 <td>@matchData.opponent</td>
                 <td>@renderMatchStatus(matchData.status)</td>
-                <td>@matchData.scheduledTime.getOrElse("Not scheduled")</td>
+                <td>@matchData.scheduledTime.getOrElse(messages("partials.matches.not.scheduled"))</td>
                 <td>
-                  @if(matchData.hasResult) {
-                    <span>See Result</span>
-                  } else {
-                    <span>Pending</span>
-                  }
+                    @if(matchData.hasResult) {
+                    <span>@messages("partials.matches.see.result")</span>
+                    } else {
+                    <span>@messages("partials.matches.pending")</span>
+                    }
                 </td>
                 <td>
-                  @if(matchData.canUploadReplay) {
-                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournament.id, matchData.challengeMatchId)" role="button" class="outline">
-                      Upload Replay
+                    @if(matchData.canUploadReplay) {
+                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournament.id, matchData.challengeMatchId)"
+                       role="button" class="outline">
+                        @messages("partials.matches.upload.replay")
                     </a>
-                  }
+                    }
                 </td>
-              </tr>
+            </tr>
             }
-          }
-        </tbody>
-      </table>
+            }
+            </tbody>
+        </table>
     </div>
-  </section>
+</section>
 }
 
 @renderMatchStatus(status: MatchStatus) = {
-  @status match {
-    case MatchStatus.Open => { <mark>@status.displayName</mark> }
-    case MatchStatus.Pending => { <mark>@status.displayName</mark> }
-    case MatchStatus.Complete => { <mark>@status.displayName</mark> }
-    case MatchStatus.Other(_) => { <mark>@status.displayName</mark> }
-  }
+@status match {
+case MatchStatus.Open => {
+<mark>@status.displayName</mark> }
+case MatchStatus.Pending => {
+<mark>@status.displayName</mark> }
+case MatchStatus.Complete => {
+<mark>@status.displayName</mark> }
+case MatchStatus.Other(_) => {
+<mark>@status.displayName</mark> }
+}
 }

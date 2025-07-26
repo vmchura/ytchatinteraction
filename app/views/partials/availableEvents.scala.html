@@ -1,28 +1,28 @@
 @import models.FrontalStreamerEvent
 @import controllers.routes
 
-@(extraEvents: Seq[FrontalStreamerEvent])(implicit request: RequestHeader)
+@(extraEvents: Seq[FrontalStreamerEvent])(implicit request: RequestHeader, messages: Messages)
 
 @if(extraEvents.nonEmpty) {
-  <section>
-    <h2>Available Events</h2>
-    <p>Events you can join:</p>
-    
+<section>
+    <h2>@messages("partials.available.events.title")</h2>
+    <p>@messages("partials.available.events.description")</p>
+
     <div class="grid">
-      @for(event <- extraEvents) {
+        @for(event <- extraEvents) {
         <article id="extra-@event.eventId">
-          <header>
-            <h3>@event.eventName</h3>
-            <p>@event.eventDescription</p>
-          </header>
-          
-          <footer>
-            <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button" class="contrast">
-              Join Event
-            </a>
-          </footer>
+            <header>
+                <h3>@event.eventName</h3>
+                <p>@event.eventDescription</p>
+            </header>
+
+            <footer>
+                <a href="@routes.UserEventsController.joinEvent(event.eventId)" role="button" class="contrast">
+                    @messages("partials.available.events.join")
+                </a>
+            </footer>
         </article>
-      }
+        }
     </div>
-  </section>
+</section>
 }
