@@ -133,12 +133,10 @@ class UploadSessionService @Inject()(
         checkForDuplicateFile(fileResult).map { isDuplicate =>
           if (isDuplicate) {
             logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
-            println("Return session without changes but update timestamp")
             val updatedSession = session.copy(lastUpdated = java.time.Instant.now())
             sessions.put(sessionKey, updatedSession)
             Some(updatedSession)
           } else {
-            println("File is unique, add it to session")
             val updatedSession = session.addFile(fileResult)
             sessions.put(sessionKey, updatedSession)
 
@@ -146,10 +144,8 @@ class UploadSessionService @Inject()(
             val wasAdded = updatedSession.uploadedFiles.length > session.uploadedFiles.length
             if (wasAdded) {
               logger.info(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
-              println(s"Added file ${fileResult.fileName} to session: ${session.sessionId}")
             } else {
               logger.debug(s"File ${fileResult.fileName} already exists in session: ${session.sessionId} (local duplicate)")
-              println(s"File ${fileResult.fileName} already exists in session: ${session.sessionId} (local duplicate)")
             }
 
             Some(updatedSession)
@@ -174,12 +170,9 @@ class UploadSessionService @Inject()(
   private def checkForDuplicateFile(fileResult: FileProcessResult): Future[Boolean] = {
     fileResult.sha256Hash match {
       case Some(sha256) =>
-        println("------")
         val r = uploadedFileRepository.findBySha256Hash(sha256)
-        r.map(println)
         r.map(_.isDefined)
       case None =>
-        println("If no SHA256 hash available, we can't check for duplicates globally")
         Future.successful(false)
     }
   }

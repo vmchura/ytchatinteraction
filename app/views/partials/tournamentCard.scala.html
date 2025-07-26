@@ -16,8 +16,7 @@
     <div class="tournament-details">
         <p><strong>@messages("partials.tournament.max.participants")</strong> @tournament.maxParticipants</p>
         <p><strong>@messages("partials.tournament.registration.ends")</strong>
-            @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd,
-            yyyy HH:mm"))</p>
+            @tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>
         @tournament.tournamentStartAt.map { startTime =>
         <p><strong>@messages("partials.tournament.starts")</strong>
             @startTime.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))</p>

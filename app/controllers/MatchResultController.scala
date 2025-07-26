@@ -144,8 +144,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
                 .flashing("error" -> s"Failed to cancel match: $error")
           }
 
-        case x => 
-          println(x)
+        case _ =>
           Future.successful(
           Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
             .flashing("error" -> "Invalid form data - both smurfs are required for winner and tie results")

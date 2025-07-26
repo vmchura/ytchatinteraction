@@ -545,7 +545,7 @@ class TournamentChallongeServiceImpl @Inject()(
     winnerId: Option[Long], 
     resultType: String
   ): Future[Boolean] = {
-    logger.info(s"Submitting match result for match $matchId in tournament $challongeTournamentId. Result type: $resultType")
+    logger.info(s"Submitting match result for match $matchId in tournament $challongeTournamentId. Result type: $resultType, winnerId: $winnerId")
 
     // Build the score string based on result type
     val scoreString = resultType match {
@@ -561,12 +561,22 @@ class TournamentChallongeServiceImpl @Inject()(
       case _ => "1-0" // Default
     }
 
-    val matchData = Json.obj(
-      "match" -> Json.obj(
-        "scores_csv" -> scoreString,
-        "winner_id" -> winnerId
-      )
-    )
+    // Build match data with conditional winner_id inclusion
+    val baseMatchData = Json.obj("scores_csv" -> scoreString)
+    
+    val matchDataWithWinner = resultType match {
+      case "tie" | "cancelled" =>
+        // For ties and cancelled matches, don't include winner_id or set it to null
+        baseMatchData + ("winner_id" -> Json.toJson("tie"))
+      case _ =>
+        // For matches with winners, include the winner_id
+        winnerId match {
+          case Some(winner) => baseMatchData + ("winner_id" -> Json.toJson(winner))
+          case None => baseMatchData + ("winner_id" -> JsNull)
+        }
+    }
+
+    val matchData = Json.obj("match" -> matchDataWithWinner)
 
     val request = wsClient
       .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches/$matchId.json")

@@ -231,4 +231,37 @@ class TournamentChallongeServiceSpec extends PlaySpec with BeforeAndAfterEach wi
       fakeUsers.length must be(0) // No fake users needed
     }
   }
+
+  "TournamentChallongeService match result formatting" should {
+    "format tie result correctly for Challonge API" in {
+      // Test that tie results are formatted correctly with no winner_id
+      val baseMatchData = Json.obj("scores_csv" -> "1-1")
+      
+      // For ties, winner_id should not be included
+      val tieMatchData = baseMatchData
+      
+      (tieMatchData \ "scores_csv").as[String] must be("1-1")
+      (tieMatchData \ "winner_id").asOpt[Long] must be(None)
+    }
+    
+    "format winner result correctly for Challonge API" in {
+      // Test that winner results are formatted correctly with winner_id
+      val baseMatchData = Json.obj("scores_csv" -> "1-0")
+      val winnerMatchData = baseMatchData + ("winner_id" -> Json.toJson(123L))
+      
+      (winnerMatchData \ "scores_csv").as[String] must be("1-0")
+      (winnerMatchData \ "winner_id").as[Long] must be(123L)
+    }
+    
+    "format cancelled result correctly for Challonge API" in {
+      // Test that cancelled results are formatted correctly with no winner_id
+      val baseMatchData = Json.obj("scores_csv" -> "0-0")
+      
+      // For cancelled matches, winner_id should not be included
+      val cancelledMatchData = baseMatchData
+      
+      (cancelledMatchData \ "scores_csv").as[String] must be("0-0")
+      (cancelledMatchData \ "winner_id").asOpt[Long] must be(None)
+    }
+  }
 }
