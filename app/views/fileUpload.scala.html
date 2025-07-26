@@ -350,15 +350,17 @@
                 const otherSmurf = matchingPair.player1 === selectedSmurf ? 
                     matchingPair.player2 : matchingPair.player1;
                 
-                // Set the other selector to the paired smurf
+                // Set the other selector to the paired smurf but keep it enabled
                 otherSelect.value = otherSmurf;
-                otherSelect.disabled = true;
+                // Don't disable the other selector so it gets submitted with the form
+                otherSelect.disabled = false;
             } else {
-                // If no pair found, just disable the other selector but don't set a value
-                otherSelect.disabled = true;
+                // If no pair found, clear the other selector but keep it enabled
+                otherSelect.value = '';
+                otherSelect.disabled = false;
             }
         } else {
-            // If no smurf selected, re-enable the other selector
+            // If no smurf selected, re-enable the other selector and clear its value
             otherSelect.disabled = false;
             otherSelect.value = '';
         }
