@@ -11,8 +11,8 @@ auth.logout.success = Has cerrado sesión exitosamente.
 auth.access.denied = Acceso denegado. No tienes permisos para acceder a este recurso.
 
 # Mensajes principales de la aplicación
-app.title = Interacción de Chat de YT
-app.welcome = Bienvenido a Interacción de Chat de YT
+app.title = Evolution Complete
+app.welcome = Bienvenido a Evolution Complete
 app.subtitle = Conecta con tu audiencia de YouTube en tiempo real.
 
 # Navegación
@@ -24,13 +24,13 @@ nav.change.alias = Cambiar Alias
 nav.language = Idioma
 
 # Página principal
-home.welcome.title = Bienvenido a Interacción de Chat de YT
-home.welcome.subtitle = Conecta con tu audiencia de YouTube en tiempo real.
-home.what.is.title = ¿Qué es Interacción de Chat de YT?
-home.what.is.description = Interacción de Chat de YT te permite interactuar con el chat de tu transmisión en vivo de YouTube directamente a través de esta aplicación.
+home.welcome.title = Bienvenido a Evolution Complete
+home.welcome.subtitle = Conecta con tu audiencia y comunidad.
+home.what.is.title = ¿Qué es Evolution Complete?
+home.what.is.description = Evolution Complete te permite participar en torneos organizados por la comunidad y tu creador de contenido favorito.
 home.get.started = Comenzar con YouTube
 home.features.title = Características
-home.features.realtime = Interacción de chat en tiempo real
+home.features.realtime = Posibilidad de sólo suscriptores
 home.features.stats = Estadísticas de espectadores y métricas de participación
 home.features.moderation = Herramientas de moderación simplificadas
 home.features.alerts = Alertas y notificaciones personalizadas
@@ -43,7 +43,7 @@ login.signin.youtube = Iniciar sesión con YouTube
 # Eventos de usuario
 events.title = Mis Eventos
 events.active.title = Mis Eventos Activos
-events.no.active = No tienes eventos activos. ¡Únete al chat de una transmisión para participar en eventos!
+events.no.active = No tienes eventos activos. ¡Únete y participa de los torneos exclusivos!
 events.available.title = Eventos Disponibles
 events.tournaments.open.title = Torneos Abiertos
 events.tournaments.open.description = Torneos actualmente abiertos para registro:

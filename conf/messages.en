@@ -11,9 +11,9 @@ auth.logout.success = You have been logged out successfully.
 auth.access.denied = Access denied. You don''t have permission to access this resource.
 
 # Main application messages
-app.title = YT Chat Interaction
-app.welcome = Welcome to YT Chat Interaction
-app.subtitle = Connect with your YouTube audience in real-time.
+app.title = Evolution Complete
+app.welcome = Welcome to Evolution Complete
+app.subtitle = Connect with your audience and community.
 
 # Navigation
 nav.home = Home
@@ -24,13 +24,13 @@ nav.change.alias = Change Alias
 nav.language = Language
 
 # Home page
-home.welcome.title = Welcome to YT Chat Interaction
+home.welcome.title = Welcome to Evolution Complete
 home.welcome.subtitle = Connect with your YouTube audience in real-time.
-home.what.is.title = What is YT Chat Interaction?
-home.what.is.description = YT Chat Interaction allows you to engage with your YouTube livestream chat directly through this application.
+home.what.is.title = What is Evolution Complete?
+home.what.is.description = Evolution Complete allows you to participate in tournaments organized by your favorite content creator..
 home.get.started = Get Started with YouTube
 home.features.title = Features
-home.features.realtime = Real-time chat interaction
+home.features.realtime = Possibility to only suscriptors.
 home.features.stats = Viewer statistics and engagement metrics
 home.features.moderation = Streamlined moderation tools
 home.features.alerts = Custom alerts and notifications
@@ -43,7 +43,7 @@ login.signin.youtube = Sign in with YouTube
 # User events
 events.title = My Events
 events.active.title = My Active Events
-events.no.active = You don't have any active events. Join a stream chat to participate in events!
+events.no.active = You don't have any active events. Join a participate in the exclusive tournaments!
 events.available.title = Available Events
 events.tournaments.open.title = Open Tournaments
 events.tournaments.open.description = Tournaments currently open for registration:
