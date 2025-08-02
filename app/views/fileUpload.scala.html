@@ -47,6 +47,7 @@
                             <th>@messages("upload.table.player1")</th>
                             <th>@messages("upload.table.player2")</th>
                             <th>@messages("upload.table.start.time")</th>
+                            <th>@messages("upload.table.actions")</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -88,12 +89,34 @@
                             <td>
                                 @replayParsed.startTime.getOrElse("Unknown")
                             </td>
+                            <td>
+                                @file.sha256Hash.map { hash =>
+                                <button type="button" class="remove-file-btn secondary" data-file-hash="@hash"
+                                        onclick="removeFile('@hash', '@file.fileName')"
+                                        title="@messages("upload.remove.file.tooltip")">
+                                    @messages("upload.remove.file")
+                                </button>
+                                }.getOrElse {
+                                <span>@messages("upload.no.hash")</span>
+                                }
+                            </td>
                             }
                             case Some(ImpossibleToParse) | None => {
                             <td>?</td>
                             <td>?</td>
                             <td>?</td>
                             <td>?</td>
+                            <td>
+                                @file.sha256Hash.map { hash =>
+                                <button type="button" class="remove-file-btn secondary" data-file-hash="@hash"
+                                        onclick="removeFile('@hash', '@file.fileName')"
+                                        title="@messages("upload.remove.file.tooltip")">
+                                    @messages("upload.remove.file")
+                                </button>
+                                }.getOrElse {
+                                <span>@messages("upload.no.hash")</span>
+                                }
+                            </td>
                             }
                             }
                         </tr>
@@ -113,6 +136,7 @@
                         <tr>
                             <th>@messages("upload.table.filename")</th>
                             <th>@messages("upload.table.error")</th>
+                            <th>@messages("upload.table.actions")</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -120,6 +144,17 @@
                         <tr>
                             <td>@file.fileName</td>
                             <td>@file.errorMessage.getOrElse(messages("upload.unknown.error"))</td>
+                            <td>
+                                @file.sha256Hash.map { hash =>
+                                <button type="button" class="remove-file-btn secondary" data-file-hash="@hash"
+                                        onclick="removeFile('@hash', '@file.fileName')"
+                                        title="@messages("upload.remove.file.tooltip")">
+                                    @messages("upload.remove.file")
+                                </button>
+                                }.getOrElse {
+                                <span>@messages("upload.no.hash")</span>
+                                }
+                            </td>
                         </tr>
                         }
                         </tbody>
@@ -264,7 +299,8 @@
         unknownPlayer: '@Html(messages("upload.js.unknown.player"))',
         selectSmurf: '@Html(messages("upload.select.smurf"))',
         extensionError: '@Html(messages("upload.js.extension.error"))',
-        sizeError: '@Html(messages("upload.js.size.error"))'
+        sizeError: '@Html(messages("upload.js.size.error"))',
+        errorRemovingFile: '@Html(messages("upload.js.error.removing"))'
     };
 
     function updateHiddenFields(winnerId, resultType) {
@@ -408,6 +444,37 @@
             extractSmurfsFromReplays();
         }
     });
+
+    // Function to remove a file from the session
+    function removeFile(sha256Hash, fileName) {
+        const tournamentId = document.getElementById('tournament-id').textContent;
+        const matchId = document.getElementById('match-id').textContent;
+        
+        fetch(`/match/${tournamentId}/${matchId}/file/${sha256Hash}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Csrf-Token': document.querySelector('input[name="csrfToken"]').value
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text();
+            } else {
+                throw new Error('Failed to remove file');
+            }
+        })
+        .then(html => {
+            // Replace the entire page content with the server response
+            document.open();
+            document.write(html);
+            document.close();
+        })
+        .catch(error => {
+            console.error('Error removing file:', error);
+            alert(i18nMessages.errorRemovingFile);
+        });
+    }
 </script>
 
 <script>

@@ -218,6 +218,37 @@ class UploadSessionService @Inject()(
   }
   
   /**
+   * Remove a specific file from session by SHA256 hash
+   */
+  def removeFileFromSession(user: User, matchId: Long, sha256Hash: String): Future[Option[UploadSession]] = {
+    val sessionKey = SessionKey(user.userId, matchId)
+    
+    Option(sessions.get(sessionKey)) match {
+      case Some(session) if !session.isFinalized && !isSessionExpired(session) =>
+        val updatedFiles = session.uploadedFiles.filterNot(_.sha256Hash.contains(sha256Hash))
+        val updatedSession = session.copy(
+          uploadedFiles = updatedFiles,
+          lastUpdated = Instant.now()
+        )
+        
+        sessions.put(sessionKey, updatedSession)
+        logger.info(s"Removed file with hash $sha256Hash from session: ${session.sessionId}")
+        Future.successful(Some(updatedSession))
+        
+      case Some(session) if session.isFinalized =>
+        logger.warn(s"Attempted to remove file from finalized session: ${session.sessionId}")
+        Future.successful(None)
+      case Some(expiredSession) =>
+        logger.warn(s"Attempted to remove file from expired session: ${expiredSession.sessionId}")
+        sessions.remove(sessionKey)
+        Future.successful(None)
+      case None =>
+        logger.warn(s"No session found for user: ${user.userId}, match: $matchId")
+        Future.successful(None)
+    }
+  }
+
+  /**
    * Clear/delete a session
    */
   def clearSession(userId: Long, matchId: Long): Future[Boolean] = {

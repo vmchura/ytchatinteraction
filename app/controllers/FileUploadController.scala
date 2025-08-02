@@ -106,6 +106,25 @@ class FileUploadController @Inject()(
     }
   }
 
+  def removeFile(tournamentId: Long, matchId: Long, sha256Hash: String): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    uploadSessionService.removeFileFromSession(request.identity, matchId, sha256Hash).flatMap {
+      case Some(updatedSession) =>
+        renderUploadFormWithMatchDetails(request.identity, tournamentId, matchId, updatedSession)
+      case None =>
+        renderUploadFormWithMatchDetails(request.identity, tournamentId, matchId, 
+          UploadSession(
+            sessionId = "", 
+            matchId = matchId, 
+            userId = request.identity.userId, 
+            uploadedFiles = List.empty, 
+            createdAt = java.time.Instant.now(), 
+            lastUpdated = java.time.Instant.now()
+          ), 
+          Some("Unable to remove file - session not found or expired")
+        )
+    }
+  }
+
   /**
    * Store a processed file using FileStorageService and save record to database
    */
