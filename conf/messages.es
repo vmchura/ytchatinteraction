@@ -117,6 +117,7 @@ upload.vs = vs
 upload.js.extension.error = El archivo debe tener extensión .rep
 upload.js.size.error = El tamaño del archivo ({0}MB) excede el límite de 1MB
 upload.js.unknown.player = Jugador Desconocido
+upload.confirm.delete = ¿Estás seguro de que quieres eliminar el archivo "{0}"? Esta acción no se puede deshacer.
 
 # Partiales - Tabla de Partidas
 partials.matches.title = Tus Partidas del Torneo
