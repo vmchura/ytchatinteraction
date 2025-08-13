@@ -713,14 +713,10 @@ class TournamentServiceImpl @Inject() (
     tournamentMatch: TournamentMatch
   ): Future[Either[String, String]] = {
     val logger = Logger(getClass)
-    
+    val player1Sessions = uploadSessionService.getSessionsForMatch(matchId).filter(_.userId == tournamentMatch.firstUserId)
+    val player2Sessions = uploadSessionService.getSessionsForMatch(matchId).filter(_.userId == tournamentMatch.secondUserId)
+    val allSessions = player1Sessions ++ player2Sessions
     for {
-      // Get upload sessions for both players
-      player1Sessions <- uploadSessionService.getSessionsForMatch(matchId).map(_.filter(_.userId == tournamentMatch.firstUserId))
-      player2Sessions <- uploadSessionService.getSessionsForMatch(matchId).map(_.filter(_.userId == tournamentMatch.secondUserId))
-      
-      allSessions = player1Sessions ++ player2Sessions
-      
       result <- if (allSessions.isEmpty) {
         logger.info(s"No upload sessions found for match $matchId")
         Future.successful(Right("No upload sessions to process"))
@@ -730,13 +726,13 @@ class TournamentServiceImpl @Inject() (
           processSessionFiles(tournamentId, session)
         }
         
-        Future.sequence(sessionProcessingFutures).flatMap { results =>
+        Future.sequence(sessionProcessingFutures).map { results =>
           val errors = results.collect { case Left(error) => error }
           val successes = results.collect { case Right(message) => message }
           
           if (errors.nonEmpty) {
             logger.error(s"Errors processing upload sessions for match $matchId: ${errors.mkString(", ")}")
-            Future.successful(Left(s"Failed to process some upload sessions: ${errors.mkString(", ")}"))
+            Left(s"Failed to process some upload sessions: ${errors.mkString(", ")}")
           } else {
             logger.info(s"Successfully processed ${allSessions.length} upload sessions for match $matchId")
             
@@ -745,11 +741,9 @@ class TournamentServiceImpl @Inject() (
               uploadSessionService.clearSession(session.userId, matchId)
             }
             
-            Future.sequence(closeFutures).map { closeResults =>
-              val successfulCloses = closeResults.count(identity)
-              logger.info(s"Closed $successfulCloses out of ${allSessions.length} upload sessions for match $matchId")
-              Right(s"Processed ${allSessions.length} upload sessions and registered files in database")
-            }
+            val successfulCloses = closeFutures.count(identity)
+            logger.info(s"Closed $successfulCloses out of ${allSessions.length} upload sessions for match $matchId")
+            Right(s"Processed ${allSessions.length} upload sessions and registered files in database")
           }
         }
       }

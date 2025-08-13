@@ -91,11 +91,12 @@
                             </td>
                             <td>
                                 @file.sha256Hash.map { hash =>
-                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;">
+                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;" class="remove-file-form">
                                     @helper.CSRF.formField
                                     <button type="submit" class="remove-file-btn secondary" 
                                             title="@messages("upload.remove.file.tooltip")"
-                                            onclick="return confirm('@Html(messages("upload.confirm.delete", file.fileName))');">
+                                            data-filename="@file.fileName"
+                                            data-hash="@hash">
                                         @messages("upload.remove.file")
                                     </button>
                                 </form>
@@ -111,11 +112,12 @@
                             <td>?</td>
                             <td>
                                 @file.sha256Hash.map { hash =>
-                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;">
+                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;" class="remove-file-form">
                                     @helper.CSRF.formField
                                     <button type="submit" class="remove-file-btn secondary" 
                                             title="@messages("upload.remove.file.tooltip")"
-                                            onclick="return confirm('@Html(messages("upload.confirm.delete", file.fileName))');">
+                                            data-filename="@file.fileName"
+                                            data-hash="@hash">
                                         @messages("upload.remove.file")
                                     </button>
                                 </form>
@@ -152,11 +154,12 @@
                             <td>@file.errorMessage.getOrElse(messages("upload.unknown.error"))</td>
                             <td>
                                 @file.sha256Hash.map { hash =>
-                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;">
+                                <form method="post" action="@routes.FileUploadController.removeFile(tournamentID, matchID, hash)" style="display: inline;" class="remove-file-form">
                                     @helper.CSRF.formField
                                     <button type="submit" class="remove-file-btn secondary" 
                                             title="@messages("upload.remove.file.tooltip")"
-                                            onclick="return confirm('@Html(messages("upload.confirm.delete", file.fileName))');">
+                                            data-filename="@file.fileName"
+                                            data-hash="@hash">
                                         @messages("upload.remove.file")
                                     </button>
                                 </form>
@@ -463,8 +466,10 @@
         const validationFlash = document.getElementById('validation-flash');
         const validationMessages = document.getElementById('validation-messages');
         const submitBtn = document.getElementById('submit-btn');
+        const fileUploadContainer = document.getElementById('file-upload-container');
 
         let validationResults = [];
+        let isUploading = false;
 
         uploadFileInput.addEventListener('change', function(event) {
             const files = event.target.files;
@@ -489,10 +494,95 @@
                 showValidationErrors(validationResults);
             } else {
                 validationFlash.style.display = 'none';
-                // Auto-submit when all files are valid
-                uploadForm.submit();
+                // Auto-submit via AJAX when all files are valid
+                submitFilesViaAjax(files);
             }
         });
+
+        function submitFilesViaAjax(files) {
+            if (isUploading) {
+                return;
+            }
+
+            isUploading = true;
+            showUploadProgress();
+
+            const formData = new FormData();
+            
+            // Add files
+            for (let i = 0; i < files.length; i++) {
+                formData.append('upload_file', files[i]);
+            }
+            
+            // Add CSRF token
+            const csrfToken = document.querySelector('input[name="csrfToken"]').value;
+            formData.append('csrfToken', csrfToken);
+
+            fetch('/match/' + document.getElementById('tournament-id').textContent + '/' + document.getElementById('match-id').textContent + '/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.session) {
+                    handleUploadSuccess(data.session);
+                } else {
+                    handleUploadError(data.error || 'Unknown error occurred');
+                }
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                handleUploadError('Network error: ' + error.message);
+            })
+            .finally(() => {
+                isUploading = false;
+                hideUploadProgress();
+                // Clear the file input
+                uploadFileInput.value = '';
+                fileInfo.style.display = 'none';
+            });
+        }
+
+        function showUploadProgress() {
+            const progressDiv = document.createElement('div');
+            progressDiv.id = 'upload-progress';
+            progressDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px; background: #f0f0f0; border-radius: 5px; margin: 10px 0;">
+                    <strong>Uploading files...</strong>
+                    <div style="margin-top: 10px;">Please wait while files are being processed.</div>
+                </div>
+            `;
+            fileUploadContainer.appendChild(progressDiv);
+        }
+
+        function hideUploadProgress() {
+            const progressDiv = document.getElementById('upload-progress');
+            if (progressDiv) {
+                progressDiv.remove();
+            }
+        }
+
+        function handleUploadSuccess(sessionData) {
+            // Refresh the page to show updated session data
+            // In a more sophisticated implementation, you could update the DOM directly
+            location.reload();
+        }
+
+        function handleUploadError(errorMessage) {
+            // Show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.innerHTML = `
+                <div style="color: red; padding: 10px; background: #ffebee; border-radius: 5px; margin: 10px 0;">
+                    <strong>Upload Error:</strong> ${escapeHtml(errorMessage)}
+                </div>
+            `;
+            fileUploadContainer.appendChild(errorDiv);
+            
+            // Remove error message after 5 seconds
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
 
         function validateFiles(files) {
             const results = [];
@@ -554,6 +644,53 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        // Handle remove file forms with AJAX
+        document.querySelectorAll('.remove-file-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const button = this.querySelector('.remove-file-btn');
+                const filename = button.dataset.filename;
+                const hash = button.dataset.hash;
+                
+                // Show confirmation dialog
+                if (confirm('Are you sure you want to delete the file "' + filename + '"?')) {
+                    // Disable button to prevent double clicks
+                    button.disabled = true;
+                    button.textContent = 'Removing...';
+                    
+                    const formData = new FormData(this);
+                    const tournamentId = document.getElementById('tournament-id').textContent;
+                    const matchId = document.getElementById('match-id').textContent;
+                    const apiUrl = `/match/${tournamentId}/${matchId}/file/${hash}`;
+                    
+                    fetch(apiUrl, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Refresh the page to show updated data
+                            location.reload();
+                        } else {
+                            handleUploadError(data.error || 'Failed to remove file');
+                            // Re-enable button
+                            button.disabled = false;
+                            button.textContent = '@messages("upload.remove.file")';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Remove file error:', error);
+                        handleUploadError('Network error: ' + error.message);
+                        // Re-enable button
+                        button.disabled = false;
+                        button.textContent = '@messages("upload.remove.file")';
+                    });
+                }
+            });
+        });
     });
 </script>
 }

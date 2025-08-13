@@ -83,7 +83,7 @@ class UploadSessionService @Inject()(
   /**
    * Start a new upload session for a user and match
    */
-  def startSession(user: User, matchId: Long): Future[UploadSession] = {
+  def startSession(user: User, matchId: Long): UploadSession = {
     val sessionKey = SessionKey(user.userId, matchId)
     val sessionId = UUID.randomUUID().toString
     
@@ -99,19 +99,19 @@ class UploadSessionService @Inject()(
     sessions.put(sessionKey, session)
     logger.info(s"Started upload session: $sessionId for user: $user, match: $matchId")
     
-    Future.successful(session)
+    session
   }
   
   /**
    * Get existing session or create a new one if it doesn't exist
    */
-  def getOrCreateSession(user: User, matchId: Long): Future[UploadSession] = {
+  def getOrCreateSession(user: User, matchId: Long): UploadSession = {
     val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
         logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
-        Future.successful(existingSession)
+        existingSession
       case Some(expiredSession) =>
         logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
         sessions.remove(sessionKey)
@@ -180,25 +180,25 @@ class UploadSessionService @Inject()(
   /**
    * Get current session for user and match
    */
-  def getSession(user: User, matchId: Long): Future[Option[UploadSession]] = {
+  def getSession(user: User, matchId: Long): Option[UploadSession] = {
     val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
       case Some(session) if !isSessionExpired(session) =>
-        Future.successful(Some(session))
+        Some(session)
       case Some(expiredSession) =>
         logger.info(s"Removing expired session: ${expiredSession.sessionId}")
         sessions.remove(sessionKey)
-        Future.successful(None)
+        None
       case None =>
-        Future.successful(None)
+        None
     }
   }
   
   /**
    * Finalize a session (no more files can be added)
    */
-  def finalizeSession(user: User, matchId: Long): Future[Option[UploadSession]] = {
+  def finalizeSession(user: User, matchId: Long): Option[UploadSession] = {
     val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
@@ -206,21 +206,21 @@ class UploadSessionService @Inject()(
         val finalizedSession = session.finalizeSession()
         sessions.put(sessionKey, finalizedSession)
         logger.info(s"Finalized session: ${session.sessionId} with ${session.totalFiles} files")
-        Future.successful(Some(finalizedSession))
+        Some(finalizedSession)
       case Some(expiredSession) =>
         logger.warn(s"Attempted to finalize expired session: ${expiredSession.sessionId}")
         sessions.remove(sessionKey)
-        Future.successful(None)
+        None
       case None =>
         logger.warn(s"No session found to finalize for user: ${user.userId}, match: $matchId")
-        Future.successful(None)
+        None
     }
   }
   
   /**
    * Remove a specific file from session by SHA256 hash
    */
-  def removeFileFromSession(user: User, matchId: Long, sha256Hash: String): Future[Option[UploadSession]] = {
+  def removeFileFromSession(user: User, matchId: Long, sha256Hash: String): Option[UploadSession] = {
     val sessionKey = SessionKey(user.userId, matchId)
     
     Option(sessions.get(sessionKey)) match {
@@ -233,25 +233,25 @@ class UploadSessionService @Inject()(
         
         sessions.put(sessionKey, updatedSession)
         logger.info(s"Removed file with hash $sha256Hash from session: ${session.sessionId}")
-        Future.successful(Some(updatedSession))
+        Some(updatedSession)
         
       case Some(session) if session.isFinalized =>
         logger.warn(s"Attempted to remove file from finalized session: ${session.sessionId}")
-        Future.successful(None)
+        None
       case Some(expiredSession) =>
         logger.warn(s"Attempted to remove file from expired session: ${expiredSession.sessionId}")
         sessions.remove(sessionKey)
-        Future.successful(None)
+        None
       case None =>
         logger.warn(s"No session found for user: ${user.userId}, match: $matchId")
-        Future.successful(None)
+        None
     }
   }
 
   /**
    * Clear/delete a session
    */
-  def clearSession(userId: Long, matchId: Long): Future[Boolean] = {
+  def clearSession(userId: Long, matchId: Long): Boolean = {
     val sessionKey = SessionKey(userId, matchId)
     val removed = Option(sessions.remove(sessionKey)).isDefined
     
@@ -259,13 +259,13 @@ class UploadSessionService @Inject()(
       logger.info(s"Cleared session for user: $userId, match: $matchId")
     }
     
-    Future.successful(removed)
+    removed
   }
   
   /**
    * Get all active sessions (for debugging/monitoring)
    */
-  def getAllActiveSessions: Future[List[UploadSession]] = {
+  def getAllActiveSessions: List[UploadSession] = {
     val activeSessions = sessions.asScala.values
       .filter(session => !isSessionExpired(session))
       .toList
@@ -273,18 +273,18 @@ class UploadSessionService @Inject()(
     // Clean up expired sessions
     cleanupExpiredSessions()
     
-    Future.successful(activeSessions)
+    activeSessions
   }
   
   /**
    * Get sessions for a specific match (both users)
    */
-  def getSessionsForMatch(matchId: Long): Future[List[UploadSession]] = {
+  def getSessionsForMatch(matchId: Long): List[UploadSession] = {
     val matchSessions = sessions.asScala.values
       .filter(session => session.matchId == matchId && !isSessionExpired(session))
       .toList
     
-    Future.successful(matchSessions)
+    matchSessions
   }
   
   /**
@@ -318,7 +318,7 @@ class UploadSessionService @Inject()(
   /**
    * Get session statistics
    */
-  def getSessionStats: Future[Map[String, Int]] = {
+  def getSessionStats: Map[String, Int] = {
     cleanupExpiredSessions()
     
     val stats = Map(
@@ -327,6 +327,6 @@ class UploadSessionService @Inject()(
       "sessionsWithFiles" -> sessions.asScala.values.count(_.hasFiles)
     )
     
-    Future.successful(stats)
+    stats
   }
 }

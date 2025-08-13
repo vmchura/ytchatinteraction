@@ -68,9 +68,9 @@ POST    /tournaments/:id/start      controllers.TournamentController.startTourna
 # Replay Parser Health Check routes
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
 
-# Tournament Match File Upload routes (session-based)
+# Tournament Match File Upload routes (JSON API only)
 GET     /match/:tournamentId/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(tournamentId: Long, matchId: Long)
-POST    /match/:tournamentId/:matchId/upload  controllers.FileUploadController.uploadFile(tournamentId: Long, matchId: Long)
+POST    /match/:tournamentId/:matchId/upload      controllers.FileUploadController.uploadFile(tournamentId: Long, matchId: Long)
 POST    /match/:tournamentId/:matchId/file/:sha256Hash  controllers.FileUploadController.removeFile(tournamentId: Long, matchId: Long, sha256Hash: String)
 
 # Match Result routes

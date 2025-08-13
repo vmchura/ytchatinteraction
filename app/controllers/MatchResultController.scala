@@ -73,8 +73,8 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
     }))
   }
   private def persistMetaDataSessionFiles(tournamentId: Long, matchId: Long): Future[Int] = {
+    val sessions = uploadSessionService.getSessionsForMatch(matchId)
     for{
-      sessions <- uploadSessionService.getSessionsForMatch(matchId)
       persistence <- Future.sequence(sessions.map(session => persistMetaDataSessionFiles(session, tournamentId, session.uploadedFiles.filter(_.storedFileInfo.isDefined))))
     }yield{
       persistence.flatten.sum
