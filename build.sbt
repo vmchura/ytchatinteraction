@@ -4,13 +4,13 @@ import play.core.PlayVersion.pekkoVersion
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / scalaVersion := "3.3.6"
 ThisBuild / version := "1.0-SNAPSHOT"
 ThisBuild / organization := "your.organization"
 
 
 lazy val server = (project in file("server")).settings(
-  name := "ytchatinteraction",
+  name := "ytchatinteraction-server",
   libraryDependencies ++= Seq(
     guice,
     ws,
@@ -60,3 +60,12 @@ lazy val server = (project in file("server")).settings(
   // Additional JVM options for Java 23
   Test / javaOptions += "-XX:+EnableDynamicAgentLoading"
 ).enablePlugins(PlayScala)
+
+lazy val client =  (project in file("client")).settings(
+  name := "ytchatinteraction-client",
+  libraryDependencies ++= Seq(
+    "org.scala-js" %%% "scalajs-dom" % "2.2.0",
+    "com.lihaoyi" %%% "utest" % "0.9.0" % "test",
+    "com.yang-bo" %%% "html" % "3.0.3+61-a38243c3"
+  )
+).enablePlugins(ScalaJSPlugin, ScalaJSWeb)
