@@ -4,6 +4,7 @@ bin/
 .eclipse
 /lib/
 /logs/
+*/logs/
 /modules
 /project/project
 /project/target
@@ -23,3 +24,4 @@ conf/local.conf
 conf/secrets.conf
 *.env
 .env*
+local.conf

@@ -1,5 +1,6 @@
 @import play.api.mvc.ControllerHelpers.request2flash
 @import models.User
+@import helper._
 @(title: String, user: Option[User] = None)(content: Html)(implicit flash: Flash, messages: Messages, request: RequestHeader)
 <!DOCTYPE html>
 <html lang="@messages.lang.code" data-theme="dark">
@@ -53,5 +54,6 @@
                 <a href="/assets/terms.html">Terms of Service</a>
             </footer>
         </footer>
+        <script @{CSPNonce.attr} >Main.init(123,234,'ABC');</script>
     </body>
 </html>
