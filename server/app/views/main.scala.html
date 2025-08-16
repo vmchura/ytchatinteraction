@@ -1,6 +1,7 @@
 @import play.api.mvc.ControllerHelpers.request2flash
 @import models.User
 @import helper._
+@import evolutioncomplete.SharedModels
 @(title: String, user: Option[User] = None)(content: Html)(implicit flash: Flash, messages: Messages, request: RequestHeader)
 <!DOCTYPE html>
 <html lang="@messages.lang.code" data-theme="dark">
@@ -54,6 +55,7 @@
                 <a href="/assets/terms.html">Terms of Service</a>
             </footer>
         </footer>
+        @scalajs.html.scripts("client", routes.Assets.versioned(_).toString, name => getClass.getResource(s"/public/$name") != null)
         <script @{CSPNonce.attr} >Main.init(123,234,'ABC');</script>
     </body>
 </html>

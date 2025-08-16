@@ -10,9 +10,11 @@ ThisBuild / organization := "your.organization"
 
 
 lazy val server = (project in file("server")).settings(
-  name := "ytchatinteraction-server",
   scalaJSProjects := Seq(client),
-  Assets / pipelineStages := Seq(scalaJSPipeline),
+  Assets / pipelineStages  := Seq(scalaJSPipeline),
+  pipelineStages := Seq(digest, gzip),
+  // triggers scalaJSPipeline when using compile or continuous compilation
+  Compile / compile := ((Compile / compile) dependsOn scalaJSPipeline).value,
   libraryDependencies ++= Seq(
     guice,
     ws,
@@ -53,7 +55,8 @@ lazy val server = (project in file("server")).settings(
     "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models",
     "com.github.tminglei" %% "slick-pg" % "0.23.0",
     "com.github.tminglei" %% "slick-pg_play-json" % "0.23.0",
-    "io.cequence" %% "openai-scala-client" % "1.2.0"
+    "io.cequence" %% "openai-scala-client" % "1.2.0",
+    "com.vmunier" %% "scalajs-scripts" % "1.3.0"
   ),
   Test / javaOptions += "-Dslick.dbs.default.connectionTimeout=30 seconds",
   Test / javaOptions += "-Dconfig.file=conf/test.conf",
@@ -61,13 +64,18 @@ lazy val server = (project in file("server")).settings(
   Test / javaOptions += "-Dnet.bytebuddy.experimental=true",
   // Additional JVM options for Java 23
   Test / javaOptions += "-XX:+EnableDynamicAgentLoading"
-).enablePlugins(PlayScala)
+).enablePlugins(PlayScala).dependsOn(shared.jvm)
 
 lazy val client =  (project in file("client")).settings(
-  name := "ytchatinteraction-client",
+  scalaJSUseMainModuleInitializer := true,
   libraryDependencies ++= Seq(
     "org.scala-js" %%% "scalajs-dom" % "2.2.0",
     "com.lihaoyi" %%% "utest" % "0.9.0" % "test",
     "com.yang-bo" %%% "html" % "3.0.3+61-a38243c3"
   )
-).enablePlugins(ScalaJSPlugin, ScalaJSWeb)
+).enablePlugins(ScalaJSPlugin, ScalaJSWeb).dependsOn(shared.js)
+
+lazy val shared = crossProject(JSPlatform, JVMPlatform)
+  .crossType(CrossType.Pure)
+  .in(file("shared"))
+  .jsConfigure(_.enablePlugins(ScalaJSWeb))

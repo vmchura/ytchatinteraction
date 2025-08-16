@@ -25,3 +25,6 @@ conf/secrets.conf
 *.env
 .env*
 local.conf
+
+shared/.js/
+shared/.jvm/
