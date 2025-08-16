@@ -28,3 +28,5 @@ local.conf
 
 shared/.js/
 shared/.jvm/
+uploads/
+/uploads/
