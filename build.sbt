@@ -11,6 +11,8 @@ ThisBuild / organization := "your.organization"
 
 lazy val server = (project in file("server")).settings(
   name := "ytchatinteraction-server",
+  scalaJSProjects := Seq(client),
+  Assets / pipelineStages := Seq(scalaJSPipeline),
   libraryDependencies ++= Seq(
     guice,
     ws,
