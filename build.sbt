@@ -71,11 +71,17 @@ lazy val client =  (project in file("client")).settings(
   libraryDependencies ++= Seq(
     "org.scala-js" %%% "scalajs-dom" % "2.2.0",
     "com.lihaoyi" %%% "utest" % "0.9.0" % "test",
-    "com.yang-bo" %%% "html" % "3.0.3+61-a38243c3"
+    "com.softwaremill.sttp.client4" %%% "core" % "4.0.9",
+    "com.yang-bo" %%% "html" % "3.0.3",
+    "com.thoughtworks.binding" %%% "binding" % "12.2.0",
+    "com.thoughtworks.binding" %%% "bindable" % "3.0.0",
+    "com.thoughtworks.binding" %%% "latestevent" % "2.0.0",
+    "com.thoughtworks.binding" %%% "futurebinding" % "12.1.1"
   )
 ).enablePlugins(ScalaJSPlugin, ScalaJSWeb).dependsOn(shared.js)
 
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
-  .in(file("shared"))
+  .in(file("shared")).settings(
+    libraryDependencies += "com.lihaoyi" %%% "upickle" % "4.2.1")
   .jsConfigure(_.enablePlugins(ScalaJSWeb))

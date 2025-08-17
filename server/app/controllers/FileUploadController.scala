@@ -1,8 +1,11 @@
 package controllers
 
+import evolutioncomplete.WinnerShared.Draw
+import evolutioncomplete.{ParticipantShared, UploadStateShared}
+
 import javax.inject.*
 import play.api.mvc.*
-import play.api.libs.json.{Json, JsValue, Writes, OWrites}
+import play.api.libs.json.{JsValue, Json, OWrites, Writes}
 import play.api.libs.Files.TemporaryFile
 import play.api.Logger
 
@@ -11,7 +14,7 @@ import services.{FileProcessResult, FileStorageService, ParseReplayFileService, 
 import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
-
+import upickle.default.*
 case class FileUploadState(
                             message: String,
                             uploadType: String
@@ -351,5 +354,10 @@ class FileUploadController @Inject()(
           )))
       }
     }
+  }
+  def mydata(): Action[AnyContent]=  silhouette.UserAwareAction.async { implicit request =>
+    println(request.body)
+    val responseValue = UploadStateShared(0,0,ParticipantShared(0,"ASD",Nil),ParticipantShared(0,"XYZ",Nil),Nil, Draw)
+    Future.successful(Ok(write(responseValue)))
   }
 }
