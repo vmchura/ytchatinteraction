@@ -89,7 +89,6 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
 
   }
   def withWinner(winnerShared: String): UploadStateShared = {
-    println(s"Updating to $winnerShared")
     copy(winner=WinnerShared.valueOf(winnerShared))
   }
 }
