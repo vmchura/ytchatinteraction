@@ -1,5 +1,6 @@
 package controllers
 
+import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 
@@ -15,6 +16,8 @@ import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
 import upickle.default.*
+
+import java.time.LocalDateTime
 case class FileUploadState(
                             message: String,
                             uploadType: String
@@ -357,7 +360,10 @@ class FileUploadController @Inject()(
   }
   def mydata(): Action[AnyContent]=  silhouette.UserAwareAction.async { implicit request =>
     println(request.body)
-    val responseValue = UploadStateShared(0,0,ParticipantShared(0,"ASD",Nil),ParticipantShared(0,"XYZ",Nil),Nil, Draw)
+    val responseValue = UploadStateShared(0,0,ParticipantShared(0,"ASD",Set.empty[String]),ParticipantShared(0,"XYZ",Set.empty[String]),
+      List(ValidGame(List("Bisu123", "Flash123"), "CircuitBreakers", LocalDateTime.now(),""),
+        InvalidGame("Error duplicate"),
+        PendingGame(0)), Draw)
     Future.successful(Ok(write(responseValue)))
   }
 }

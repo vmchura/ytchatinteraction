@@ -1,7 +1,8 @@
 package replayuploader
+
 import evolutioncomplete.WinnerShared.Draw
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
-
+import evolutioncomplete.GameStateShared.*
 import scala.concurrent.Future
 import scala.util.{Success, Failure, Try}
 import sttp.client4.*
@@ -12,18 +13,22 @@ import com.yang_bo.html.*
 import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
 import org.scalajs.dom.html.{Button, Div}
+import com.thoughtworks.binding.Binding.Constants
+
 object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
+
   def init(tournamentID: Int, matchID: Int, containerID: String): Unit = {
     println(s"$tournamentID - $matchID - $containerID")
     val container = org.scalajs.dom.document.getElementById(containerID)
     render(container, uploadDivision(uploadMatchState))
-    fetchState().onComplete{
+    fetchState().onComplete {
       case Success(Right(value)) => uploadMatchState.value = value
       case Success(Left(error)) => uploadMatchState.value = UploadStateShared.errorOne()
       case Failure(error) => uploadMatchState.value = UploadStateShared.errorOne()
     }
   }
+
   def fetchState(): Future[Either[String, UploadStateShared]] = {
 
     val request = basicRequest
@@ -43,34 +48,53 @@ object ReplayUploader {
       case _ => Left("bad response")
     }
   }
+
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
     html"""<div class="container" id="match_result">
       <h1 style="text-align: center; margin-bottom: 2rem;">${currentState.bind.firstParticipant.userName} vs ${currentState.bind.secondParticipant.userName}</h1>
 
       <div class="games-list">
-        <div class="game-item">
-          <span class="game-label">Game 1:</span>
-          <span class="status-icon success">✓</span>
-          <span class="game-info">Playr26 vs Player45</span>
-        </div>
+        ${
+          for (game <- currentState.bind.games) yield {
+            html"""<div class="game-item">
+                ${game match {
+                  case ValidGame(smurfs, mapName, playedAt, hash) =>
+                    html"""<span class="status-icon success">✓</span>
+                  <span class="game-info">${currentState.bind.getGameDescription(game)}</span>"""
+                  case PendingGame(_) =>
+                    html"""<span class="status-icon pending">&#x231B;</span>
+                          <span class="game-info"><progress /></span>"""
+                  case InvalidGame(errorMessage) =>
+                    html"""<span class="status-icon error">◯</span>
+                  <span class="game-info error-text">$errorMessage</span>"""
+                  }
+                }
+            </div>"""
+          }
+        }
 
-        <div class="game-item">
-          <span class="game-label">Game 2:</span>
-          <span class="status-icon success">✓</span>
-          <span class="game-info">Player4 vs Player66</span>
-        </div>
-
-        <div class="game-item">
-          <span class="game-label">Game 3:</span>
-          <span class="status-icon error">◯</span>
-          <span class="game-info error-text">Error parsing file</span>
-        </div>
-
-        <button type="button" class="outline" style="width: 100%; margin-top: 1rem;" onclick="addMoreReplays()">
-          + Add more replays
-        </button>
+          <button type="button" class="outline" style="width: 100%; margin-top: 1rem;" onclick="addMoreReplays()">
+            + Add more replays
+          </button>
       </div>
+      <div class="smurf_selection">
+          ${
+            Constants(currentState.bind.getSmurfs*).flatMap{ smurfSelection =>
+              html"""<fieldset>
+                          <legend>${smurfSelection.smurf}</legend>
+                          ${
+                Constants(smurfSelection.options*).flatMap{option =>
+                  val (playerOption, checked, id, name) = option
+                  html"""<input type="radio" id="$id" name="$name" checked=$checked />
+                  <label htmlFor="$id">$playerOption</label>"""
+                }
 
+              }
+                        </fieldset>
+                      """
+            }
+          }
+      </div>
       <div class="form-section">
         <h3>Match Result</h3>
         <select id="match-result" aria-label="Select match result">
