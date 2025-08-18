@@ -52,54 +52,58 @@ object ReplayUploader {
 
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
     html"""<div class="container" id="match_result">
-      <h1 class="game-item">
-      <span class="player_left">${currentState.bind.firstParticipant.userName}</span>
-      <span class="vs">vs</span>
-      <span class="player_right">${currentState.bind.secondParticipant.userName}</span>
-       </h1>
-
-      <div class="games-list">
+         <div class="games-list">
+           <h1 class="game-row">
+           <span class="player_left">${currentState.bind.firstParticipant.userName}</span>
+           <span class="vs">vs</span>
+           <span class="player_right">${currentState.bind.secondParticipant.userName}</span>
+         </h1>
         ${
-      for (game <- currentState.bind.games) yield {
-        html"""<div class="game-item">
-                ${
-          game match {
-            case ValidGame(smurfs, mapName, playedAt, hash) =>
-              html"""<span class="status-icon success">✓</span>
-                    <span class="player_left">${currentState.bind.getFirstSmurf(game)}</span>
-                    <span class="vs">vs</span>
-                    <span class="player_right">${currentState.bind.getSecondSmurf(game)}</span>"""
-            case PendingGame(_) =>
-              html"""<span class="status-icon pending">⌛</span>
-                            <span class="vs"><progress></progress></span>
-                            """
-            case InvalidGame(errorMessage) =>
-              html"""<span class="status-icon error">◯</span>
-                  <span class="vs error-text">$errorMessage</span>
-                  <span></span>"""
-          }
-        }
-            </div>"""
-      }
-    }
+            for (game <- currentState.bind.games) yield {
+              html"""<div class="game-row">${game match {
+                  case ValidGame(smurfs, mapName, playedAt, hash) =>
+                    html"""<span class="status-icon success">✓</span>
+                          <span class="player_left">${currentState.bind.getFirstSmurf(game)}</span>
+                          <span class="vs">vs</span>
+                          <span class="player_right">${currentState.bind.getSecondSmurf(game)}</span>
+                          <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
+                  case PendingGame(_) =>
+                    html"""<span class="status-icon pending">⌛</span>
+                                  <span class="inner_space"><progress></progress></span>
+                                  <span class="delete-button"></span>
+                                  """
+                  case InvalidGame(errorMessage) =>
+                    html"""<span class="status-icon error">◯</span>
+                        <span class="inner_space error-text">$errorMessage</span>
 
-          <button type="button" class="outline" style="width: 100%; margin-top: 1rem;" onclick="addMoreReplays()">
-            + Add more replays
-          </button>
-      </div>
-      <div class="smurf_selection">
+                                  <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
+                }
+              }</div>"""
+            }
+        }
+
+        <button type="button" class="outline add_more_replays" onclick="addMoreReplays()">
+          + Add more replays
+        </button>
+
           ${
       Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
-        html"""<fieldset>
-                          <legend>${smurfSelection.smurf}</legend>
+        html"""<fieldset class="game-row">
+                          <span class="status-icon">${smurfSelection.smurf}</span>
                           ${
-          Constants(smurfSelection.options *).flatMap { option =>
+          for (option <- smurfSelection.options) yield {
             val (playerOption, checked, id, name) = option
-            html"""<input type="radio" id="$id" name="$name" checked=$checked onchange=${ (event: Event) => {
+            html"""<div class=${
+              if (id.endsWith("1")) {
+                "player_left"
+              } else {
+                "player_right"
+              }
+            }><input type="radio" id="$id" name="$name" checked=$checked onchange=${ (event: Event) => {
               uploadMatchState.value = uploadMatchState.value.addSmurfToParticipant(id, smurfSelection.smurf)
             }
             }/>
-                  <label htmlFor="$id">$playerOption</label>"""
+                  <label htmlFor="$id">$playerOption</label></div>"""
           }
 
         }
@@ -107,7 +111,7 @@ object ReplayUploader {
                       """
       }
     }
-      </div>
+    </div>
       <div class="form-section">
         <h3>Match Result</h3>
         <select id="match-result" aria-label="Select match result">
