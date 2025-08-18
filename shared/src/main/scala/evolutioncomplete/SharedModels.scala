@@ -53,11 +53,27 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
       secondParticipant = secondParticipant.copy(smurfs = secondParticipant.smurfs + smurf))
   }
   def addSmurfToParticipant(id: String, smurf: String): UploadStateShared = {
-    id.split("_").tail.map(_.toInt) match {
-      case Array(1) => addSmurfToFirstParticipant(smurf)
-      case Array(2) => addSmurfToSecondParticipant(smurf)
-      case _ => this
+    val allSmurfs = getSmurfs.map(_._1)
+    if(allSmurfs.contains(smurf)){
+      if(allSmurfs.length == 2){
+        val otherSmurf = allSmurfs.filterNot(_.equals(smurf)).head
+        id.split("_").tail.map(_.toInt) match {
+          case Array(1) => addSmurfToFirstParticipant(smurf).addSmurfToSecondParticipant(otherSmurf)
+          case Array(2) => addSmurfToSecondParticipant(smurf).addSmurfToFirstParticipant(otherSmurf)
+          case _ => this
+        }
+      }else{
+        id.split("_").tail.map(_.toInt) match {
+          case Array(1) => addSmurfToFirstParticipant(smurf)
+          case Array(2) => addSmurfToSecondParticipant(smurf)
+          case _ => this
+        }
+      }
+      
+    }else{
+      this
     }
+    
   }
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap{
