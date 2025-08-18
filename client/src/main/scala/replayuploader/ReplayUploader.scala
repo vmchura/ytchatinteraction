@@ -15,6 +15,7 @@ import com.thoughtworks.binding.FutureBinding
 import org.scalajs.dom.html.{Button, Div}
 import com.thoughtworks.binding.Binding.Constants
 import org.scalajs.dom.Event
+
 object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
 
@@ -51,27 +52,36 @@ object ReplayUploader {
 
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
     html"""<div class="container" id="match_result">
-      <h1 style="text-align: center; margin-bottom: 2rem;">${currentState.bind.firstParticipant.userName} vs ${currentState.bind.secondParticipant.userName}</h1>
+      <h1 class="game-item">
+      <span class="player_left">${currentState.bind.firstParticipant.userName}</span>
+      <span class="vs">vs</span>
+      <span class="player_right">${currentState.bind.secondParticipant.userName}</span>
+       </h1>
 
       <div class="games-list">
         ${
-          for (game <- currentState.bind.games) yield {
-            html"""<div class="game-item">
-                ${game match {
-                  case ValidGame(smurfs, mapName, playedAt, hash) =>
-                    html"""<span class="status-icon success">✓</span>
-                  <span class="game-info">${currentState.bind.getGameDescription(game)}</span>"""
-                  case PendingGame(_) =>
-                    html"""<span class="status-icon pending">&#x231B;</span>
-                          <span class="game-info"><progress /></span>"""
-                  case InvalidGame(errorMessage) =>
-                    html"""<span class="status-icon error">◯</span>
-                  <span class="game-info error-text">$errorMessage</span>"""
-                  }
-                }
-            </div>"""
+      for (game <- currentState.bind.games) yield {
+        html"""<div class="game-item">
+                ${
+          game match {
+            case ValidGame(smurfs, mapName, playedAt, hash) =>
+              html"""<span class="status-icon success">✓</span>
+                    <span class="player_left">${currentState.bind.getFirstSmurf(game)}</span>
+                    <span class="vs">vs</span>
+                    <span class="player_right">${currentState.bind.getSecondSmurf(game)}</span>"""
+            case PendingGame(_) =>
+              html"""<span class="status-icon pending">⌛</span>
+                            <span class="vs"><progress></progress></span>
+                            """
+            case InvalidGame(errorMessage) =>
+              html"""<span class="status-icon error">◯</span>
+                  <span class="vs error-text">$errorMessage</span>
+                  <span></span>"""
           }
         }
+            </div>"""
+      }
+    }
 
           <button type="button" class="outline" style="width: 100%; margin-top: 1rem;" onclick="addMoreReplays()">
             + Add more replays
@@ -79,21 +89,24 @@ object ReplayUploader {
       </div>
       <div class="smurf_selection">
           ${
-            Constants(currentState.bind.getSmurfs*).flatMap{ smurfSelection =>
-              html"""<fieldset>
+      Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
+        html"""<fieldset>
                           <legend>${smurfSelection.smurf}</legend>
                           ${
-                Constants(smurfSelection.options*).flatMap{option =>
-                  val (playerOption, checked, id, name) = option
-                  html"""<input type="radio" id="$id" name="$name" checked=$checked onchange=${(event: Event) => {uploadMatchState.value = uploadMatchState.value.addSmurfToParticipant(id, smurfSelection.smurf)}}/>
+          Constants(smurfSelection.options *).flatMap { option =>
+            val (playerOption, checked, id, name) = option
+            html"""<input type="radio" id="$id" name="$name" checked=$checked onchange=${ (event: Event) => {
+              uploadMatchState.value = uploadMatchState.value.addSmurfToParticipant(id, smurfSelection.smurf)
+            }
+            }/>
                   <label htmlFor="$id">$playerOption</label>"""
-                }
+          }
 
-              }
+        }
                         </fieldset>
                       """
-            }
-          }
+      }
+    }
       </div>
       <div class="form-section">
         <h3>Match Result</h3>

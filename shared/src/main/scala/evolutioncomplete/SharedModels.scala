@@ -27,22 +27,24 @@ case class SmurfSelection(smurf: String, options: List[(String, Boolean, String,
 case class UploadStateShared(matchID: Int, tournamentID: Int,
                              firstParticipant: ParticipantShared, secondParticipant: ParticipantShared,
                              games: List[GameStateShared], winner: WinnerShared) derives ReadWriter {
-  def getGameDescription(game: GameStateShared): String = {
+  def getGameDescription(game: GameStateShared): (String, String) = {
     game match {
       case ValidGame(smurf1 :: smurf2 :: _, _, _, _) =>
         (firstParticipant.smurfs.contains(smurf1),firstParticipant.smurfs.contains(smurf2),
           secondParticipant.smurfs.contains(smurf1),secondParticipant.smurfs.contains(smurf2)) match {
-          case (true, false, false, true) => s"$smurf1 vs $smurf2"
-          case (true, false, false, false) => s"$smurf1 vs [$smurf2]?"
-          case (false, true, true, false) => s"$smurf2 vs $smurf1"
-          case (false, true, false, false) => s"$smurf2 vs [$smurf1]?"
-          case (false, false, true, false) => s"[$smurf2]? vs $smurf1"
-          case (false, false, false, true) => s"[$smurf1]? vs $smurf2"
-          case (_, _, _, _) => s"[$smurf1]? vs [$smurf2]?"
+          case (true, false, false, true) => (s"$smurf1",s"$smurf2")
+          case (true, false, false, false) => (s"$smurf1",s"[$smurf2]?")
+          case (false, true, true, false) => (s"$smurf2",s"$smurf1")
+          case (false, true, false, false) => (s"$smurf2",s"[$smurf1]?")
+          case (false, false, true, false) => (s"[$smurf2]?",s"$smurf1")
+          case (false, false, false, true) => (s"[$smurf1]?",s"$smurf2")
+          case (_, _, _, _) => (s"[$smurf1]?",s"[$smurf2]?")
         }
       case _ => throw new IllegalStateException("Description of invalid")
     }
   }
+  def getFirstSmurf(game: GameStateShared): String = getGameDescription(game)._1
+  def getSecondSmurf(game: GameStateShared): String = getGameDescription(game)._2
   def addSmurfToFirstParticipant(smurf: String): UploadStateShared = {
     copy(firstParticipant = firstParticipant.copy(smurfs = firstParticipant.smurfs + smurf),
       secondParticipant = secondParticipant.copy(smurfs = secondParticipant.smurfs - smurf))
