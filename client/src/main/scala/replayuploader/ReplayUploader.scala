@@ -1,14 +1,17 @@
 package replayuploader
 
-import evolutioncomplete.WinnerShared.Draw
+import evolutioncomplete.WinnerShared.*
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 import evolutioncomplete.GameStateShared.*
+
 import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 import sttp.client4.*
 import fetch.FetchBackend
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import com.thoughtworks.binding.Binding, Binding.Var
+import com.thoughtworks.binding.Binding
+import Binding.Var
 import com.yang_bo.html.*
 import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
@@ -116,9 +119,13 @@ object ReplayUploader {
       <div class="form-section">
         <h6>Resultado General (todas las partidas)</h6>
         <select id="match-result">
-          <option value="draw" selected>Empate</option>
-          <option value="player1-win">Gana ${currentState.bind.firstParticipant.userName}</option>
-          <option value="player2-win">Gana ${currentState.bind.secondParticipant.userName}</option>
+          <option value="Undefined" selected=${currentState.bind.winner==Undefined}>Seleccionar</option>
+          <option value="FirstUser" selected=${currentState.bind.winner==FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
+          <option value="SecondUser" selected=${currentState.bind.winner==SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
+          <option value="Draw" selected=${currentState.bind.winner==Draw}>Empate</option>
+          <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner==FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
+          <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner==SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
+          <option value="Cancelled" selected=${currentState.bind.winner==Cancelled}>WO para los dos, cancelado</option>
         </select>
       </div>
 
