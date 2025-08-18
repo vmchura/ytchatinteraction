@@ -15,7 +15,7 @@ import Binding.Var
 import com.yang_bo.html.*
 import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
-import org.scalajs.dom.html.{Button, Div}
+import org.scalajs.dom.html.{Button, Div, Select}
 import com.thoughtworks.binding.Binding.Constants
 import org.scalajs.dom.Event
 
@@ -118,7 +118,7 @@ object ReplayUploader {
     </div>
       <div class="form-section">
         <h6>Resultado General (todas las partidas)</h6>
-        <select id="match-result">
+        ${val select_winner: Binding.Stable[Select]  = html"""<select id="match-result">
           <option value="Undefined" selected=${currentState.bind.winner==Undefined}>Seleccionar</option>
           <option value="FirstUser" selected=${currentState.bind.winner==FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
           <option value="SecondUser" selected=${currentState.bind.winner==SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
@@ -126,7 +126,10 @@ object ReplayUploader {
           <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner==FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
           <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner==SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
           <option value="Cancelled" selected=${currentState.bind.winner==Cancelled}>WO para los dos, cancelado</option>
-        </select>
+        </select>"""
+      select_winner.value.onchange = (event: Event) => {uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)}
+      select_winner
+    }
       </div>
 
       <button type="button" class="primary" onclick="submitMatch()">

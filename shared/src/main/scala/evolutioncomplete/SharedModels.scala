@@ -71,11 +71,11 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
           case _ => this
         }
       }
-      
+
     }else{
       this
     }
-    
+
   }
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap{
@@ -87,6 +87,10 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
         (secondParticipant.userName, secondParticipant.smurfs.contains(singleSmurf), s"${i}_2", s"${i}_smurf")))
     }
 
+  }
+  def withWinner(winnerShared: String): UploadStateShared = {
+    println(s"Updating to $winnerShared")
+    copy(winner=WinnerShared.valueOf(winnerShared))
   }
 }
 object UploadStateShared {
