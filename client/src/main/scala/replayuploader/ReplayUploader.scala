@@ -58,6 +58,7 @@ object ReplayUploader {
            <span class="vs">vs</span>
            <span class="player_right">${currentState.bind.secondParticipant.userName}</span>
          </h1>
+         <h6>Replays</h6>
         ${
             for (game <- currentState.bind.games) yield {
               html"""<div class="game-row">${game match {
@@ -83,9 +84,9 @@ object ReplayUploader {
         }
 
         <button type="button" class="outline add_more_replays" onclick="addMoreReplays()">
-          + Add more replays
+          + Agregar replays
         </button>
-
+      <h6>Smurfs</h6>
           ${
       Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
         html"""<fieldset class="game-row">
@@ -113,17 +114,16 @@ object ReplayUploader {
     }
     </div>
       <div class="form-section">
-        <h3>Match Result</h3>
-        <select id="match-result" aria-label="Select match result">
-          <option value="" selected>Select match result</option>
-          <option value="player1-win">Player 1 Wins</option>
-          <option value="player2-win">Player 2 Wins</option>
-          <option value="draw">Draw</option>
+        <h6>Resultado General (todas las partidas)</h6>
+        <select id="match-result">
+          <option value="draw" selected>Empate</option>
+          <option value="player1-win">Gana ${currentState.bind.firstParticipant.userName}</option>
+          <option value="player2-win">Gana ${currentState.bind.secondParticipant.userName}</option>
         </select>
       </div>
 
-      <button type="button" class="contrast" style="width: 100%; margin-top: 1rem;" onclick="submitMatch()">
-        Submit Match Result
+      <button type="button" class="primary" onclick="submitMatch()">
+        <span>Enviar resultado global</span><br/><small>Ya no podrás modificar replays, smurfs ni resultado</small>
       </button>
     </div>"""
   }
