@@ -5,12 +5,16 @@ import upickle.default.*
 
 import java.time.LocalDateTime
 import GameStateShared.*
+
+import java.util.UUID
 case class ParticipantShared(userID: Int, userName: String, smurfs: Set[String]) derives ReadWriter
-sealed trait GameStateShared
+sealed trait GameStateShared {
+  def sessionID: UUID
+}
 object GameStateShared {
-  case class ValidGame(smurfs: List[String], mapName: String, playedAt: LocalDateTime, hash: String) extends GameStateShared derives ReadWriter
-  case class PendingGame(id: Int) extends GameStateShared derives ReadWriter
-  case class InvalidGame(errorMessage: String) extends GameStateShared derives ReadWriter
+  case class ValidGame(smurfs: List[String], mapName: String, playedAt: LocalDateTime, hash: String, sessionID: UUID) extends GameStateShared derives ReadWriter
+  case class PendingGame(sessionID: UUID) extends GameStateShared derives ReadWriter
+  case class InvalidGame(errorMessage: String, sessionID: UUID) extends GameStateShared derives ReadWriter
   given ReadWriter[LocalDateTime] =
     readwriter[String].bimap[LocalDateTime](
       dt => dt.toString, // default ISO-8601
@@ -18,7 +22,6 @@ object GameStateShared {
     )
   given RW[GameStateShared] = macroRW
 }
-case class GameFile(sessionID: Int, state: GameStateShared) derives ReadWriter
 enum WinnerShared derives ReadWriter:
   case Undefined, FirstUser, SecondUser, Draw, FirstUserByOnlyPresented, SecondUserByOnlyPresented, Cancelled
 
@@ -29,7 +32,7 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
                              games: List[GameStateShared], winner: WinnerShared) derives ReadWriter {
   def getGameDescription(game: GameStateShared): (String, String) = {
     game match {
-      case ValidGame(smurf1 :: smurf2 :: _, _, _, _) =>
+      case ValidGame(smurf1 :: smurf2 :: _, _, _, _, _) =>
         (firstParticipant.smurfs.contains(smurf1),firstParticipant.smurfs.contains(smurf2),
           secondParticipant.smurfs.contains(smurf1),secondParticipant.smurfs.contains(smurf2)) match {
           case (true, false, false, true) => (s"$smurf1",s"$smurf2")
@@ -79,7 +82,7 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
   }
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap{
-      case ValidGame(smurfs, _, _, _) => smurfs
+      case ValidGame(smurfs, _, _, _, _) => smurfs
       case _ => Nil
     }.distinct
     allSmurfs.zipWithIndex.map{ case (singleSmurf, i) =>
@@ -90,6 +93,10 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
   }
   def withWinner(winnerShared: String): UploadStateShared = {
     copy(winner=WinnerShared.valueOf(winnerShared))
+  }
+
+  def withGames(newGames: List[GameStateShared]): UploadStateShared = {
+    copy(games = games ::: newGames)
   }
 }
 object UploadStateShared {

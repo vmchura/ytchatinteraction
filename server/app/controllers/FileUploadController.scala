@@ -3,7 +3,7 @@ package controllers
 import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
-
+import java.nio.file.Files
 import javax.inject.*
 import play.api.mvc.*
 import play.api.libs.json.{JsValue, Json, OWrites, Writes}
@@ -16,8 +16,9 @@ import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
 import upickle.default.*
-
+import scala.util.Try
 import java.time.LocalDateTime
+import java.util.UUID
 case class FileUploadState(
                             message: String,
                             uploadType: String
@@ -361,9 +362,23 @@ class FileUploadController @Inject()(
   def mydata(): Action[AnyContent]=  silhouette.UserAwareAction.async { implicit request =>
     println(request.body)
     val responseValue = UploadStateShared(0,0,ParticipantShared(0,"ASD",Set.empty[String]),ParticipantShared(0,"XYZ",Set.empty[String]),
-      List(ValidGame(List("Bisu123", "Flash123"), "CircuitBreakers", LocalDateTime.now(),""),
-        InvalidGame("Error duplicate"),
-        PendingGame(0)), Draw)
+      List(ValidGame(List("Bisu123", "Flash123"), "CircuitBreakers", LocalDateTime.now(),"", UUID.randomUUID()),
+        InvalidGame("Error duplicate",UUID.randomUUID()),
+        PendingGame(UUID.randomUUID())), Draw)
     Future.successful(Ok(write(responseValue)))
+  }
+  def updateState(): Action[MultipartFormData[TemporaryFile]] = silhouette.UserAwareAction.async(parse.multipartFormData) { implicit request =>
+    println(request.body.dataParts)
+    println(request.body.badParts)
+    println(request.body.files.map(_.key))
+    request.body.files
+      .find(_.key == "state")
+      .flatMap { part =>
+        Try(read[UploadStateShared](new String(Files.readAllBytes(part.ref.path), "UTF-8"))).toOption
+      } match {
+      case Some(value) => println(value)
+      case None => println("--")
+    }
+    Future.successful(Ok)
   }
 }

@@ -1,23 +1,27 @@
 package replayuploader
 
 import evolutioncomplete.WinnerShared.*
-import evolutioncomplete.{ParticipantShared, UploadStateShared}
+import evolutioncomplete.{GameStateShared, ParticipantShared, UploadStateShared}
 import evolutioncomplete.GameStateShared.*
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import sttp.client4.*
+import sttp.model.Part
 import fetch.FetchBackend
 
+import java.util.UUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.thoughtworks.binding.Binding
 import Binding.Var
 import com.yang_bo.html.*
 import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
-import org.scalajs.dom.html.{Button, Div, Select}
+import org.scalajs.dom.html.{Button, Div, Input, Select}
 import com.thoughtworks.binding.Binding.Constants
 import org.scalajs.dom.Event
+import org.scalajs.dom.FormData
+import org.scalajs.dom.File
 
 object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
@@ -53,6 +57,35 @@ object ReplayUploader {
     }
   }
 
+  def postState(validFiles: List[File], uploadMatchState: UploadStateShared): Future[Either[String, UploadStateShared]] = {
+
+    // Create file parts
+    val fileParts = validFiles.map { file =>
+      multipartFile("replays", file).fileName(file.name)
+    }
+
+    // Create JSON state part
+    val statePart = multipart("state", write(uploadMatchState)).contentType("application/json")
+
+    // Combine all parts
+    val allParts = fileParts :+ statePart
+
+    val request = basicRequest
+      .multipartBody(allParts)
+      .headers(Map("Csrf-Token" -> Main.findTokenValue()))
+      .post(uri"/updatestate")
+
+    val backend = FetchBackend()
+    request.send(backend).map {
+      case Response(Right(jsonResponse), sttp.model.StatusCode.Ok, _, _, _, _) =>
+        Try(read[UploadStateShared](jsonResponse)) match {
+          case Success(valid) => Right(valid)
+          case Failure(error) => Left(error.getLocalizedMessage)
+        }
+      case _ => Left("bad response")
+    }
+  }
+
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
     html"""<div class="container" id="match_result">
          <div class="games-list">
@@ -63,32 +96,50 @@ object ReplayUploader {
          </h1>
          <h6>Replays</h6>
         ${
-            for (game <- currentState.bind.games) yield {
-              html"""<div class="game-row">${game match {
-                  case ValidGame(smurfs, mapName, playedAt, hash) =>
-                    html"""<span class="status-icon success">✓</span>
+      for (game <- currentState.bind.games) yield {
+        html"""<div class="game-row">${
+          game match {
+            case ValidGame(smurfs, mapName, playedAt, hash, uuid) =>
+              html"""<span class="status-icon success">✓</span>
                           <span class="player_left">${currentState.bind.getFirstSmurf(game)}</span>
                           <span class="vs">vs</span>
                           <span class="player_right">${currentState.bind.getSecondSmurf(game)}</span>
                           <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
-                  case PendingGame(_) =>
-                    html"""<span class="status-icon pending">⌛</span>
+            case PendingGame(_) =>
+              html"""<span class="status-icon pending">⌛</span>
                                   <span class="inner_space"><progress></progress></span>
                                   <span class="delete-button"></span>
                                   """
-                  case InvalidGame(errorMessage) =>
-                    html"""<span class="status-icon error">◯</span>
+            case InvalidGame(errorMessage, uuid) =>
+              html"""<span class="status-icon error">◯</span>
                         <span class="inner_space error-text">$errorMessage</span>
 
                                   <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
-                }
-              }</div>"""
-            }
-        }
+          }
+        }</div>"""
+      }
+    }
+        <label for="file-input" class="outline add_more_replays" role="button">
+          ${
+      val input: Binding.Stable[Input] = html"""<input type="file" id="file-input" hidden multiple>"""
+      input.value.onchange = (_: Event) => {
+        val (validFiles, invalidFiles) = input.value.files.toList.partition(f => f.size <= 1024 * 1024 && f.name.endsWith(".rep"))
+        val invalidFilesReason = invalidFiles.map { f => if (f.size > 1024 * 1024) InvalidGame("Archivo > 1Mb", UUID.randomUUID()) else InvalidGame("Archivo no es *.rep", UUID.randomUUID()) }
 
-        <button type="button" class="outline add_more_replays" onclick="addMoreReplays()">
+
+
+        val pendingFiles = validFiles.map(_ => PendingGame(UUID.randomUUID()))
+        uploadMatchState.value = uploadMatchState.value.withGames(pendingFiles ::: invalidFilesReason)
+        postState(validFiles, uploadMatchState.value).onComplete {
+          case Success(Right(value)) => println(value)
+          case Success(Left(error)) => println(error)
+          case Failure(error) => println(error)
+        }
+      }
+      input
+    }
           + Agregar replays
-        </button>
+        </label>
       <h6>Smurfs</h6>
           ${
       Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
@@ -118,16 +169,20 @@ object ReplayUploader {
     </div>
       <div class="form-section">
         <h6>Resultado General (todas las partidas)</h6>
-        ${val select_winner: Binding.Stable[Select]  = html"""<select id="match-result">
-          <option value="Undefined" selected=${currentState.bind.winner==Undefined}>Seleccionar</option>
-          <option value="FirstUser" selected=${currentState.bind.winner==FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
-          <option value="SecondUser" selected=${currentState.bind.winner==SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
-          <option value="Draw" selected=${currentState.bind.winner==Draw}>Empate</option>
-          <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner==FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
-          <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner==SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
-          <option value="Cancelled" selected=${currentState.bind.winner==Cancelled}>WO para los dos, cancelado</option>
+        ${
+      val select_winner: Binding.Stable[Select] =
+        html"""<select id="match-result">
+          <option value="Undefined" selected=${currentState.bind.winner == Undefined}>Seleccionar</option>
+          <option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
+          <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
+          <option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>
+          <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
+          <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
+          <option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>
         </select>"""
-      select_winner.value.onchange = (event: Event) => {uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)}
+      select_winner.value.onchange = (event: Event) => {
+        uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)
+      }
       select_winner
     }
       </div>
