@@ -14,7 +14,7 @@ import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
 import org.scalajs.dom.html.{Button, Div}
 import com.thoughtworks.binding.Binding.Constants
-
+import org.scalajs.dom.Event
 object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
 
@@ -85,7 +85,7 @@ object ReplayUploader {
                           ${
                 Constants(smurfSelection.options*).flatMap{option =>
                   val (playerOption, checked, id, name) = option
-                  html"""<input type="radio" id="$id" name="$name" checked=$checked />
+                  html"""<input type="radio" id="$id" name="$name" checked=$checked onchange=${(event: Event) => {uploadMatchState.value = uploadMatchState.value.addSmurfToParticipant(id, smurfSelection.smurf)}}/>
                   <label htmlFor="$id">$playerOption</label>"""
                 }
 

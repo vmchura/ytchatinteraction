@@ -52,6 +52,13 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
     copy(firstParticipant = firstParticipant.copy(smurfs = firstParticipant.smurfs - smurf),
       secondParticipant = secondParticipant.copy(smurfs = secondParticipant.smurfs + smurf))
   }
+  def addSmurfToParticipant(id: String, smurf: String): UploadStateShared = {
+    id.split("_").tail.map(_.toInt) match {
+      case Array(1) => addSmurfToFirstParticipant(smurf)
+      case Array(2) => addSmurfToSecondParticipant(smurf)
+      case _ => this
+    }
+  }
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap{
       case ValidGame(smurfs, _, _, _) => smurfs
