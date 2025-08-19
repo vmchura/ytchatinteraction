@@ -211,7 +211,10 @@ class FileUploadController @Inject()(
           }yield{
             newSession
           }
+        }.map{ session =>
+          uploadSessionService.persistState(session)
         }
+        
         newSession.map(sessionUpdated => Ok(write[UploadStateShared](sessionUpdated.uploadState)))
 
     }
