@@ -1,6 +1,6 @@
 package services
 
-import evolutioncomplete.GameStateShared.{InvalidGame, ValidGame}
+import evolutioncomplete.GameStateShared.*
 import evolutioncomplete.WinnerShared.Undefined
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 import models.StarCraftModels.{SCMatchMode, Team}
@@ -40,10 +40,18 @@ case class UploadSession(
                         ) {
 
   def finalizeSession(): UploadSession = {
-    this.copy(
+    copy(
       isFinalized = true,
       lastUpdated = Instant.now()
     )
+  }
+  def withUploadStateShared(uploadStateShared: UploadStateShared): UploadSession = {
+    copy(uploadState = uploadState.copy(games = uploadState.games ++ uploadStateShared.games.filter{
+      case PendingGame(_) => true
+      case _ => false
+    }, winner = uploadStateShared.winner,
+      firstParticipant = uploadState.firstParticipant.copy(smurfs = uploadStateShared.firstParticipant.smurfs),
+      secondParticipant = uploadState.secondParticipant.copy(smurfs = uploadStateShared.secondParticipant.smurfs)))
   }
 }
 /**

@@ -192,17 +192,28 @@ class FileUploadController @Inject()(
       .flatMap { part =>
         Try(read[UploadStateShared](new String(Files.readAllBytes(part.ref.path), "UTF-8"))).toOption
       } match {
-      case Some(value) => uploadSessionService.getOrCreateSession(request.identity, value.challongeMatchID, value.tournamentID)
+      case Some(value) =>
+        uploadSessionService.getOrCreateSession(request.identity, value.challongeMatchID, value.tournamentID).map(_.map(_.withUploadStateShared(value)))
       case None => Future.successful(None)
     }
-    session.map{
-      case None => BadRequest(Json.toJson(FileUploadResponse(
+    session.flatMap{
+      case None => Future.successful(BadRequest(Json.toJson(FileUploadResponse(
         success = false,
         error = Some("Session not available")
-      )))
-      case Some(session) => 
-        request.body.files.find(_.key == "replays")
-        Ok(write[UploadStateShared](session.uploadState)) 
+      ))))
+      case Some(session) =>
+        val replays = request.body.files.filter(_.key == "replays")
+        val newSession = replays.foldLeft(Future.successful(session)){ case (currentSessionFut, newReplay) =>
+          for{
+            currentSession <- currentSessionFut
+            fileProcessResult <- parseReplayFileService.validateAndProcessSingleFile(newReplay)
+            newSession <- uploadSessionService.addFileToSession(currentSession, fileProcessResult)
+          }yield{
+            newSession
+          }
+        }
+        newSession.map(sessionUpdated => Ok(write[UploadStateShared](sessionUpdated.uploadState)))
+
     }
   }
 
