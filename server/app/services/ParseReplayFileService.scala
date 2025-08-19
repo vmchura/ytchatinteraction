@@ -9,8 +9,9 @@ import play.api.libs.ws.WSClient
 import play.api.libs.ws.JsonBodyWritables.*
 import play.api.libs.ws.DefaultBodyReadables.readableAsString
 import play.api.Configuration
+
 import scala.concurrent.{ExecutionContext, Future}
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import java.util.Base64
 import java.security.MessageDigest
 import models.StarCraftModels.GameInfo
@@ -21,10 +22,10 @@ case class FileProcessResult(
                               contentType: String,
                               processedAt: String,
                               success: Boolean,
-                              errorMessage: Option[String] = None,
-                              gameInfo: Option[GameInfo] = None,
-                              sha256Hash: Option[String] = None,
-                              storedFileInfo: Option[StoredFileInfo] = None
+                              errorMessage: Option[String],
+                              gameInfo: Option[GameInfo],
+                              sha256Hash: Option[String],
+                              path: Path
                             )
 
 case class MultiFileUploadResult(
@@ -117,7 +118,8 @@ class DefaultParseReplayFileService @Inject()(
           success = false,
           errorMessage = Some(s"Batch processing failed: ${ex.getMessage}"),
           gameInfo = None,
-          sha256Hash = None
+          sha256Hash = None,
+          path=file.ref.path
         )).toList,
         totalSuccessful = 0,
         totalFailed = files.length
@@ -154,7 +156,8 @@ class DefaultParseReplayFileService @Inject()(
           success = false,
           errorMessage = Some(getErrorMessage(error)),
           gameInfo = None,
-          sha256Hash = sha256
+          sha256Hash = sha256,
+          file.ref.path
         ))
     }
   }
@@ -239,7 +242,8 @@ class DefaultParseReplayFileService @Inject()(
               success = true,
               errorMessage = None,
               gameInfo = gameInfo,
-              sha256Hash = Some(sha256Hash)
+              sha256Hash = Some(sha256Hash),
+              path = file.ref.path
             )
           } else {
             logger.error(s"Replay parser service returned error ${response.status}: ${response.body[String]}")
@@ -251,7 +255,8 @@ class DefaultParseReplayFileService @Inject()(
               success = false,
               errorMessage = Some(s"Parser service error (${response.status}): ${response.body[String]}"),
               gameInfo = None,
-              sha256Hash = Some(sha256Hash)
+              sha256Hash = Some(sha256Hash),
+              path=file.ref.path
             )
           }
         }
@@ -265,7 +270,8 @@ class DefaultParseReplayFileService @Inject()(
             success = false,
             errorMessage = Some(s"Service call failed: ${ex.getMessage}"),
             gameInfo = None,
-            sha256Hash = Some(sha256Hash)
+            sha256Hash = Some(sha256Hash),
+            path=file.ref.path
           )
         }
 
@@ -280,7 +286,8 @@ class DefaultParseReplayFileService @Inject()(
           success = false,
           errorMessage = Some(s"File reading error: ${ex.getMessage}"),
           gameInfo = None,
-          sha256Hash = None
+          sha256Hash = None,
+          path=file.ref.path
         ))
     }
   }

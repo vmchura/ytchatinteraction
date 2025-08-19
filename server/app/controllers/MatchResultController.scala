@@ -8,7 +8,7 @@ import play.api.mvc.*
 import play.api.data.*
 import play.api.data.Forms.*
 import services.{FileProcessResult, UploadSession}
-
+import evolutioncomplete.GameStateShared.ValidGame
 import scala.concurrent.{ExecutionContext, Future}
 import utils.auth.WithAdmin
 
@@ -45,16 +45,20 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
       secondSmurf
     )
   }
-  private def persistMetaDataSessionFiles(session: UploadSession, tournamentId: Long, files: List[FileProcessResult]): Future[List[Int]] = {
-    Future.sequence(files.map(fileResult => {
-      fileResult.storedFileInfo match {
-        case Some(storedInfo) =>
+  private def persistMetaDataSessionFiles(session: UploadSession): Future[Int] = {
+    Future.sequence(session.uploadState.games.filter{
+      case ValidGame(_, _, _, _, _) => true
+      case _ => false
+    }.flatMap{
+      case ValidGame(_, _, _, hash, _) => Some(hash)
+      case _ => None
+    }.flatMap(hash => session.hash2StoreInformation.get(hash).map((hash, _)).map{ case (hash, storedInfo) =>
           val uploadedFile = models.UploadedFile(
             userId = session.userId,
-            tournamentId = tournamentId,
+            tournamentId = session.uploadState.tournamentID,
             matchId = session.matchId,
-            sha256Hash = fileResult.sha256Hash.get,
-            originalName = fileResult.fileName,
+            sha256Hash = hash,
+            originalName = storedInfo.originalFileName,
             relativeDirectoryPath = "uploads", // Based on configuration
             savedFileName = storedInfo.storedFileName,
             uploadedAt = storedInfo.storedAt
@@ -63,94 +67,10 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
           uploadedFileRepository.create(uploadedFile).map { createdFile =>
             logger.info(s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}")
             1
-          }.recover { case ex =>
-            logger.error(s"Failed to save file record to database for ${fileResult.fileName}: ${ex.getMessage}", ex)
-            0
           }
-        case None => Future.successful(0)
-      }
 
-    }))
+    })).map(_.sum)
   }
-  private def persistMetaDataSessionFiles(tournamentId: Long, matchId: Long): Future[Int] = {
-    val sessions = uploadSessionService.getSessionsForMatch(matchId)
-    for{
-      persistence <- Future.sequence(sessions.map(session => persistMetaDataSessionFiles(session, tournamentId, session.uploadedFiles.filter(_.storedFileInfo.isDefined))))
-    }yield{
-      persistence.flatten.sum
-    }
-  }
-  def submitResult(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    matchResultForm.bindFromRequest().fold(
-      formWithErrors => {
-        Future.successful(
-          Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-            .flashing("error" -> "Invalid form data")
-        )
-      }, {
-        case MatchResultForm(Some(winnerId), "with_winner", Some(firstSmurf), Some(secondSmurf)) =>
-          // First get the match information to identify the users
-          tournamentService.getMatch(tournamentId, matchId).flatMap {
-            case Some(tournamentMatch) =>
-              for {
-                _ <- recordMatchSmurfs(matchId, tournamentId, tournamentMatch, firstSmurf, secondSmurf)
-                result <- tournamentService.submitMatchResult(tournamentId, matchId, Some(winnerId), "with_winner")
-                _ <- persistMetaDataSessionFiles(tournamentId, matchId)
-              } yield result match {
-                case Right(_) =>
-                  Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                    .flashing("success" -> "Match result and smurfs submitted successfully")
-                case Left(error) =>
-                  Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                    .flashing("error" -> s"Failed to submit result: $error")
-              }
-            case None =>
-              Future.successful(
-                Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                  .flashing("error" -> "Match not found")
-              )
-          }
-
-        case MatchResultForm(None, "tie", Some(firstSmurf), Some(secondSmurf)) =>
-          // Handle tie case with smurfs
-          tournamentService.getMatch(tournamentId, matchId).flatMap {
-            case Some(tournamentMatch) =>
-              for {
-                _ <- recordMatchSmurfs(matchId, tournamentId, tournamentMatch, firstSmurf, secondSmurf)
-                result <- tournamentService.submitMatchResult(tournamentId, matchId, None, "tie")
-                _ <- persistMetaDataSessionFiles(tournamentId, matchId)
-              } yield result match {
-                case Right(_) =>
-                  Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                    .flashing("success" -> "Match result submitted as tie with smurfs recorded")
-                case Left(error) =>
-                  Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                    .flashing("error" -> s"Failed to submit result: $error")
-              }
-            case None =>
-              Future.successful(
-                Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                  .flashing("error" -> "Match not found")
-              )
-          }
-
-        case MatchResultForm(None, "cancelled", _, _) =>
-          tournamentService.submitMatchResult(tournamentId, matchId, None, "cancelled").map {
-            case Right(_) =>
-              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                .flashing("success" -> "Match cancelled successfully")
-            case Left(error) =>
-              Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-                .flashing("error" -> s"Failed to cancel match: $error")
-          }
-
-        case _ =>
-          Future.successful(
-          Redirect(routes.FileUploadController.uploadFormForMatch(tournamentId, matchId))
-            .flashing("error" -> "Invalid form data - both smurfs are required for winner and tie results")
-        )
-      }
-    )
-  }
+  
 
 }

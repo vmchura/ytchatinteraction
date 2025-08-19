@@ -7,7 +7,7 @@ import java.time.LocalDateTime
 import GameStateShared.*
 
 import java.util.UUID
-case class ParticipantShared(userID: Int, userName: String, smurfs: Set[String]) derives ReadWriter
+case class ParticipantShared(userID: Long, userName: String, smurfs: Set[String]) derives ReadWriter
 sealed trait GameStateShared {
   def sessionID: UUID
 }
@@ -27,7 +27,7 @@ enum WinnerShared derives ReadWriter:
 
 case class SmurfSelection(smurf: String, options: List[(String, Boolean, String, String)])
 
-case class UploadStateShared(matchID: Int, tournamentID: Int,
+case class UploadStateShared(matchID: Long, tournamentID: Long,
                              firstParticipant: ParticipantShared, secondParticipant: ParticipantShared,
                              games: List[GameStateShared], winner: WinnerShared) derives ReadWriter {
   def getGameDescription(game: GameStateShared): (String, String) = {
@@ -97,6 +97,16 @@ case class UploadStateShared(matchID: Int, tournamentID: Int,
 
   def withGames(newGames: List[GameStateShared]): UploadStateShared = {
     copy(games = games ::: newGames)
+  }
+  def updateOnePendingTo(f: UUID => GameStateShared): UploadStateShared = {
+    val (noPending, firstPends) = games.span{
+      case PendingGame(_) => false
+      case _ => true
+    }
+    firstPends match {
+      case PendingGame(uuid) :: rest => copy(games=  f(uuid) ::  rest :::  noPending)
+      case _ => throw new IllegalStateException("No pending?")
+    }
   }
 }
 object UploadStateShared {

@@ -69,14 +69,10 @@ POST    /tournaments/:id/start      controllers.TournamentController.startTourna
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
 
 # Tournament Match File Upload routes (JSON API only)
-GET     /match/:tournamentId/:matchId/upload      controllers.FileUploadController.uploadFormForMatch(tournamentId: Long, matchId: Long)
-POST    /match/:tournamentId/:matchId/upload      controllers.FileUploadController.uploadFile(tournamentId: Long, matchId: Long)
-POST    /match/:tournamentId/:matchId/file/:sha256Hash  controllers.FileUploadController.removeFile(tournamentId: Long, matchId: Long, sha256Hash: String)
-POST    /mydata controllers.FileUploadController.mydata()
-POST    /updatestate controllers.FileUploadController.updateState()
+GET    /:matchId/:tournamentId controllers.FileUploadController.fetchState(matchId: Long, tournamentId: Long)
+POST   /updatestate controllers.FileUploadController.updateState()
 
 # Match Result routes
-POST    /match/:tournamentId/:matchId/result  controllers.MatchResultController.submitResult(tournamentId: Long, matchId: Long)
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

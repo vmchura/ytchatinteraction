@@ -73,17 +73,7 @@ object FileUploadResponse {
   implicit val uploadSessionJsonWrites: OWrites[UploadSessionJson] = Json.writes[UploadSessionJson]
   implicit val fileUploadResponseWrites: OWrites[FileUploadResponse] = Json.writes[FileUploadResponse]
   
-  // Conversion methods
-  def fromUploadSession(session: UploadSession): UploadSessionJson = {
-    UploadSessionJson(
-      sessionId = session.sessionId,
-      matchId = session.matchId,
-      totalFiles = session.totalFiles,
-      successfulFiles = session.successfulFiles.map(fromFileProcessResult),
-      failedFiles = session.failedFiles.map(fromFileProcessResult),
-      hasFiles = session.hasFiles
-    )
-  }
+
   
   def fromFileProcessResult(file: FileProcessResult): FileResultJson = {
     FileResultJson(
@@ -142,99 +132,18 @@ class FileUploadController @Inject()(
 
   private val logger = Logger(getClass)
 
-  def uploadFormForMatch(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    val currentSession: UploadSession = uploadSessionService.getSession(request.identity, matchId) match {
-      case Some(session) => session
-      case None => uploadSessionService.startSession(request.identity, matchId)
-    }
 
-    for {
-      matchOpt <- tournamentService.getMatch(tournamentId, matchId)
-      matchDetailsOpt <- matchOpt match {
-        case Some(tournamentMatch) =>
-          for {
-            tournamentOpt <- tournamentService.getTournament(tournamentMatch.tournamentId)
-            firstUserOpt <- userRepository.getById(tournamentMatch.firstUserId)
-            secondUserOpt <- userRepository.getById(tournamentMatch.secondUserId)
-          } yield Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt))
-        case None => Future.successful(None)
-      }
-
-    } yield {
-      matchDetailsOpt match {
-        case Some((tournamentMatch, tournamentOpt, firstUserOpt, secondUserOpt)) =>
-          Ok(views.html.fileUpload(
-            request.identity,
-            tournamentId,
-            matchId,
-            currentSession,
-            None,
-            tournamentOpt,
-            Some(tournamentMatch),
-            firstUserOpt,
-            secondUserOpt
-          ))
-        case None =>
-          Ok(views.html.fileUpload(
-            request.identity,
-            tournamentId,
-            matchId,
-            currentSession,
-            Some("Match not found"),
-            None,
-            None,
-            None,
-            None
-          ))
-      }
-    }
-  }
-
-  def uploadFile(tournamentId: Long, matchId: Long): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
+  def removeFile(tournamentId: Long, matchId: Long, sha256Hash: UUID): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     import FileUploadResponse._
-    val currentSession = uploadSessionService.getOrCreateSession(request.identity, matchId)
+    uploadSessionService.getOrCreateSession(request.identity, matchId, tournamentId).map{
+      case Some(session) =>
+        val newState = uploadSessionService.persistState(uploadSessionService.removeFileFromSession(session, sha256Hash))
+        Ok(write(newState.uploadState))
 
-    if (currentSession.isFinalized) {
-      Future.successful(BadRequest(Json.toJson(FileUploadResponse(
+      case None => BadRequest(Json.toJson(FileUploadResponse(
         success = false,
-        error = Some("Session is already finalized")
-      ))))
-    } else {
-      val uploadedFiles = request.body.files.filter(_.key == "upload_file")
-      if (uploadedFiles.isEmpty) {
-        Future.successful(BadRequest(Json.toJson(FileUploadResponse(
-          success = false,
-          error = Some("No files provided")
-        ))))
-      } else {
-        processFilesAndReturnJson(request.identity, tournamentId, matchId, uploadedFiles)(request)
-      }
-    }
-  }
-
-  def finalizeSession(tournamentId: Long, matchId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()) { implicit request =>
-    val user = request.identity
-    uploadSessionService.finalizeSession(user, matchId) match {
-      case _ =>
-        Ok(views.html.index(Some(user)))
-    }
-
-  }
-
-  def removeFile(tournamentId: Long, matchId: Long, sha256Hash: String): Action[AnyContent] = silhouette.SecuredAction { implicit request =>
-    import FileUploadResponse._
-
-    uploadSessionService.removeFileFromSession(request.identity, matchId, sha256Hash) match {
-      case Some(updatedSession) =>
-        Ok(Json.toJson(FileUploadResponse(
-          success = true,
-          session = Some(fromUploadSession(updatedSession))
-        )))
-      case None =>
-        BadRequest(Json.toJson(FileUploadResponse(
-          success = false,
-          error = Some("File not found or session not available")
-        )))
+        error = Some("File not found or session not available")
+      )))
     }
   }
 
@@ -305,79 +214,34 @@ class FileUploadController @Inject()(
     }
   }
 
-  private def processFilesAndReturnJson(user: User,
-                                        tournamentId: Long,
-                                        matchId: Long,
-                                        uploadedFiles: Seq[MultipartFormData.FilePart[TemporaryFile]]
-                                       )(implicit request: SecuredRequest[EnvType, MultipartFormData[TemporaryFile]]): Future[Result] = {
-    import FileUploadResponse._
-
-    // Get or create session first
-    val currentSession = uploadSessionService.getOrCreateSession(user, matchId)
-
-    val futureResults = uploadedFiles.foldLeft(Future.successful(List.empty[FileProcessResult])) { case (previousFiles, file) =>
-      for {
-        filesProcessed <- previousFiles
-        // Process the file
-        fileResult <- parseReplayFileService.validateAndProcessSingleFile(file)
-
-        // Read file bytes for storage
-        fileBytes = try {
-          java.nio.file.Files.readAllBytes(file.ref.path)
-        } catch {
-          case ex: Exception =>
-            logger.error(s"Failed to read file ${file.filename}: ${ex.getMessage}", ex)
-            Array.empty[Byte]
-        }
-        storageResult <- if (fileResult.success) storeProcessedFile(user, tournamentId, matchId, currentSession.sessionId, fileResult, fileBytes) else Future.successful(Left("Not saved, error parsing"))
-        fileRulestWithStorage = storageResult match {
-          case Left(_) => fileResult
-          case Right(storeFileInfo) => fileResult.copy(storedFileInfo = Some(storeFileInfo))
-        }
-        sessionResult <- if (fileRulestWithStorage.success && fileRulestWithStorage.storedFileInfo.isDefined) uploadSessionService.addFileToSession(user, matchId, fileRulestWithStorage) else Future.successful(None)
-
-      } yield filesProcessed :+ fileRulestWithStorage
-    }
-
-    for {
-      _ <- futureResults
-
-    } yield {
-      val updatedSession = uploadSessionService.getSession(user, matchId)
-      updatedSession match {
-        case Some(session) =>
-          Ok(Json.toJson(FileUploadResponse(
-            success = true,
-            session = Some(fromUploadSession(currentSession))
-          )))
-        case None =>
-          logger.warn(s"Session not found after processing files for user ${user.userId}, match $matchId")
-          InternalServerError(Json.toJson(FileUploadResponse(
-            success = false,
-            error = Some("Session not found after processing")
-          )))
-      }
+  def fetchState(matchId: Long, tournamentId: Long): Action[AnyContent]=  silhouette.SecuredAction.async { implicit request =>
+    uploadSessionService.getOrCreateSession(request.identity, matchId, tournamentId).map{
+      case Some(session) => Ok(write(session.uploadState))
+      case None =>  BadRequest(Json.toJson(FileUploadResponse(
+        success = false,
+        error = Some("Session not available")
+      )))
     }
   }
-  def mydata(): Action[AnyContent]=  silhouette.UserAwareAction.async { implicit request =>
-    println(request.body)
-    val responseValue = UploadStateShared(0,0,ParticipantShared(0,"ASD",Set.empty[String]),ParticipantShared(0,"XYZ",Set.empty[String]),
-      List(ValidGame(List("Bisu123", "Flash123"), "CircuitBreakers", LocalDateTime.now(),"", UUID.randomUUID()),
-        InvalidGame("Error duplicate",UUID.randomUUID()),
-        PendingGame(UUID.randomUUID())), Draw)
-    Future.successful(Ok(write(responseValue)))
-  }
-  def updateState(): Action[MultipartFormData[TemporaryFile]] = silhouette.UserAwareAction.async(parse.multipartFormData) { implicit request =>
-    println(request.body.dataParts)
-    println(request.body.badParts)
-    println(request.body.files.map(_.key))
+  def updateState(): Action[MultipartFormData[TemporaryFile]] = silhouette.SecuredAction.async(parse.multipartFormData) { implicit request =>
+    
     request.body.files
       .find(_.key == "state")
       .flatMap { part =>
         Try(read[UploadStateShared](new String(Files.readAllBytes(part.ref.path), "UTF-8"))).toOption
       } match {
-      case Some(value) => println(value)
-      case None => println("--")
+      case Some(value) => 
+        uploadSessionService.getOrCreateSession(request.identity, value.matchID, value.tournamentID).map{
+        case Some(session) => Ok(write(session.uploadState))
+        case None =>  BadRequest(Json.toJson(FileUploadResponse(
+          success = false,
+          error = Some("Session not available")
+        )))
+      }
+      case None => BadRequest(Json.toJson(FileUploadResponse(
+        success = false,
+        error = Some("Session not available")
+      )))
     }
     Future.successful(Ok)
   }

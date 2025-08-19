@@ -640,7 +640,7 @@ class TournamentServiceImpl @Inject() (
       // Get the tournament and match
       tournamentOpt <- tournamentRepository.findById(tournamentId)
       matchOpt <- getMatch(tournamentId, matchId)
-      
+
       result <- (tournamentOpt, matchOpt) match {
         case (Some(tournament), Some(tournamentMatch)) =>
           // Validate winner if provided
@@ -648,13 +648,13 @@ class TournamentServiceImpl @Inject() (
             case Some(userId) => userId == tournamentMatch.firstUserId || userId == tournamentMatch.secondUserId
             case None => true
           }
-          
+
           if (!isValidWinner) {
             Future.successful(Left("Invalid winner ID"))
           } else {
             // Only process uploaded files for winner and tie cases
             val shouldProcessUploadedFiles = resultType == "with_winner" || resultType == "tie"
-            
+
             // Determine new status and winner
             val (newStatus, finalWinnerId) = resultType match {
               case "with_winner" => (MatchStatus.Completed, winnerId)
@@ -662,18 +662,19 @@ class TournamentServiceImpl @Inject() (
               case "cancelled" => (MatchStatus.Cancelled, None)
               case _ => (MatchStatus.Completed, winnerId)
             }
-            
+
             for {
               // Process upload sessions and register files in database if needed
               uploadProcessingResult <- if (shouldProcessUploadedFiles) {
-                processUploadSessionsForMatch(tournamentId, matchId, tournamentMatch)
+                //processUploadSessionsForMatch(tournamentId, matchId, tournamentMatch)
+                Future.successful(Left("No file processing needed for cancelled matches"))
               } else {
                 Future.successful(Right("No file processing needed for cancelled matches"))
               }
-              
+
               // Update in local database with both winner and status
               localUpdateResult <- tournamentMatchRepository.updateWinnerAndStatus(matchId, finalWinnerId, newStatus)
-              
+
               // Update in Challonge if tournament has Challonge integration
               challongeUpdateResult <- tournament.challongeTournamentId match {
                 case Some(challongeTournamentId) =>
@@ -681,7 +682,7 @@ class TournamentServiceImpl @Inject() (
                 case None =>
                   Future.successful(true) // No Challonge integration, consider successful
               }
-              
+
               finalResult <- (localUpdateResult, challongeUpdateResult, uploadProcessingResult) match {
                 case (Some(match_), true, Right(_)) =>
                   Future.successful(Right(match_))
@@ -694,7 +695,7 @@ class TournamentServiceImpl @Inject() (
               }
             } yield finalResult
           }
-          
+
         case (None, _) =>
           Future.successful(Left("Tournament not found"))
         case (_, None) =>
@@ -703,120 +704,6 @@ class TournamentServiceImpl @Inject() (
     } yield result
   }
 
-  /**
-   * Processes upload sessions for both players in a match and registers files in the database.
-   * This method closes the sessions and persists file information to the database.
-   */
-  private def processUploadSessionsForMatch(
-    tournamentId: Long, 
-    matchId: Long, 
-    tournamentMatch: TournamentMatch
-  ): Future[Either[String, String]] = {
-    val logger = Logger(getClass)
-    val player1Sessions = uploadSessionService.getSessionsForMatch(matchId).filter(_.userId == tournamentMatch.firstUserId)
-    val player2Sessions = uploadSessionService.getSessionsForMatch(matchId).filter(_.userId == tournamentMatch.secondUserId)
-    val allSessions = player1Sessions ++ player2Sessions
-    for {
-      result <- if (allSessions.isEmpty) {
-        logger.info(s"No upload sessions found for match $matchId")
-        Future.successful(Right("No upload sessions to process"))
-      } else {
-        // Process each session and register files
-        val sessionProcessingFutures = allSessions.map { session =>
-          processSessionFiles(tournamentId, session)
-        }
-        
-        Future.sequence(sessionProcessingFutures).map { results =>
-          val errors = results.collect { case Left(error) => error }
-          val successes = results.collect { case Right(message) => message }
-          
-          if (errors.nonEmpty) {
-            logger.error(s"Errors processing upload sessions for match $matchId: ${errors.mkString(", ")}")
-            Left(s"Failed to process some upload sessions: ${errors.mkString(", ")}")
-          } else {
-            logger.info(s"Successfully processed ${allSessions.length} upload sessions for match $matchId")
-            
-            // Close all sessions after successful processing
-            val closeFutures = allSessions.map { session =>
-              uploadSessionService.clearSession(session.userId, matchId)
-            }
-            
-            val successfulCloses = closeFutures.count(identity)
-            logger.info(s"Closed $successfulCloses out of ${allSessions.length} upload sessions for match $matchId")
-            Right(s"Processed ${allSessions.length} upload sessions and registered files in database")
-          }
-        }
-      }
-    } yield result
-  }
-
-  /**
-   * Processes files from a single upload session and registers them in the database.
-   */
-  private def processSessionFiles(
-    tournamentId: Long, 
-    session: UploadSession
-  ): Future[Either[String, String]] = {
-    val logger = Logger(getClass)
-    
-    if (session.successfulFiles.isEmpty) {
-      logger.debug(s"No successful files to process in session ${session.sessionId}")
-      return Future.successful(Right("No files to process"))
-    }
-    
-    val filesToRegister = session.successfulFiles.filter { fileResult =>
-      // Only register files that have required information
-      fileResult.sha256Hash.isDefined && fileResult.storedFileInfo.isDefined
-    }
-    
-    if (filesToRegister.isEmpty) {
-      logger.warn(s"No files with complete information to register in session ${session.sessionId}")
-      return Future.successful(Right("No complete files to register"))
-    }
-    
-    val registrationFutures = filesToRegister.map { fileResult =>
-      val sha256Hash = fileResult.sha256Hash.get
-      val storedFileInfo = fileResult.storedFileInfo.get
-      
-      // Create UploadedFile record
-      val uploadedFile = models.UploadedFile(
-        userId = session.userId,
-        tournamentId = tournamentId,
-        matchId = session.matchId,
-        sha256Hash = sha256Hash,
-        originalName = fileResult.fileName,
-        relativeDirectoryPath = extractRelativeDirectory(storedFileInfo.storedPath),
-        savedFileName = storedFileInfo.storedFileName,
-        uploadedAt = storedFileInfo.storedAt
-      )
-      
-      // Check if file with this SHA256 already exists to avoid duplicates
-      uploadedFileRepository.findBySha256Hash(sha256Hash).flatMap {
-        case Some(existingFile) =>
-          logger.debug(s"File with SHA256 $sha256Hash already exists in database, skipping")
-          Future.successful(Right(s"File ${fileResult.fileName} already registered"))
-        case None =>
-          uploadedFileRepository.create(uploadedFile).map { createdFile =>
-            logger.info(s"Registered file ${fileResult.fileName} in database with ID ${createdFile.id}")
-            Right(s"Registered file ${fileResult.fileName}")
-          }.recover { case ex =>
-            logger.error(s"Failed to register file ${fileResult.fileName} in database: ${ex.getMessage}", ex)
-            Left(s"Failed to register file ${fileResult.fileName}: ${ex.getMessage}")
-          }
-      }
-    }
-    
-    Future.sequence(registrationFutures).map { results =>
-      val errors = results.collect { case Left(error) => error }
-      val successes = results.collect { case Right(message) => message }
-      
-      if (errors.nonEmpty) {
-        Left(s"Failed to register some files from session ${session.sessionId}: ${errors.mkString(", ")}")
-      } else {
-        Right(s"Successfully registered ${successes.length} files from session ${session.sessionId}")
-      }
-    }
-  }
 
   /**
    * Extracts the relative directory path from the full stored path.
