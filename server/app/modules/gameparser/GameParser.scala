@@ -14,18 +14,6 @@ import javax.inject._
 class GameParser @Inject()(
   parseReplayFileService: ParseReplayFileService
 )(implicit ec: ExecutionContext) {
-
-  /**
-   * Parse a replay file and return GameInfo
-   */
-  def parseReplay(replay: File): Future[GameInfo] = {
-    parseReplayFileService.parseFile(replay).map { result =>
-      GameInfo.parseFromEither(result)
-    }.recover {
-      case _ => ImpossibleToParse
-    }
-  }
-
   /**
    * Parse replay data directly from Either result
    */

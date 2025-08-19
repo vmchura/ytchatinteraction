@@ -201,7 +201,7 @@ class FileUploadController @Inject()(
         error = Some("Session not available")
       )))
       case Some(session) => 
-        
+        request.body.files.find(_.key == "replays")
         Ok(write[UploadStateShared](session.uploadState)) 
     }
   }

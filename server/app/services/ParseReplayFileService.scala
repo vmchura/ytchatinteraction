@@ -60,9 +60,6 @@ case class FileUploadComplete(result: String) extends FileProcessState
  * Service for parsing replay files
  */
 trait ParseReplayFileService {
-  def parseFile(file: java.io.File): Future[Either[String, String]]
-
-  def processMultipleFiles(files: Seq[MultipartFormData.FilePart[TemporaryFile]]): Future[MultiFileUploadResult]
 
   def validateAndProcessSingleFile(file: MultipartFormData.FilePart[TemporaryFile]): Future[FileProcessResult]
 }
@@ -78,54 +75,6 @@ class DefaultParseReplayFileService @Inject()(
 
   private val logger = Logger(getClass)
   private val replayParserUrl = configuration.get[String]("replayparser.url")
-
-  override def parseFile(file: java.io.File): Future[Either[String, String]] = {
-    // This would be implemented to call the external service
-    // For now, return a mock implementation
-    Future.successful(Left("Not implemented"))
-  }
-
-  /**
-   * Process multiple files and return comprehensive results
-   * This method now supports efficient bulk duplicate detection when used with UploadSession
-   */
-  override def processMultipleFiles(files: Seq[MultipartFormData.FilePart[TemporaryFile]]): Future[MultiFileUploadResult] = {
-    val futureResults = files.map { file =>
-      validateAndProcessSingleFile(file)
-    }.toList
-
-    Future.sequence(futureResults).map { results =>
-      val successful = results.filter(_.success)
-      val failed = results.filter(!_.success)
-
-      MultiFileUploadResult(
-        totalFiles = files.length,
-        successfulFiles = successful,
-        failedFiles = failed,
-        totalSuccessful = successful.length,
-        totalFailed = failed.length
-      )
-    }.recover { case ex: Exception =>
-      logger.error(s"Error processing multiple files: ${ex.getMessage}", ex)
-      MultiFileUploadResult(
-        totalFiles = files.length,
-        successfulFiles = List.empty,
-        failedFiles = files.map(file => FileProcessResult(
-          fileName = file.filename,
-          originalSize = tryGetFileSize(file),
-          contentType = file.contentType.getOrElse("unknown"),
-          processedAt = java.time.Instant.now().toString,
-          success = false,
-          errorMessage = Some(s"Batch processing failed: ${ex.getMessage}"),
-          gameInfo = None,
-          sha256Hash = None,
-          path=file.ref.path
-        )).toList,
-        totalSuccessful = 0,
-        totalFailed = files.length
-      )
-    }
-  }
 
   /**
    * Process a single file and return result
