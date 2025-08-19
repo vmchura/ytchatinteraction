@@ -69,7 +69,8 @@ POST    /tournaments/:id/start      controllers.TournamentController.startTourna
 GET     /replay-parser/health       controllers.ReplayParserHealthController.healthPage()
 
 # Tournament Match File Upload routes (JSON API only)
-GET    /:matchId/:tournamentId controllers.FileUploadController.fetchState(matchId: Long, tournamentId: Long)
+GET     /match/:tournamentId/:challengeMatchId/upload      controllers.FileUploadController.uploadFormForMatch(tournamentId: Long, challengeMatchId: Long)
+GET    /fetchstate/:challongeMatchID/:tournamentId controllers.FileUploadController.fetchState(challongeMatchID: Long, tournamentId: Long)
 POST   /updatestate controllers.FileUploadController.updateState()
 
 # Match Result routes

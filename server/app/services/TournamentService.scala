@@ -154,11 +154,11 @@ trait TournamentService {
    * Retrieves a tournament match by its ID and tournament ID.
    * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    *
-   * @param matchId The match ID
+   * @param challongeMatchID The match ID
    * @param tournamentId The tournament ID
    * @return The tournament match if found, None otherwise
    */
-  def getMatch(tournamentId: Long, matchId: Long): Future[Option[TournamentMatch]]
+  def getMatch(tournamentId: Long, challongeMatchID: Long): Future[Option[TournamentMatch]]
 
   /**
    * Retrieves all matches for a specific tournament.
@@ -445,21 +445,21 @@ class TournamentServiceImpl @Inject() (
    * Retrieves a tournament match by its ID and tournament ID.
    * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    */
-  override def getMatch(tournamentId: Long,matchId: Long): Future[Option[TournamentMatch]] = {
+  override def getMatch(tournamentId: Long,challongeMatchID: Long): Future[Option[TournamentMatch]] = {
     // First try to find the match locally
-    tournamentMatchRepository.findById(matchId).flatMap {
+    tournamentMatchRepository.findById(challongeMatchID).flatMap {
       case Some(existingMatch) => 
         Future.successful(Some(existingMatch))
       case None =>
         // Match not found locally, try to fetch from Challonge API
-        fetchMatchFromChallonge(matchId, tournamentId)
+        fetchMatchFromChallonge(challongeMatchID, tournamentId)
     }
   }
 
   /**
    * Fetches a match from Challonge API and creates it locally with user mappings.
    */
-  private def fetchMatchFromChallonge(matchId: Long, tournamentId: Long): Future[Option[TournamentMatch]] = {
+  private def fetchMatchFromChallonge(challongeMatchID: Long, tournamentId: Long): Future[Option[TournamentMatch]] = {
     for {
       // Get tournament to verify it has Challonge integration
       tournamentOpt <- tournamentRepository.findById(tournamentId)
@@ -472,7 +472,7 @@ class TournamentServiceImpl @Inject() (
             challongeMatches <- tournamentChallongeService.getMatches(challongeTournamentId)
             
             // Find the specific match
-            matchResult <- challongeMatches.find(_.id == matchId) match {
+            matchResult <- challongeMatches.find(_.id == challongeMatchID) match {
               case Some(challongeMatch) =>
                 // Convert Challonge participants to local user IDs
                 convertChallongeMatchToTournamentMatch(challongeMatch, tournamentId, challongeTournamentId)

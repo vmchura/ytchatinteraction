@@ -3,27 +3,12 @@
 @import models.StarCraftModels._
 @import services.UploadSession
 @import models.{Tournament, TournamentMatch}
-@(user: User, tournamentID: Long, matchID: Long, uploadSession: UploadSession, errorMessage: Option[String] = None, tournament: Option[Tournament] = None, tournamentMatch: Option[TournamentMatch] = None, firstUser: Option[User] = None, secondUser: Option[User] = None)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@import helper._
+@(user: User, tournamentID: Long, challongeMatchID: Long)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("upload.title"), Some(user)) {
-<div id="file-upload-container">
-    <header>
-        <h1>@messages("upload.title")</h1>
-        @if(tournament.isDefined && tournamentMatch.isDefined && firstUser.isDefined && secondUser.isDefined) {
-        <div class="match-info">
-            <h2>@tournament.get.name</h2>
-            <p class="match-details">
-                <strong>@messages("upload.match.title"):</strong> @firstUser.get.userName @messages("upload.vs")
-                @secondUser.get.userName
-            </p>
-            <div class="match-metadata" style="display: none;">
-                <span id="tournament-id">@tournament.get.id</span>
-                <span id="match-id">@tournamentMatch.get.matchId</span>
-            </div>
-        </div>
-        }
-        <p>@messages("upload.subtitle")</p>
-    </header>
-
-</div>
+<div id="file-upload-container"></div>
+    <form method="post" id="myForm" action="#">   @helper.CSRF.formField  </form>
+    @scalajs.html.scripts("client", routes.Assets.versioned(_).toString, name => getClass.getResource(s"/public/$name") != null)
+    <script @{CSPNonce.attr} >Main.init(@tournamentID,@challongeMatchID,'file-upload-container');</script>
 }

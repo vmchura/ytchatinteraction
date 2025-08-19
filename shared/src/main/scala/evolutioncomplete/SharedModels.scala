@@ -27,7 +27,7 @@ enum WinnerShared derives ReadWriter:
 
 case class SmurfSelection(smurf: String, options: List[(String, Boolean, String, String)])
 
-case class UploadStateShared(matchID: Long, tournamentID: Long,
+case class UploadStateShared(challongeMatchID: Long, tournamentID: Long,
                              firstParticipant: ParticipantShared, secondParticipant: ParticipantShared,
                              games: List[GameStateShared], winner: WinnerShared) derives ReadWriter {
   def getGameDescription(game: GameStateShared): (String, String) = {

@@ -30,7 +30,7 @@ case class SessionKey(userId: Long, matchId: Long, tournamentId: Long) {
  */
 case class UploadSession(
                           sessionId: SessionKey,
-                          matchId: Long,
+                          challongeMatchID: Long,
                           userId: Long,
                           uploadState: UploadStateShared,
                           createdAt: Instant,
@@ -69,10 +69,10 @@ class UploadSessionService @Inject()(
   /**
    * Start a new upload session for a user and match
    */
-  def startSession(user: User, matchId: Long, tournamentId: Long): Future[Option[UploadSession]] = {
-    val sessionKey = SessionKey(user.userId, matchId, tournamentId)
-    val futSession = tournamentService.getMatch(tournamentId, matchId).flatMap {
-      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, createdAt, MatchStatus.Pending)) =>
+  def startSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
+    val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
+    val futSession = tournamentService.getMatch(tournamentId, challongeMatchID).flatMap {
+      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, createdAt, MatchStatus.Pending | MatchStatus.InProgress)) =>
         for {
           firstUserOpt <- userRepository.getById(firstUserId)
           secondUserOpt <- userRepository.getById(secondUserId)
@@ -80,9 +80,9 @@ class UploadSessionService @Inject()(
           firstUserOpt.zip(secondUserOpt).map { (firstUser, secondUser) =>
             val session = UploadSession(
               sessionId = sessionKey,
-              matchId = matchId,
+              challongeMatchID = challongeMatchID,
               userId = user.userId,
-              uploadState = UploadStateShared(matchID = matchId, tournamentID = tournamentId, firstParticipant = ParticipantShared(firstUser.userId, firstUser.userName, Set.empty[String]), secondParticipant = ParticipantShared(secondUser.userId, secondUser.userName, Set.empty[String]), games = Nil, winner = Undefined),
+              uploadState = UploadStateShared(challongeMatchID = challongeMatchID, tournamentID = tournamentId, firstParticipant = ParticipantShared(firstUser.userId, firstUser.userName, Set.empty[String]), secondParticipant = ParticipantShared(secondUser.userId, secondUser.userName, Set.empty[String]), games = Nil, winner = Undefined),
               createdAt = Instant.now(),
               lastUpdated = Instant.now()
             )
@@ -99,21 +99,21 @@ class UploadSessionService @Inject()(
   /**
    * Get existing session or create a new one if it doesn't exist
    */
-  def getOrCreateSession(user: User, matchId: Long, tournamentId: Long): Future[Option[UploadSession]] = {
-    val sessionKey = SessionKey(user.userId, matchId, tournamentId)
-
-    Option(sessions.get(sessionKey)) match {
-      case Some(existingSession) if !isSessionExpired(existingSession) =>
-        logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
-        Future.successful(Some(existingSession))
-      case Some(expiredSession) =>
-        logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
-        sessions.remove(sessionKey)
-        Future.successful(None)
-      case None =>
-        logger.info(s"No session found, creating new one for user: ${user.userId}, match: $matchId")
-        startSession(user, matchId, tournamentId)
-    }
+  def getOrCreateSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
+      val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
+      Option(sessions.get(sessionKey)) match {
+        case Some(existingSession) if !isSessionExpired(existingSession) =>
+          logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
+          Future.successful(Some(existingSession))
+        case Some(expiredSession) =>
+          logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
+          sessions.remove(sessionKey)
+          Future.successful(None)
+        case None =>
+          println(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
+          logger.info(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
+          startSession(user, challongeMatchID, tournamentId)
+      }
   }
 
   /**
@@ -193,7 +193,7 @@ class UploadSessionService @Inject()(
    */
   def getSessionsForMatch(matchId: Long): List[UploadSession] = {
     val matchSessions = sessions.asScala.values
-      .filter(session => session.matchId == matchId && !isSessionExpired(session))
+      .filter(session => session.challongeMatchID == matchId && !isSessionExpired(session))
       .toList
 
     matchSessions

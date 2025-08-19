@@ -26,25 +26,28 @@ import org.scalajs.dom.File
 object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
 
-  def init(tournamentID: Int, matchID: Int, containerID: String): Unit = {
-    println(s"$tournamentID - $matchID - $containerID")
+  def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
+    println(s"$tournamentID - $challongeMatchID - $containerID")
     val container = org.scalajs.dom.document.getElementById(containerID)
     render(container, uploadDivision(uploadMatchState))
-    fetchState().onComplete {
+    fetchState(tournamentID: Int, challongeMatchID: Int).onComplete {
       case Success(Right(value)) => uploadMatchState.value = value
-      case Success(Left(error)) => uploadMatchState.value = UploadStateShared.errorOne()
-      case Failure(error) => uploadMatchState.value = UploadStateShared.errorOne()
+      case Success(Left(error)) => uploadMatchState.value =
+        println(error)
+        UploadStateShared.errorOne()
+      case Failure(error) =>
+        println(error)
+        uploadMatchState.value = UploadStateShared.errorOne()
     }
   }
 
-  def fetchState(): Future[Either[String, UploadStateShared]] = {
+  def fetchState(tournamentID: Int, challongeMatchID: Int): Future[Either[String, UploadStateShared]] = {
 
     val request = basicRequest
       // send the body as form data (x-www-form-urlencoded)
-      .body(Map("name" -> "John", "surname" -> "doe"))
       .headers(Map("Csrf-Token" -> Main.findTokenValue()))
       // use an optional parameter in the URI
-      .post(uri"/mydata")
+      .get(uri"/fetchstate/$challongeMatchID/$tournamentID")
 
     val backend = FetchBackend()
     request.send(backend).map {
@@ -53,7 +56,7 @@ object ReplayUploader {
           case Success(valid) => Right(valid)
           case Failure(error) => Left(error.getLocalizedMessage)
         }
-      case _ => Left("bad response")
+      case error => Left(error.toString)
     }
   }
 
@@ -82,7 +85,7 @@ object ReplayUploader {
           case Success(valid) => Right(valid)
           case Failure(error) => Left(error.getLocalizedMessage)
         }
-      case _ => Left("bad response")
+      case error => Left(error.toString)
     }
   }
 
@@ -131,7 +134,7 @@ object ReplayUploader {
         val pendingFiles = validFiles.map(_ => PendingGame(UUID.randomUUID()))
         uploadMatchState.value = uploadMatchState.value.withGames(pendingFiles ::: invalidFilesReason)
         postState(validFiles, uploadMatchState.value).onComplete {
-          case Success(Right(value)) => println(value)
+          case Success(Right(value)) => uploadMatchState.value = value
           case Success(Left(error)) => println(error)
           case Failure(error) => println(error)
         }

@@ -13,7 +13,6 @@
             <thead>
             <tr>
                 <th>@messages("partials.matches.tournament")</th>
-                <th>@messages("partials.matches.match.id")</th>
                 <th>@messages("partials.matches.opponent")</th>
                 <th>@messages("partials.matches.status")</th>
                 <th>@messages("partials.matches.scheduled.time")</th>
@@ -26,7 +25,6 @@
             @defining(MatchDisplayData.fromUserMatchInfo(matchInfo)) { matchData =>
             <tr>
                 <td>@matchData.tournament.name</td>
-                <td>#@matchData.matchId</td>
                 <td>@matchData.opponent</td>
                 <td>@renderMatchStatus(matchData.status)</td>
                 <td>@matchData.scheduledTime.getOrElse(messages("partials.matches.not.scheduled"))</td>
@@ -39,7 +37,7 @@
                 </td>
                 <td>
                     @if(matchData.canUploadReplay) {
-                    <a href="#"
+                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournament.id, matchData.challengeMatchId)"
                        role="button" class="outline">
                         @messages("partials.matches.upload.replay")
                     </a>

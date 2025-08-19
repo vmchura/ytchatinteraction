@@ -11,9 +11,9 @@ object Main {
   def main(args: Array[String]): Unit = {}
 
   @JSExport("init")
-  def init(tournamentID: Int, matchID: Int, containerID: String): Unit = {
+  def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
 
-    ReplayUploader.init(tournamentID,matchID,containerID)
+    ReplayUploader.init(tournamentID,challongeMatchID,containerID)
 
   }
 

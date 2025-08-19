@@ -47,7 +47,7 @@
                 <article class="success">@successMessage</article>
             }
             @content
-            <div id="ABC"></div>
+            
         </main>
         <footer class="container">
             <small>@Html(messages("footer.copyright"))</small>
@@ -56,8 +56,6 @@
                 <a href="/assets/terms.html">Terms of Service</a>
             </footer>
         </footer>
-        <form method="post" id="myForm" action="#">   @helper.CSRF.formField  </form>
-        @scalajs.html.scripts("client", routes.Assets.versioned(_).toString, name => getClass.getResource(s"/public/$name") != null)
-        <script @{CSPNonce.attr} >Main.init(123,234,'ABC');</script>
+        
     </body>
 </html>

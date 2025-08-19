@@ -56,7 +56,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
           val uploadedFile = models.UploadedFile(
             userId = session.userId,
             tournamentId = session.uploadState.tournamentID,
-            matchId = session.matchId,
+            matchId = session.challongeMatchID,
             sha256Hash = hash,
             originalName = storedInfo.originalFileName,
             relativeDirectoryPath = "uploads", // Based on configuration
