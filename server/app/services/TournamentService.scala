@@ -261,7 +261,7 @@ trait TournamentService {
  * @param tournamentRegistrationRepository The tournament registration repository implementation.
  * @param tournamentChallongeService The Challonge service for API interactions.
  * @param tournamentChallongeParticipantRepository The repository for Challonge participant mappings.
- * @param uploadSessionService The upload session service for managing file upload sessions.
+
  * @param uploadedFileRepository The uploaded file repository for persisting file records.
  * @param ec The execution context.
  */
@@ -272,7 +272,6 @@ class TournamentServiceImpl @Inject() (
   tournamentRegistrationRepository: TournamentRegistrationRepository,
   tournamentChallongeService: TournamentChallongeService,
   tournamentChallongeParticipantRepository: TournamentChallongeParticipantRepository,
-  uploadSessionService: UploadSessionService,
   uploadedFileRepository: models.repository.UploadedFileRepository
 )(implicit ec: ExecutionContext) extends TournamentService {
 

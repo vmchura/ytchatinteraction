@@ -20,7 +20,7 @@ import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
  */
 class ServicesModule extends SimpleModule(
   bind[ParseReplayFileService].to[DefaultParseReplayFileService],
-  bind[UploadSessionService].toSelf.eagerly(),
+  bind[UploadSessionService].toSelf,
   bind[FileStorageService].to[DefaultFileStorageService],
   bind[TournamentService].to[TournamentServiceImpl],
   bind[TournamentChallongeService].to[TournamentChallongeServiceImpl],
