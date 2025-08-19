@@ -17,6 +17,8 @@ import models.TournamentMatch
 import models.repository.UserRepository
 import models.StarCraftModels.ReplayParsed
 
+import java.nio.file.Files
+
 
 
 /**
@@ -130,28 +132,34 @@ class UploadSessionService @Inject()(
   def addFileToSession(currentSession: UploadSession, fileResult: FileProcessResult): Future[UploadSession] = {
 
     // Check for duplicates before adding
-    checkForDuplicateFile(fileResult).map { isDuplicate =>
+    checkForDuplicateFile(fileResult).flatMap { isDuplicate =>
       if (isDuplicate) {
         logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
-        currentSession.copy(lastUpdated = java.time.Instant.now(),
-          uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en otras partidas", uuid)))
+        Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
+          uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en otras partidas", uuid))))
       } else {
         fileResult match {
           case FileProcessResult(_, _, _, _, _, errorMessage, _, None, _) =>
-            currentSession.copy(lastUpdated = java.time.Instant.now(),
-              uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("No Hash, archivo corrupto"), uuid)))
+            Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
+              uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("No Hash, archivo corrupto"), uuid))))
           case FileProcessResult(_, _, _, _, _, _, _, Some(sha256Hash), _) if currentSession.uploadState.games.exists {
             case ValidGame(_, _, _, hash, _) if hash.equals(sha256Hash) => true
             case _ => false
-          } => currentSession.copy(lastUpdated = java.time.Instant.now(),
-            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en esta sesión", uuid)))
+          } => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
+            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en esta sesión", uuid))))
           case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
           Some(mapName), Some(startTime), _, teams, _)), Some(sha256Hash), path) =>
-
-            currentSession.copy(lastUpdated = java.time.Instant.now(),
-            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => ValidGame(teams.flatMap(_.participants.map(_.name)), mapName, LocalDateTime.now(), sha256Hash, uuid)))
-          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => currentSession.copy(lastUpdated = java.time.Instant.now(),
-            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("Otro error"), uuid)))
+            fileStorageService.storeFile(Files.readAllBytes(path), fileName,
+              fileResult.contentType,currentSession.userId, currentSession.challongeMatchID,
+              currentSession.sessionId.toString).map{
+              case Left(error) => currentSession.copy(lastUpdated = java.time.Instant.now(),
+                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(error, uuid)))
+              case Right(storedInfo) => currentSession.copy(lastUpdated = java.time.Instant.now(),
+                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => ValidGame(teams.flatMap(_.participants.map(_.name)), mapName, LocalDateTime.now(), sha256Hash, uuid)),
+                hash2StoreInformation = currentSession.hash2StoreInformation + (sha256Hash -> storedInfo))
+            }
+          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
+            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("Otro error"), uuid))))
         }
       }
 
