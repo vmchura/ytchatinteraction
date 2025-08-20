@@ -82,7 +82,7 @@ class UploadSessionService @Inject()(
   def startSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
     val futSession = tournamentService.getMatch(tournamentId, challongeMatchID).flatMap {
-      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, createdAt, MatchStatus.Pending | MatchStatus.InProgress)) =>
+      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, MatchStatus.Pending | MatchStatus.InProgress,_, createdAt)) =>
         for {
           firstUserOpt <- userRepository.getById(firstUserId)
           secondUserOpt <- userRepository.getById(secondUserId)

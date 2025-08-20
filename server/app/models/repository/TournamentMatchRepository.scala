@@ -241,16 +241,16 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
    */
   def updateWinnerAndStatusAction(tournamentMatch: TournamentMatch, winner: WinnerShared): DBIO[Boolean] = {
     val updateQuery = tournamentMatchesTable.filter(_.matchId === tournamentMatch.matchId)
-      .map(m => (m.winnerUserId, m.status))
+      .map(m => (m.winnerUserId, m.status, m.winner_description))
     for {
       _ <- if(winner == Undefined) DBIO.failed(new IllegalStateException("Undefined status to update as Match Finished")) else DBIO.successful("")
       rowsUpdated <- updateQuery.update{
         winner match {
-          case FirstUser | FirstUserByOnlyPresented => (Some(tournamentMatch.firstUserId), MatchStatus.Completed)
-          case SecondUser | SecondUserByOnlyPresented => (Some(tournamentMatch.secondUserId), MatchStatus.Completed)
-          case Draw => (None, MatchStatus.Completed)
-          case Cancelled => (None, MatchStatus.Cancelled)
-          case Undefined => (None, MatchStatus.Cancelled)
+          case FirstUser | FirstUserByOnlyPresented => (Some(tournamentMatch.firstUserId), MatchStatus.Completed, winner)
+          case SecondUser | SecondUserByOnlyPresented => (Some(tournamentMatch.secondUserId), MatchStatus.Completed, winner)
+          case Draw => (None, MatchStatus.Completed, winner)
+          case Cancelled => (None, MatchStatus.Cancelled, winner)
+          case Undefined => (None, MatchStatus.Cancelled, winner)
         }
       }
     } yield rowsUpdated == 1

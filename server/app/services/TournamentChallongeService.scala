@@ -393,7 +393,8 @@ class TournamentChallongeServiceImpl @Inject()(
                 winnerId = (matchData \ "winner_id").asOpt[Long],
                 loserId = (matchData \ "loser_id").asOpt[Long],
                 scheduledTime = (matchData \ "scheduled_time").asOpt[String],
-                opponent = "Unknown" // Will be set in getMatchesForParticipant
+                opponent = "Unknown",
+                scores_csv= (matchData \ "scores_csv").asOpt[String]
               )
             }
             logger.debug(s"Retrieved ${matches.length} matches for tournament $challongeTournamentId")
@@ -511,7 +512,8 @@ class TournamentChallongeServiceImpl @Inject()(
               winnerId = (matchData \ "winner_id").asOpt[Long],
               loserId = (matchData \ "loser_id").asOpt[Long],
               scheduledTime = (matchData \ "scheduled_time").asOpt[String],
-              opponent = "Unknown" // Will be set based on context
+              opponent = "Unknown",
+              scores_csv= (matchData \ "scores_csv").asOpt[String],
             )
             logger.debug(s"Retrieved match $matchId for tournament $challongeTournamentId")
             Some(challongeMatch)

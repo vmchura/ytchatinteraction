@@ -1,5 +1,7 @@
 package models
 
+import evolutioncomplete.WinnerShared
+
 import java.util.UUID
 import java.time.Instant
 import play.api.libs.json.*
@@ -13,8 +15,9 @@ case class TournamentMatch(
   firstUserId: Long,
   secondUserId: Long,
   winnerUserId: Option[Long],
-  createdAt: Instant = Instant.now(),
-  status: MatchStatus = MatchStatus.Pending
+  status: MatchStatus,
+  winner_description: WinnerShared,
+  createdAt: Instant = Instant.now()
 )
 
 

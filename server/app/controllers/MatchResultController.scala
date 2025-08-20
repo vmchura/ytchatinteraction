@@ -73,7 +73,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
         for{
           tournamentMatchOption <- tournamentService.getMatch(tournamentId, challongeMatchID)
           tournamentMatch <- tournamentMatchOption match {
-            case Some(tm @ TournamentMatch(_, _, _, _, _, _, Pending | InProgress)) => Future.successful(tm)
+            case Some(tm @ TournamentMatch(_, _, _, _, _, Pending | InProgress, _, _)) => Future.successful(tm)
             case Some(_) => Future.failed(new IllegalStateException("Match already resolved"))
             case _ => Future.failed(new IllegalStateException("Match not found"))
           }

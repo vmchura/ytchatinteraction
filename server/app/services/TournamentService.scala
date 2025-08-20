@@ -143,17 +143,6 @@ trait TournamentService {
   // Match management methods (existing functionality)
 
   /**
-   * Creates a new tournament match.
-   *
-   * @param matchId The match ID (from Challonge API)
-   * @param tournamentId The tournament ID
-   * @param firstUserId The first user ID
-   * @param secondUserId The second user ID
-   * @return The created tournament match
-   */
-  def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch]
-
-  /**
    * Retrieves a tournament match by its ID and tournament ID.
    * If the match doesn't exist locally, fetches it from Challonge API and creates it.
    *
@@ -426,14 +415,6 @@ class TournamentServiceImpl @Inject() (
 
   // Match management methods (existing functionality)
 
-  // Match management methods (existing functionality)
-  /**
-   * Creates a new tournament match.
-   */
-  override def createMatch(matchId: Long, tournamentId: Long, firstUserId: Long, secondUserId: Long): Future[TournamentMatch] = {
-    val tournamentMatch = TournamentMatch(matchId, tournamentId, firstUserId, secondUserId, winnerUserId=None)
-    tournamentMatchRepository.create(tournamentMatch)
-  }
 
   /**
    * Retrieves a tournament match by its ID and tournament ID.
@@ -509,8 +490,9 @@ class TournamentServiceImpl @Inject() (
                 tournamentId = tournamentId,
                 firstUserId = user1Id,
                 secondUserId = user2Id,
-                winnerUserId=None,
-                status = convertChallongeStatusToMatchStatus(challongeMatch.state)
+                winnerUserId=challongeMatch.winnerId,
+                status = challongeMatch.matchStatus,
+                winner_description = challongeMatch.winnerShared
               )
               
               tournamentMatchRepository.create(tournamentMatch).map(Some(_))
@@ -529,14 +511,7 @@ class TournamentServiceImpl @Inject() (
   /**
    * Converts Challonge match state to local MatchStatus.
    */
-  private def convertChallongeStatusToMatchStatus(challongeState: String): models.MatchStatus = {
-    challongeState.toLowerCase match {
-      case "pending" => models.MatchStatus.Pending
-      case "open" => models.MatchStatus.InProgress
-      case "complete" => models.MatchStatus.Completed
-      case _ => models.MatchStatus.Pending
-    }
-  }
+  
 
   /**
    * Retrieves all matches for a specific tournament.
@@ -688,7 +663,7 @@ class TournamentServiceImpl @Inject() (
           // Submit result to Challonge
           tournamentChallongeService.submitMatchResult(
             challongeTournamentId,
-            tournamentMatch.matchId, 
+            tournamentMatch.matchId,
             p1Id, 
             p2Id, 
             winner
