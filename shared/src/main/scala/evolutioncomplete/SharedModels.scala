@@ -123,7 +123,16 @@ case class UploadStateShared(challongeMatchID: Long, tournamentID: Long,
         case _ => false} > 0) {
         (firstParticipant.smurfs ++ secondParticipant.smurfs).isEmpty
       }
-      else false)
+      else false) || games.exists{
+      case _: PendingGame => true
+      case _ => false
+    }
+  }
+  def countValidGames: Int = {
+    games.count {
+      case _: ValidGame => true
+      case _ => false
+    }
   }
 }
 object UploadStateShared {

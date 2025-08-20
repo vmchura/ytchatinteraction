@@ -196,12 +196,12 @@ object ReplayUploader {
       val select_winner: Binding.Stable[Select] =
         html"""<select id="match-result">
           <option value="Undefined" selected=${currentState.bind.winner == Undefined}>Seleccionar</option>
-          <option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
-          <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
-          <option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>
-          <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
-          <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
-          <option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>
+          ${if(currentState.bind.countValidGames > 0) {html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>"""} else Binding.Constants()}
+          ${if(currentState.bind.countValidGames > 0) {html"""<option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>"""} else Binding.Constants()}
+          ${if(currentState.bind.countValidGames > 0 && (currentState.bind.countValidGames % 2 == 0)) {html"""<option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>"""} else Binding.Constants()}
+          ${if(currentState.bind.countValidGames == 0) {html"""<option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>"""} else Binding.Constants()}
+          ${if(currentState.bind.countValidGames == 0) {html"""<option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>"""} else Binding.Constants()}
+          ${if(currentState.bind.countValidGames == 0) {html"""<option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>"""} else Binding.Constants()}
         </select>"""
       select_winner.value.onchange = (event: Event) => {
         uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)
