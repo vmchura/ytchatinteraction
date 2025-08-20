@@ -20,105 +20,6 @@ import scala.util.Try
 import java.time.LocalDateTime
 import java.util.UUID
 
-case class FileUploadState(
-                            message: String,
-                            uploadType: String
-                          )
-
-object FileUploadState {
-  implicit val fileUploadStateWrites: play.api.libs.json.OWrites[FileUploadState] = Json.writes[FileUploadState]
-}
-
-// JSON response models for AJAX file upload
-case class FileUploadResponse(
-                               success: Boolean,
-                               session: Option[UploadSessionJson] = None,
-                               error: Option[String] = None
-                             )
-
-case class UploadSessionJson(
-                              sessionId: String,
-                              matchId: Long,
-                              totalFiles: Int,
-                              successfulFiles: List[FileResultJson],
-                              failedFiles: List[FileResultJson],
-                              hasFiles: Boolean
-                            )
-
-case class FileResultJson(
-                           fileName: String,
-                           success: Boolean,
-                           sha256Hash: Option[String],
-                           errorMessage: Option[String],
-                           gameInfo: Option[GameInfoJson]
-                         )
-
-case class GameInfoJson(
-                         mapName: Option[String],
-                         player1: Option[PlayerJson],
-                         player2: Option[PlayerJson],
-                         startTime: Option[String]
-                       )
-
-case class PlayerJson(
-                       name: String,
-                       race: String
-                     )
-
-object FileUploadResponse {
-
-  import models.StarCraftModels._
-
-  implicit val playerJsonWrites: OWrites[PlayerJson] = Json.writes[PlayerJson]
-  implicit val gameInfoJsonWrites: OWrites[GameInfoJson] = Json.writes[GameInfoJson]
-  implicit val fileResultJsonWrites: OWrites[FileResultJson] = Json.writes[FileResultJson]
-  implicit val uploadSessionJsonWrites: OWrites[UploadSessionJson] = Json.writes[UploadSessionJson]
-  implicit val fileUploadResponseWrites: OWrites[FileUploadResponse] = Json.writes[FileUploadResponse]
-
-
-  def fromFileProcessResult(file: FileProcessResult): FileResultJson = {
-    FileResultJson(
-      fileName = file.fileName,
-      success = file.success,
-      sha256Hash = file.sha256Hash,
-      errorMessage = file.errorMessage,
-      gameInfo = file.gameInfo.collect {
-        case replayParsed: ReplayParsed => fromReplayParsed(replayParsed)
-      }
-    )
-  }
-
-  def fromReplayParsed(replay: ReplayParsed): GameInfoJson = {
-    val player1 = for {
-      team <- replay.teams.headOption
-      participant <- team.participants.headOption
-    } yield PlayerJson(
-      name = participant.name,
-      race = raceToString(participant.race)
-    )
-
-    val player2 = for {
-      team <- replay.teams.lift(1)
-      participant <- team.participants.headOption
-    } yield PlayerJson(
-      name = participant.name,
-      race = raceToString(participant.race)
-    )
-
-    GameInfoJson(
-      mapName = replay.mapName,
-      player1 = player1,
-      player2 = player2,
-      startTime = replay.startTime
-    )
-  }
-
-  private def raceToString(race: SCRace): String = race match {
-    case Zerg => "Z"
-    case Terran => "T"
-    case Protoss => "P"
-  }
-}
 
 @Singleton
 class FileUploadController @Inject()(
@@ -135,15 +36,13 @@ class FileUploadController @Inject()(
 
 
   def removeFile(tournamentId: Long, matchId: Long, sessionUUID: UUID): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    import FileUploadResponse._
     uploadSessionService.getOrCreateSession(request.identity, matchId, tournamentId).map {
       case Some(session) =>
         val newState = uploadSessionService.persistState(uploadSessionService.removeFileFromSession(session, sessionUUID))
         Ok(write(newState.uploadState))
 
-      case None => BadRequest(Json.toJson(FileUploadResponse(
-        success = false,
-        error = Some("File not found or session not available")
+      case None => BadRequest(Json.toJson(Map(
+        "error" -> "Session not available"
       )))
     }
   }
@@ -178,9 +77,8 @@ class FileUploadController @Inject()(
   def fetchState(challongeMatchID: Long, tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     uploadSessionService.getOrCreateSession(request.identity, challongeMatchID, tournamentId).map {
       case Some(session) => Ok(write(session.uploadState))
-      case None => BadRequest(Json.toJson(FileUploadResponse(
-        success = false,
-        error = Some("Session not available")
+      case None => BadRequest(Json.toJson(Map(
+        "error" -> "Session not available"
       )))
     }
   }
@@ -197,9 +95,8 @@ class FileUploadController @Inject()(
       case None => Future.successful(None)
     }
     session.flatMap{
-      case None => Future.successful(BadRequest(Json.toJson(FileUploadResponse(
-        success = false,
-        error = Some("Session not available")
+      case None => Future.successful(BadRequest(Json.toJson(Map(
+        "error" -> "Session not available"
       ))))
       case Some(session) =>
         val replays = request.body.files.filter(_.key == "replays")
