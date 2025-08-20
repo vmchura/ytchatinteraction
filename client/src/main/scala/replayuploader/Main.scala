@@ -19,7 +19,7 @@ object Main {
 
   def findTokenValue(): String = {
     val formElement =
-      dom.document.getElementById("myForm").asInstanceOf[HTMLFormElement]
+      dom.document.getElementById("matchUploadForm").asInstanceOf[HTMLFormElement]
     val inputelementCollection = formElement.getElementsByTagName("input")
     val inputelement =
       inputelementCollection.namedItem("csrfToken").asInstanceOf[Input]

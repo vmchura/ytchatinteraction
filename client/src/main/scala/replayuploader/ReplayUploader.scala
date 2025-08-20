@@ -17,8 +17,9 @@ import Binding.Var
 import com.yang_bo.html.*
 import upickle.default.*
 import com.thoughtworks.binding.FutureBinding
-import org.scalajs.dom.html.{Button, Div, Input, Select}
+import org.scalajs.dom.html.{Button, Div, Input, Select, Form}
 import com.thoughtworks.binding.Binding.Constants
+import org.scalajs.dom
 import org.scalajs.dom.Event
 import org.scalajs.dom.FormData
 import org.scalajs.dom.File
@@ -210,7 +211,36 @@ object ReplayUploader {
     }
       </div>
 
-      <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick="submitMatch()">
+      <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick=${ (_ : Event) =>
+      {
+        val form =  dom.document.getElementById("matchUploadForm").asInstanceOf[Form]
+        // add list1 values
+        uploadMatchState.value.firstParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
+          val input = dom.document.createElement("input").asInstanceOf[Input]
+          input.`type` = "hidden"
+          input.name = s"smurfsFirstParticipant[$i]"
+          input.value = v
+          form.appendChild(input)
+        }
+
+        // add list2 values
+        uploadMatchState.value.secondParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
+          val input = dom.document.createElement("input").asInstanceOf[Input]
+          input.`type` = "hidden"
+          input.name = s"smurfsSecondParticipant[$i]"
+          input.value = v
+          form.appendChild(input)
+        }
+
+        // add single string
+        val singleInput = dom.document.createElement("input").asInstanceOf[Input]
+        singleInput.`type` = "hidden"
+        singleInput.name = "winner"
+        singleInput.value = uploadMatchState.value.winner.toString
+        form.appendChild(singleInput)
+        form.submit()
+      }
+    }>
         <span>Enviar resultado global</span><br/><small>Ya no podrás modificar replays, smurfs ni resultado</small>
       </button>
     </div>"""

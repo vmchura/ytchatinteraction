@@ -9,15 +9,12 @@ import play.api.data.*
 import play.api.data.Forms.*
 import services.{FileProcessResult, UploadSession}
 import evolutioncomplete.GameStateShared.ValidGame
+import forms.Forms
+
 import scala.concurrent.{ExecutionContext, Future}
 import utils.auth.WithAdmin
 
-case class MatchResultForm(
-                            winnerId: Option[Long],
-                            resultType: String,
-                            inGameSmurfFirst: Option[String],
-                            inGameSmurfSecond: Option[String]
-                          )
+
 
 @Singleton
 class MatchResultController @Inject()(components: DefaultSilhouetteControllerComponents,
@@ -27,14 +24,6 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
                                       uploadedFileRepository: UploadedFileRepository
                                      )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
 
-  private val matchResultForm = Form(
-    mapping(
-      "winnerId" -> optional(longNumber),
-      "resultType" -> nonEmptyText,
-      "in_game_smurf_first" -> optional(nonEmptyText),
-      "in_game_smurf_second" -> optional(nonEmptyText)
-    )(MatchResultForm.apply)(r => Some((r.winnerId, r.resultType, r.inGameSmurfFirst, r.inGameSmurfSecond)))
-  )
   private def recordMatchSmurfs(matchId: Long, tournamentId: Long, tournamentMatch: TournamentMatch, firstSmurf: String, secondSmurf: String): Future[Seq[UserSmurf]] = {
     userSmurfService.recordMatchSmurfs(
       matchId,
@@ -59,7 +48,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
             matchId = session.challongeMatchID,
             sha256Hash = hash,
             originalName = storedInfo.originalFileName,
-            relativeDirectoryPath = "uploads", // Based on configuration
+            relativeDirectoryPath = storedInfo.storedPath,
             savedFileName = storedInfo.storedFileName,
             uploadedAt = storedInfo.storedAt
           )
@@ -70,6 +59,17 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
           }
 
     })).map(_.sum)
+  }
+
+  def closeMatch(challongeMatchID: Long, tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    Forms.closeMatchForm.bindFromRequest().fold(
+      formWithErrors => {
+        Future.successful(BadRequest(views.html.index(Some(request.identity))))
+      },
+      winnerData => {
+        println(winnerData)
+        Future.successful(Ok)
+      })
   }
   
 

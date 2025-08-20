@@ -1,7 +1,27 @@
 package forms
 
-import play.api.data.Form
+import evolutioncomplete.WinnerShared
+import play.api.data.{Form, FormError}
 import play.api.data.Forms.*
+import play.api.data.format.Formatter
+
+given winnerFormatter: Formatter[WinnerShared] with
+  def bind(key: String, data: Map[String, String]): Either[Seq[FormError], WinnerShared] =
+    data.get(key) match {
+      case Some(value) =>
+        WinnerShared.values.find(_.toString == value) match {
+          case Some(WinnerShared.Undefined) =>
+            Left(Seq(FormError(key, s"$value is not an allowed winner")))
+          case Some(valid) =>
+            Right(valid)
+          case None =>
+            Left(Seq(FormError(key, s"$value is not a valid winner option")))
+        }
+      case None => Left(Seq(FormError(key, "Missing winner value")))
+    }
+
+  def unbind(key: String, value: WinnerShared): Map[String, String] =
+    Map(key -> value.toString)
 
 // Form for creating a new event
 case class EventForm(
@@ -61,7 +81,15 @@ case class AliasChangeForm(
                             newAlias: String
                           )
 
+case class CloseMatchData(winner: WinnerShared, smurfsFirstParticipant: List[String], smurfsSecondParticipant: List[String])
+
 object Forms:
+  val closeMatchForm = Form(mapping(
+    "winner" -> of[WinnerShared],
+    "smurfsFirstParticipant" -> list(nonEmptyText),
+    "smurfsSecondParticipant" -> list(nonEmptyText),
+  )(CloseMatchData.apply)(nn => Some(nn.winner, nn.smurfsFirstParticipant, nn.smurfsSecondParticipant)))
+
   val eventForm = Form(
     mapping(
       "channelId" -> nonEmptyText,

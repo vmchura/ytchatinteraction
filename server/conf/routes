@@ -73,7 +73,7 @@ GET     /match/:tournamentId/:challengeMatchId/upload      controllers.FileUploa
 GET    /fetchstate/:challongeMatchID/:tournamentId controllers.FileUploadController.fetchState(challongeMatchID: Long, tournamentId: Long)
 POST   /updatestate controllers.FileUploadController.updateState()
 POST   /remove/:tournamentId/:challongeMatchID/:sessionUUID  controllers.FileUploadController.removeFile(tournamentId: Long, challongeMatchID: Long, sessionUUID: java.util.UUID)
-
+POST   /close/:tournamentId/:challongeMatchID  controllers.MatchResultController.closeMatch(tournamentId: Long, challongeMatchID: Long)
 # Match Result routes
 
 # Polls view
