@@ -89,6 +89,27 @@ object ReplayUploader {
     }
   }
 
+  def removeFile(uuid: UUID): Unit = {
+    uploadMatchState.value.updateToPending(uuid)
+    val request = basicRequest
+      .headers(Map("Csrf-Token" -> Main.findTokenValue()))
+      .post(uri"/remove/${uploadMatchState.value.tournamentID}/${uploadMatchState.value.challongeMatchID}/${uuid.toString}")
+    val backend = FetchBackend()
+    val response = request.send(backend).map {
+      case Response(Right(jsonResponse), sttp.model.StatusCode.Ok, _, _, _, _) =>
+        Try(read[UploadStateShared](jsonResponse)) match {
+          case Success(valid) => Right(valid)
+          case Failure(error) => Left(error.getLocalizedMessage)
+        }
+      case error => Left(error.toString)
+    }
+    response.onComplete {
+      case Success(Right(value)) => uploadMatchState.value = value
+      case Success(Left(error)) => println(error)
+      case Failure(error) => println(error)
+    }
+  }
+
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
     html"""<div class="container" id="match_result">
          <div class="games-list">
@@ -107,7 +128,7 @@ object ReplayUploader {
                           <span class="player_left">${currentState.bind.getFirstSmurf(game)}</span>
                           <span class="vs">vs</span>
                           <span class="player_right">${currentState.bind.getSecondSmurf(game)}</span>
-                          <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
+                          <button class="delete-button outline contrast error" onclick=${ (_: Event) => removeFile(uuid) }>&#x1F5D1;</button>"""
             case PendingGame(_) =>
               html"""<span class="status-icon pending">⌛</span>
                                   <span class="inner_space"><progress></progress></span>
@@ -128,7 +149,6 @@ object ReplayUploader {
       input.value.onchange = (_: Event) => {
         val (validFiles, invalidFiles) = input.value.files.toList.partition(f => f.size <= 1024 * 1024 && f.name.endsWith(".rep"))
         val invalidFilesReason = invalidFiles.map { f => if (f.size > 1024 * 1024) InvalidGame("Archivo > 1Mb", UUID.randomUUID()) else InvalidGame("Archivo no es *.rep", UUID.randomUUID()) }
-
 
 
         val pendingFiles = validFiles.map(_ => PendingGame(UUID.randomUUID()))

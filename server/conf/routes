@@ -72,6 +72,7 @@ GET     /replay-parser/health       controllers.ReplayParserHealthController.hea
 GET     /match/:tournamentId/:challengeMatchId/upload      controllers.FileUploadController.uploadFormForMatch(tournamentId: Long, challengeMatchId: Long)
 GET    /fetchstate/:challongeMatchID/:tournamentId controllers.FileUploadController.fetchState(challongeMatchID: Long, tournamentId: Long)
 POST   /updatestate controllers.FileUploadController.updateState()
+POST   /remove/:tournamentId/:challongeMatchID/:sessionUUID  controllers.FileUploadController.removeFile(tournamentId: Long, challongeMatchID: Long, sessionUUID: java.util.UUID)
 
 # Match Result routes
 

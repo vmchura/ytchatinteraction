@@ -134,11 +134,11 @@ class FileUploadController @Inject()(
   private val logger = Logger(getClass)
 
 
-  def removeFile(tournamentId: Long, matchId: Long, sha256Hash: UUID): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+  def removeFile(tournamentId: Long, matchId: Long, sessionUUID: UUID): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     import FileUploadResponse._
     uploadSessionService.getOrCreateSession(request.identity, matchId, tournamentId).map {
       case Some(session) =>
-        val newState = uploadSessionService.persistState(uploadSessionService.removeFileFromSession(session, sha256Hash))
+        val newState = uploadSessionService.persistState(uploadSessionService.removeFileFromSession(session, sessionUUID))
         Ok(write(newState.uploadState))
 
       case None => BadRequest(Json.toJson(FileUploadResponse(

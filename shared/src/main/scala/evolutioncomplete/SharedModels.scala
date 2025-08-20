@@ -108,6 +108,13 @@ case class UploadStateShared(challongeMatchID: Long, tournamentID: Long,
       case _ => throw new IllegalStateException("No pending?")
     }
   }
+  def updateToPending(sessionUUID: UUID): UploadStateShared = {
+    val newGames = games.map{
+      case g if g.sessionID.compareTo(sessionUUID) == 0 => PendingGame(g.sessionID)
+      case g => g
+    }
+    copy(games = newGames)
+  }
 }
 object UploadStateShared {
   def default(): UploadStateShared = UploadStateShared(0,0, ParticipantShared(0, "Flash", Set.empty[String]), ParticipantShared(0, "Bisu", Set.empty[String]), Nil, Cancelled)
