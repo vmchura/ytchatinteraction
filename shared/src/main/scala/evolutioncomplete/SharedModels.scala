@@ -1,5 +1,5 @@
 package evolutioncomplete
-import evolutioncomplete.WinnerShared.Cancelled
+import evolutioncomplete.WinnerShared.{Cancelled, Undefined}
 import upickle.default.ReadWriter as RW
 import upickle.default.*
 
@@ -114,6 +114,16 @@ case class UploadStateShared(challongeMatchID: Long, tournamentID: Long,
       case g => g
     }
     copy(games = newGames)
+  }
+
+  def notEnoughToBeClosed: Boolean = {
+    (winner == Undefined) || (
+      if(games.count{
+        case _: ValidGame => true
+        case _ => false} > 0) {
+        (firstParticipant.smurfs ++ secondParticipant.smurfs).isEmpty
+      }
+      else false)
   }
 }
 object UploadStateShared {

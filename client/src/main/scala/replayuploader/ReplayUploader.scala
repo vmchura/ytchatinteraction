@@ -210,7 +210,7 @@ object ReplayUploader {
     }
       </div>
 
-      <button type="button" class="primary" onclick="submitMatch()">
+      <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick="submitMatch()">
         <span>Enviar resultado global</span><br/><small>Ya no podrás modificar replays, smurfs ni resultado</small>
       </button>
     </div>"""
