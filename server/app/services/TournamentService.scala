@@ -1,7 +1,10 @@
 package services
 
-import models.{Tournament, TournamentMatch, TournamentRegistration, TournamentStatus, MatchStatus, RegistrationStatus, User}
-import models.repository.{TournamentRepository, TournamentMatchRepository, TournamentRegistrationRepository, TournamentChallongeParticipantRepository}
+import evolutioncomplete.WinnerShared
+import evolutioncomplete.WinnerShared.{Cancelled, Draw, FirstUser, FirstUserByOnlyPresented, SecondUser, SecondUserByOnlyPresented, Undefined}
+import models.{MatchStatus, RegistrationStatus, Tournament, TournamentMatch, TournamentRegistration, TournamentStatus, User}
+import models.repository.{TournamentChallongeParticipantRepository, TournamentMatchRepository, TournamentRegistrationRepository, TournamentRepository}
+
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import java.time.Instant
@@ -241,16 +244,7 @@ trait TournamentService {
    */
   def getActiveMatches(tournamentId: Long): Future[List[TournamentMatch]]
 
-  /**
-   * Submits match result and updates both local database and Challonge.
-   *
-   * @param tournamentId The tournament ID
-   * @param matchId The match ID
-   * @param winnerId The winner user ID (None for tie or cancelled)
-   * @param resultType The result type ("with_winner", "tie", "cancelled")
-   * @return Either error message or success
-   */
-  def submitMatchResult(tournamentId: Long, matchId: Long, winnerId: Option[Long], resultType: String): Future[Either[String, TournamentMatch]]
+  def submitMatchResult(tournamentMatch: TournamentMatch, winner: WinnerShared): Future[Boolean]
 }
 
 /**
@@ -634,71 +628,25 @@ class TournamentServiceImpl @Inject() (
    * Submits match result and updates both local database and Challonge.
    * Also closes upload sessions and registers uploaded files in the database.
    */
-  override def submitMatchResult(tournamentId: Long, matchId: Long, winnerId: Option[Long], resultType: String): Future[Either[String, TournamentMatch]] = {
+  override def submitMatchResult(tournamentMatch: TournamentMatch, winner: WinnerShared): Future[Boolean] = {
     for {
       // Get the tournament and match
-      tournamentOpt <- tournamentRepository.findById(tournamentId)
-      matchOpt <- getMatch(tournamentId, matchId)
+      tournamentOpt <- tournamentRepository.findById(tournamentMatch.tournamentId)
+      result <- tournamentOpt match {
+        case Some(Tournament(_, _, _, _, _, _, _, _, Some(challongeTournamentId), _, _, _)) =>
 
-      result <- (tournamentOpt, matchOpt) match {
-        case (Some(tournament), Some(tournamentMatch)) =>
-          // Validate winner if provided
-          val isValidWinner = winnerId match {
-            case Some(userId) => userId == tournamentMatch.firstUserId || userId == tournamentMatch.secondUserId
-            case None => true
+
+          for {
+            localUpdateResult <- tournamentMatchRepository.updateWinnerAndStatus(tournamentMatch, winner)
+            _ <- if(localUpdateResult) Future.successful(true) else Future.failed(new NoSuchElementException("Updated failed"))
+            challongeUpdateResult <- updateChallongeMatch(challongeTournamentId, tournamentMatch, winner)
+            _ <- if(challongeUpdateResult) Future.successful(true) else Future.failed(new NoSuchElementException("Challonge updated"))
+          } yield {
+            true
           }
 
-          if (!isValidWinner) {
-            Future.successful(Left("Invalid winner ID"))
-          } else {
-            // Only process uploaded files for winner and tie cases
-            val shouldProcessUploadedFiles = resultType == "with_winner" || resultType == "tie"
-
-            // Determine new status and winner
-            val (newStatus, finalWinnerId) = resultType match {
-              case "with_winner" => (MatchStatus.Completed, winnerId)
-              case "tie" => (MatchStatus.Completed, None)
-              case "cancelled" => (MatchStatus.Cancelled, None)
-              case _ => (MatchStatus.Completed, winnerId)
-            }
-
-            for {
-              // Process upload sessions and register files in database if needed
-              uploadProcessingResult <- if (shouldProcessUploadedFiles) {
-                //processUploadSessionsForMatch(tournamentId, matchId, tournamentMatch)
-                Future.successful(Left("No file processing needed for cancelled matches"))
-              } else {
-                Future.successful(Right("No file processing needed for cancelled matches"))
-              }
-
-              // Update in local database with both winner and status
-              localUpdateResult <- tournamentMatchRepository.updateWinnerAndStatus(matchId, finalWinnerId, newStatus)
-
-              // Update in Challonge if tournament has Challonge integration
-              challongeUpdateResult <- tournament.challongeTournamentId match {
-                case Some(challongeTournamentId) =>
-                  updateChallongeMatch(challongeTournamentId, matchId, tournamentMatch, finalWinnerId, resultType)
-                case None =>
-                  Future.successful(true) // No Challonge integration, consider successful
-              }
-
-              finalResult <- (localUpdateResult, challongeUpdateResult, uploadProcessingResult) match {
-                case (Some(match_), true, Right(_)) =>
-                  Future.successful(Right(match_))
-                case (None, _, _) =>
-                  Future.successful(Left("Failed to update match in local database"))
-                case (_, false, _) =>
-                  Future.successful(Left("Failed to update match in Challonge"))
-                case (_, _, Left(uploadError)) =>
-                  Future.successful(Left(s"Failed to process uploaded files: $uploadError"))
-              }
-            } yield finalResult
-          }
-
-        case (None, _) =>
-          Future.successful(Left("Tournament not found"))
-        case (_, None) =>
-          Future.successful(Left("Match not found"))
+        case None =>
+          Future.failed(new NoSuchElementException("Tournament not found"))
       }
     } yield result
   }
@@ -723,18 +671,13 @@ class TournamentServiceImpl @Inject() (
    */
   private def updateChallongeMatch(
     challongeTournamentId: Long, 
-    matchId: Long, 
     tournamentMatch: TournamentMatch,
-    winnerId: Option[Long], 
-    resultType: String
+    winner: WinnerShared
   ): Future[Boolean] = {
     for {
       // Get participant mappings to convert user IDs to Challonge participant IDs
       participantMappings <- tournamentChallongeParticipantRepository.findByChallongeTournamentId(challongeTournamentId)
       userToChallongeMap = participantMappings.map(p => p.userId -> p.challongeParticipantId).toMap
-      
-      // Convert winner user ID to Challonge participant ID
-      challongeWinnerId = winnerId.flatMap(userToChallongeMap.get)
       
       // Get Challonge participant IDs for both players
       player1ChallongeId = userToChallongeMap.get(tournamentMatch.firstUserId)
@@ -744,12 +687,11 @@ class TournamentServiceImpl @Inject() (
         case (Some(p1Id), Some(p2Id)) =>
           // Submit result to Challonge
           tournamentChallongeService.submitMatchResult(
-            challongeTournamentId, 
-            matchId, 
+            challongeTournamentId,
+            tournamentMatch.matchId, 
             p1Id, 
             p2Id, 
-            challongeWinnerId, 
-            resultType
+            winner
           )
         case _ =>
           // One or both players not found in Challonge (probably fake users)

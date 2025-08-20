@@ -1,12 +1,15 @@
 package services
 
-import models.{Tournament, User, ChallongeMatch, ChallongeParticipant}
+import evolutioncomplete.WinnerShared
+import evolutioncomplete.WinnerShared.*
+import models.{ChallongeMatch, ChallongeParticipant, MatchStatus, Tournament, User}
 import play.api.libs.ws.WSClient
-import play.api.libs.json._
+import play.api.libs.json.*
 import play.api.Configuration
 import play.api.Logger
-import play.api.libs.ws.JsonBodyWritables._
-import play.api.libs.ws.DefaultBodyWritables._
+import play.api.libs.ws.JsonBodyWritables.*
+import play.api.libs.ws.DefaultBodyWritables.*
+
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -93,8 +96,6 @@ trait TournamentChallongeService {
    * @param matchId The Challonge match ID
    * @param player1Id The Challonge participant ID of player 1
    * @param player2Id The Challonge participant ID of player 2
-   * @param winnerId The Challonge participant ID of the winner (None for tie or cancelled)
-   * @param resultType The result type ("with_winner", "tie", "cancelled")
    * @return Success flag
    */
   def submitMatchResult(
@@ -102,8 +103,7 @@ trait TournamentChallongeService {
     matchId: Long, 
     player1Id: Long, 
     player2Id: Long, 
-    winnerId: Option[Long], 
-    resultType: String
+    winner: WinnerShared
   ): Future[Boolean]
 }
 
@@ -542,38 +542,16 @@ class TournamentChallongeServiceImpl @Inject()(
     matchId: Long, 
     player1Id: Long, 
     player2Id: Long, 
-    winnerId: Option[Long], 
-    resultType: String
+    winner: WinnerShared
   ): Future[Boolean] = {
-    logger.info(s"Submitting match result for match $matchId in tournament $challongeTournamentId. Result type: $resultType, winnerId: $winnerId")
 
-    // Build the score string based on result type
-    val scoreString = resultType match {
-      case "with_winner" =>
-        winnerId match {
-          case Some(winnerParticipantId) =>
-            if (winnerParticipantId == player1Id) "1-0"
-            else "0-1"
-          case None => "1-0" // Default to player 1 if winner not specified
-        }
-      case "tie" => "1-1"
-      case "cancelled" => "0-0"
-      case _ => "1-0" // Default
-    }
-
-    // Build match data with conditional winner_id inclusion
-    val baseMatchData = Json.obj("scores_csv" -> scoreString)
-    
-    val matchDataWithWinner = resultType match {
-      case "tie" | "cancelled" =>
-        // For ties and cancelled matches, don't include winner_id or set it to null
-        baseMatchData + ("winner_id" -> Json.toJson("tie"))
-      case _ =>
-        // For matches with winners, include the winner_id
-        winnerId match {
-          case Some(winner) => baseMatchData + ("winner_id" -> Json.toJson(winner))
-          case None => baseMatchData + ("winner_id" -> JsNull)
-        }
+    val matchDataWithWinner = winner match {
+      case FirstUser => Json.obj("scores_csv" -> "1-0", "winner_id" -> Json.toJson(player1Id))
+      case FirstUserByOnlyPresented => Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson(player1Id))
+      case SecondUser => Json.obj("scores_csv" -> "0-1", "winner_id" -> Json.toJson(player2Id))
+      case SecondUserByOnlyPresented => Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson(player2Id))
+      case Draw => Json.obj("scores_csv" -> "1-1", "winner_id" -> Json.toJson("tie"))
+      case Cancelled | Undefined => Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson("tie"))
     }
 
     val matchData = Json.obj("match" -> matchDataWithWinner)
@@ -586,7 +564,6 @@ class TournamentChallongeServiceImpl @Inject()(
     request.put(matchData).map { response =>
       response.status match {
         case 200 =>
-          logger.info(s"Successfully submitted match result for match $matchId in tournament $challongeTournamentId with score: $scoreString")
           true
         case status =>
           logger.error(s"Failed to submit match result for match $matchId. Status: $status, Response: ${response.body}")

@@ -1,6 +1,8 @@
 package models.repository
 
-import models.{TournamentMatch, MatchStatus}
+import evolutioncomplete.WinnerShared
+import evolutioncomplete.WinnerShared.*
+import models.{MatchStatus, TournamentMatch}
 import models.component.TournamentMatchComponent
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio.DBIO
@@ -38,15 +40,15 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Finds a tournament match by its ID.
    */
-  def findById(matchId: Long): Future[Option[TournamentMatch]] = db.run {
-    findByIdAction(matchId)
+  def findById(challongeMatchID: Long): Future[Option[TournamentMatch]] = db.run {
+    findByIdAction(challongeMatchID)
   }
 
   /**
    * Finds a tournament match by its ID (DBIO action).
    */
-  def findByIdAction(matchId: Long): DBIO[Option[TournamentMatch]] = {
-    tournamentMatchesTable.filter(_.matchId === matchId).result.headOption
+  def findByIdAction(challongeMatchID: Long): DBIO[Option[TournamentMatch]] = {
+    tournamentMatchesTable.filter(_.matchId === challongeMatchID).result.headOption
   }
 
   /**
@@ -230,19 +232,27 @@ class TournamentMatchRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
   /**
    * Updates the winner and status of a tournament match.
    */
-  def updateWinnerAndStatus(matchId: Long, winnerId: Option[Long], newStatus: MatchStatus): Future[Option[TournamentMatch]] = db.run {
-    updateWinnerAndStatusAction(matchId, winnerId, newStatus)
+  def updateWinnerAndStatus(tournamentMatch: TournamentMatch, winner: WinnerShared): Future[Boolean] = db.run {
+    updateWinnerAndStatusAction(tournamentMatch, winner)
   }
 
   /**
    * Updates the winner and status of a tournament match (DBIO action).
    */
-  def updateWinnerAndStatusAction(matchId: Long, winnerId: Option[Long], newStatus: MatchStatus): DBIO[Option[TournamentMatch]] = {
-    val updateQuery = tournamentMatchesTable.filter(_.matchId === matchId)
+  def updateWinnerAndStatusAction(tournamentMatch: TournamentMatch, winner: WinnerShared): DBIO[Boolean] = {
+    val updateQuery = tournamentMatchesTable.filter(_.matchId === tournamentMatch.matchId)
       .map(m => (m.winnerUserId, m.status))
     for {
-      rowsUpdated <- updateQuery.update((winnerId, newStatus))
-      updatedMatch <- if (rowsUpdated > 0) findByIdAction(matchId) else DBIO.successful(None)
-    } yield updatedMatch
+      _ <- if(winner == Undefined) DBIO.failed(new IllegalStateException("Undefined status to update as Match Finished")) else DBIO.successful("")
+      rowsUpdated <- updateQuery.update{
+        winner match {
+          case FirstUser | FirstUserByOnlyPresented => (Some(tournamentMatch.firstUserId), MatchStatus.Completed)
+          case SecondUser | SecondUserByOnlyPresented => (Some(tournamentMatch.secondUserId), MatchStatus.Completed)
+          case Draw => (None, MatchStatus.Completed)
+          case Cancelled => (None, MatchStatus.Cancelled)
+          case Undefined => (None, MatchStatus.Cancelled)
+        }
+      }
+    } yield rowsUpdated == 1
   }
 }

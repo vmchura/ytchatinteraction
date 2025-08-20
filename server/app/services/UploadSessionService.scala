@@ -120,10 +120,24 @@ class UploadSessionService @Inject()(
           sessions.remove(sessionKey)
           Future.successful(None)
         case None =>
-          println(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
           logger.info(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
           startSession(user, challongeMatchID, tournamentId)
       }
+  }
+  def getSession(user: User, challongeMatchID: Long, tournamentId: Long): Option[UploadSession] = {
+    val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
+    Option(sessions.get(sessionKey)) match {
+      case Some(existingSession) if !isSessionExpired(existingSession) =>
+        logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
+        Some(existingSession)
+      case Some(expiredSession) =>
+        logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
+        sessions.remove(sessionKey)
+        None
+      case None =>
+        logger.info(s"No session found")
+        None
+    }
   }
 
   /**
@@ -241,5 +255,8 @@ class UploadSessionService @Inject()(
     if (expiredKeys.nonEmpty) {
       logger.info(s"Cleaned up ${expiredKeys.length} expired sessions")
     }
+  }
+  def finalizeSession(session: UploadSession): UploadSession = {
+    persistState(session.finalizeSession())
   }
 }

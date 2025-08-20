@@ -138,8 +138,7 @@ object ReplayUploader {
             case InvalidGame(errorMessage, uuid) =>
               html"""<span class="status-icon error">◯</span>
                         <span class="inner_space error-text">$errorMessage</span>
-
-                                  <button class="delete-button outline contrast error">&#x1F5D1;</button>"""
+                        <button class="delete-button outline contrast error" onclick=${ (_: Event) => removeFile(uuid) }>&#x1F5D1;</button>"""
           }
         }</div>"""
       }
