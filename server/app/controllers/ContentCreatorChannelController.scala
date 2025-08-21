@@ -7,6 +7,7 @@ import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponent
 import play.silhouette.api.Silhouette
 import modules.DefaultEnv
 import services.ContentCreatorChannelService
+import utils.auth.WithAdmin
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -46,8 +47,7 @@ class ContentCreatorChannelController @Inject()(
   /**
    * Handles the creation of a new content creator channel (admin only).
    */
-  def store(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // TODO: Add admin check here when admin system is implemented
+  def store(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val formData = request.body.asFormUrlEncoded.getOrElse(Map.empty)
 
     val youtubeChannelIdOpt = formData.get("youtubeChannelId").flatMap(_.headOption)
@@ -77,8 +77,7 @@ class ContentCreatorChannelController @Inject()(
   /**
    * Toggles the active status of a content creator channel (admin only).
    */
-  def toggleActive(id: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // TODO: Add admin check here when admin system is implemented
+  def toggleActive(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     contentCreatorChannelService.getContentCreatorChannel(id).flatMap {
       case Some(channel) =>
         val newStatus = !channel.isActive
