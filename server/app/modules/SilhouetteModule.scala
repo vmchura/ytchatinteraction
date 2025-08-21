@@ -218,8 +218,7 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
       clientID = config.get[String]("clientID"),
       clientSecret = config.get[String]("clientSecret"),
       scope = Some(config.get[String]("scope")),
-      authorizationParams = Map("prompt" -> "consent", "access_type" -> "offline")
-    )
+      authorizationParams = Map("access_type" -> "offline"))
     new YouTubeProvider(httpLayer, socialStateHandler, settings)
   }
   
