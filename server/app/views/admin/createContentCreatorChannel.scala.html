@@ -15,6 +15,7 @@
     <header>YouTube Channel Information</header>
 
     <form method="post" action="@routes.ContentCreatorChannelController.store()">
+        @helper.CSRF.formField
         <fieldset>
             <label for="channelUrl">
                 YouTube Channel URL

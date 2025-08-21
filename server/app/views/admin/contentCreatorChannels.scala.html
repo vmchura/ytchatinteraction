@@ -50,6 +50,7 @@
             <td>
                 @channel.id.map { id =>
                 <form method="post" action="@routes.ContentCreatorChannelController.toggleActive(id)" style="display: inline;">
+                    @helper.CSRF.formField
                     @if(channel.isActive) {
                     <button type="submit" class="secondary" onclick="return confirm('Deactivate this channel?')">Deactivate</button>
                     } else {
