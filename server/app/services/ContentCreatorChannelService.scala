@@ -12,6 +12,14 @@ import scala.concurrent.{ExecutionContext, Future}
 trait ContentCreatorChannelService {
 
   /**
+   * Creates a new content creator channel from a YouTube URL.
+   *
+   * @param youtubeUrl The YouTube channel URL (e.g., https://www.youtube.com/@RemastrTV)
+   * @return The created channel or an error message
+   */
+  def createContentCreatorChannelFromUrl(youtubeUrl: String): Future[Either[String, ContentCreatorChannel]]
+
+  /**
    * Creates a new content creator channel.
    *
    * @param youtubeChannelId The YouTube channel ID
@@ -29,34 +37,11 @@ trait ContentCreatorChannelService {
   def getContentCreatorChannel(id: Long): Future[Option[ContentCreatorChannel]]
 
   /**
-   * Retrieves a content creator channel by YouTube channel ID.
-   *
-   * @param youtubeChannelId The YouTube channel ID
-   * @return The channel if found, None otherwise
-   */
-  def getContentCreatorChannelByYoutubeId(youtubeChannelId: String): Future[Option[ContentCreatorChannel]]
-
-  /**
    * Retrieves all content creator channels.
    *
    * @return List of all channels
    */
-  def getAllContentCreatorChannels: Future[List[ContentCreatorChannel]]
-
-  /**
-   * Retrieves all active content creator channels.
-   *
-   * @return List of active channels
-   */
-  def getActiveContentCreatorChannels: Future[List[ContentCreatorChannel]]
-
-  /**
-   * Updates a content creator channel.
-   *
-   * @param channel The channel to update
-   * @return The updated channel if successful, error message otherwise
-   */
-  def updateContentCreatorChannel(channel: ContentCreatorChannel): Future[Either[String, ContentCreatorChannel]]
+  def getAllContentCreatorChannels(): Future[List[ContentCreatorChannel]]
 
   /**
    * Activates or deactivates a content creator channel.
@@ -66,35 +51,22 @@ trait ContentCreatorChannelService {
    * @return The updated channel if successful, error message otherwise
    */
   def setChannelActiveStatus(id: Long, active: Boolean): Future[Either[String, ContentCreatorChannel]]
-
-  /**
-   * Deletes a content creator channel.
-   *
-   * @param id The channel ID
-   * @return True if deletion was successful, false otherwise
-   */
-  def deleteContentCreatorChannel(id: Long): Future[Boolean]
-
-  /**
-   * Checks if a YouTube channel is registered as a content creator.
-   *
-   * @param youtubeChannelId The YouTube channel ID
-   * @return True if registered, false otherwise
-   */
-  def isRegisteredContentCreator(youtubeChannelId: String): Future[Boolean]
-
-  /**
-   * Gets statistics about content creator channels.
-   *
-   * @return (total count, active count)
-   */
-  def getChannelStatistics: Future[(Int, Int)]
 }
 
 @Singleton
 class ContentCreatorChannelServiceImpl @Inject()(
-                                                  contentCreatorChannelRepository: ContentCreatorChannelRepository
-                                                )(implicit ec: ExecutionContext) extends ContentCreatorChannelService {
+  contentCreatorChannelRepository: ContentCreatorChannelRepository,
+  youtubeChannelInfoService: YouTubeChannelInfoService
+)(implicit ec: ExecutionContext) extends ContentCreatorChannelService {
+
+  override def createContentCreatorChannelFromUrl(youtubeUrl: String): Future[Either[String, ContentCreatorChannel]] = {
+    youtubeChannelInfoService.getChannelInfoFromUrl(youtubeUrl).flatMap {
+      case Right(channelInfo) =>
+        createContentCreatorChannel(channelInfo.id, channelInfo.name)
+      case Left(error) =>
+        Future.successful(Left(error))
+    }
+  }
 
   override def createContentCreatorChannel(youtubeChannelId: String, youtubeChannelName: String): Future[Either[String, ContentCreatorChannel]] = {
     // Validate YouTube channel ID format (24 characters, alphanumeric and some special chars)
@@ -124,27 +96,8 @@ class ContentCreatorChannelServiceImpl @Inject()(
     contentCreatorChannelRepository.findById(id)
   }
 
-  override def getContentCreatorChannelByYoutubeId(youtubeChannelId: String): Future[Option[ContentCreatorChannel]] = {
-    contentCreatorChannelRepository.findByYoutubeChannelId(youtubeChannelId)
-  }
-
-  override def getAllContentCreatorChannels: Future[List[ContentCreatorChannel]] = {
+  override def getAllContentCreatorChannels(): Future[List[ContentCreatorChannel]] = {
     contentCreatorChannelRepository.findAll()
-  }
-
-  override def getActiveContentCreatorChannels: Future[List[ContentCreatorChannel]] = {
-    contentCreatorChannelRepository.findAllActive()
-  }
-
-  override def updateContentCreatorChannel(channel: ContentCreatorChannel): Future[Either[String, ContentCreatorChannel]] = {
-    if (channel.youtubeChannelName.trim.isEmpty) {
-      return Future.successful(Left("Channel name cannot be empty"))
-    }
-
-    contentCreatorChannelRepository.update(channel).map {
-      case Some(updatedChannel) => Right(updatedChannel)
-      case None => Left("Content creator channel not found")
-    }
   }
 
   override def setChannelActiveStatus(id: Long, active: Boolean): Future[Either[String, ContentCreatorChannel]] = {
@@ -152,23 +105,5 @@ class ContentCreatorChannelServiceImpl @Inject()(
       case Some(updatedChannel) => Right(updatedChannel)
       case None => Left("Content creator channel not found")
     }
-  }
-
-  override def deleteContentCreatorChannel(id: Long): Future[Boolean] = {
-    contentCreatorChannelRepository.delete(id)
-  }
-
-  override def isRegisteredContentCreator(youtubeChannelId: String): Future[Boolean] = {
-    contentCreatorChannelRepository.findByYoutubeChannelId(youtubeChannelId).map {
-      case Some(channel) => channel.isActive
-      case None => false
-    }
-  }
-
-  override def getChannelStatistics: Future[(Int, Int)] = {
-    for {
-      totalCount <- contentCreatorChannelRepository.count()
-      activeCount <- contentCreatorChannelRepository.countActive()
-    } yield (totalCount, activeCount)
   }
 }

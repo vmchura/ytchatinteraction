@@ -1,7 +1,7 @@
 package modules
 
 import play.api.inject.*
-import services.{ContentCreatorChannelService, ContentCreatorChannelServiceImpl, DefaultFileStorageService, DefaultParseReplayFileService, FileStorageService, OAuth2TokenRefreshService, ParseReplayFileService, TournamentChallongeService, TournamentChallongeServiceImpl, TournamentService, TournamentServiceImpl, UploadSessionService, UserSmurfService}
+import services.{ContentCreatorChannelService, ContentCreatorChannelServiceImpl, DefaultFileStorageService, DefaultParseReplayFileService, FileStorageService, OAuth2TokenRefreshService, ParseReplayFileService, TournamentChallongeService, TournamentChallongeServiceImpl, TournamentService, TournamentServiceImpl, UploadSessionService, UserSmurfService, YouTubeChannelInfoService}
 import models.repository.{TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, UploadedFileRepository, UploadedFileRepositoryImpl, UserAliasRepository, UserSmurfRepository}
 import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
 
@@ -19,5 +19,6 @@ class ServicesModule extends SimpleModule(
   bind[UserAliasRepository].toSelf.eagerly(),
   bind[UploadedFileRepository].to[UploadedFileRepositoryImpl],
   bind[OAuth2TokenRefreshService].toSelf.eagerly(),
+  bind[YouTubeChannelInfoService].toSelf,
   bind[ContentCreatorChannelService].to[ContentCreatorChannelServiceImpl]
 )
