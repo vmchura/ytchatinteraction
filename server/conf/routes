@@ -34,6 +34,14 @@ POST    /profile/change-alias       controllers.AliasController.changeAlias()
 # Admin routes (requires admin authorization)
 GET     /admin                      controllers.AdminController.adminDashboard()
 
+# Content Creator Channel management routes (admin only)
+GET     /admin/content-creators     controllers.ContentCreatorChannelController.index()
+GET     /admin/content-creators/create controllers.ContentCreatorChannelController.create()
+POST    /admin/content-creators     controllers.ContentCreatorChannelController.store()
+POST    /admin/content-creators/:id controllers.ContentCreatorChannelController.update(id: Long)
+POST    /admin/content-creators/:id/toggle controllers.ContentCreatorChannelController.toggleActive(id: Long)
+
+
 # YouTube Frontend routes
 GET     /youtube                    controllers.YoutubeFrontendController.showStreamIdForm()
 POST    /youtube/get-chat-id        controllers.YoutubeFrontendController.getLiveChatId()
