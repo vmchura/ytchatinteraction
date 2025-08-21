@@ -72,35 +72,7 @@ class ContentCreatorChannelController @Inject()(
   }
 
 
-  /**
-   * Handles the update of a content creator channel (admin only).
-   */
-  def update(id: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // TODO: Add admin check here when admin system is implemented
-    val formData = request.body.asFormUrlEncoded.getOrElse(Map.empty)
 
-    val youtubeChannelNameOpt = formData.get("youtubeChannelName").flatMap(_.headOption)
-    val activeOpt = formData.get("active").flatMap(_.headOption).map(_ == "true")
-
-    contentCreatorChannelService.getContentCreatorChannel(id).flatMap {
-      case Some(existingChannel) =>
-        val updatedChannel = existingChannel.copy(
-          youtubeChannelName = youtubeChannelNameOpt.map(_.trim).getOrElse(existingChannel.youtubeChannelName),
-          isActive = activeOpt.getOrElse(existingChannel.isActive)
-        )
-
-        contentCreatorChannelService.updateContentCreatorChannel(updatedChannel).map {
-          case Right(_) =>
-            Redirect(routes.ContentCreatorChannelController.index())
-              .flashing("success" -> s"Content creator channel '${updatedChannel.youtubeChannelName}' updated successfully")
-          case Left(error) =>
-            Redirect(routes.ContentCreatorChannelController.index())
-              .flashing("error" -> error)
-        }
-      case None =>
-        Future.successful(NotFound("Content creator channel not found"))
-    }
-  }
 
   /**
    * Toggles the active status of a content creator channel (admin only).

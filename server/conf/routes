@@ -38,7 +38,6 @@ GET     /admin                      controllers.AdminController.adminDashboard()
 GET     /admin/content-creators     controllers.ContentCreatorChannelController.index()
 GET     /admin/content-creators/create controllers.ContentCreatorChannelController.create()
 POST    /admin/content-creators     controllers.ContentCreatorChannelController.store()
-POST    /admin/content-creators/:id controllers.ContentCreatorChannelController.update(id: Long)
 POST    /admin/content-creators/:id/toggle controllers.ContentCreatorChannelController.toggleActive(id: Long)
 
 
