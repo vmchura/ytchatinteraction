@@ -171,4 +171,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
   def getByChannelId(channelId: String): Future[Option[OAuth2Info]] = {
     db.run(oauth2InfoTable.filter(_.userChannelId === channelId).result.headOption)
   }
+  def findByUserID(userID: Long): Future[Option[OAuth2Info]] = {
+    db.run(oauth2InfoTable.filter(_.id === userID).result.headOption)
+  }
 }

@@ -22,6 +22,7 @@ import play.api.libs.json.Json
 import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
+import services.{UserService, YoutubeMembershipService}
 
 /**
  * The authentication controller.
@@ -35,7 +36,8 @@ class AuthController @Inject()(
   ytUserRepository: YtUserRepository,
   loginInfoRepository: LoginInfoRepository,
   oauth2InfoRepository: OAuth2InfoRepository,
-  ytStreamerRepository: YtStreamerRepository
+  ytStreamerRepository: YtStreamerRepository,
+  youtubeMembershipService: YoutubeMembershipService
 )(implicit ex: ExecutionContext) extends AbstractController(components) with I18nSupport {
 
   /**
@@ -66,28 +68,28 @@ class AuthController @Inject()(
           case Some(existingUser) => Future.successful(existingUser)
           case None => userService.createUserWithAlias()
         }
-        
+
         // Check if the channel exists as a YtStreamer
         existingYtStreamer <- ytStreamerRepository.getByChannelId(profile.loginInfo.providerKey)
-        
+
         // Handle YtStreamer creation or owner assignment based on cases
         _ <- existingYtStreamer match {
-          case None => 
+          case None =>
             // Case 1: New user login and channel doesn't exist - create YtStreamer and assign ownership
             ytStreamerRepository.create(profile.loginInfo.providerKey, Some(user.userId), channelTitle=profile.fullName)
-            
-          case Some(streamer) if streamer.ownerUserId.isEmpty => 
+
+          case Some(streamer) if streamer.ownerUserId.isEmpty =>
             // Case 2: Channel exists but has no owner - assign ownership to this user
             ytStreamerRepository.updateOwner(profile.loginInfo.providerKey, Some(user.userId))
-            
-          case Some(_) => 
+
+          case Some(_) =>
             // Case 2 (alternate): Channel exists and already has an owner - do nothing
             Future.successful(())
         }
-        
+
         // Continue with YtUser creation/update as before
         ytUser <- ytUserRepository.getByChannelId(profile.loginInfo.providerKey) flatMap {
-          case Some(existingYtUser) => 
+          case Some(existingYtUser) =>
             // Update YouTube user's profile info if needed
             ytUserRepository.updateProfile(
               profile.loginInfo.providerKey,
@@ -95,7 +97,7 @@ class AuthController @Inject()(
               profile.email,
               profile.avatarURL
             ).map(_ => existingYtUser)
-          case None => 
+          case None =>
             // Create new YouTube user
             val now = Instant.now()
             val newYtUser = YtUser(
@@ -110,7 +112,7 @@ class AuthController @Inject()(
             )
             ytUserRepository.createFull(newYtUser)
         }
-        
+
         loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
         oauthInfoInsert <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
         authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
@@ -136,20 +138,45 @@ class AuthController @Inject()(
     silhouette.env.eventBus.publish(LogoutEvent(request.identity, request))
     silhouette.env.authenticatorService.discard(request.authenticator, result)
   }
-  
+
   /**
    * Gets the current logged-in user info.
    * @return The result to display.
    */
   def userInfo = silhouette.SecuredAction.async { implicit request =>
     val user = request.identity
-    
+
     // Get YouTube accounts for this user
     ytUserRepository.getByUserId(user.userId).map { ytUsers =>
       Ok(Json.obj(
         "user" -> user,
         "youtubeAccounts" -> ytUsers
       ))
+    }
+  }
+
+  /**
+   * Check if user has PAID membership to a specific channel
+   *
+   * @param channelId The target channel ID to check membership for
+   */
+  def isSubscribedToChannel(channelId: String) = silhouette.SecuredAction.async { implicit request =>
+    ytUserRepository.getByUserId(request.identity.userId).flatMap { ytUsers =>
+      ytUsers.headOption match {
+        case Some(ytUser) =>
+          println(ytUser.userChannelId)
+          youtubeMembershipService.isSubscribedToChannel(ytUser.userChannelId, channelId).map { hasMembership =>
+            Ok(Json.obj(
+              "channelId" -> channelId,
+              "hasPaidMembership" -> hasMembership
+            ))
+          }
+        case None =>
+          Future.successful(NotFound(Json.obj("error" -> "No YouTube account linked")))
+      }
+    }.recover {
+      case ex: Exception =>
+        BadRequest(Json.obj("error" -> ex.getMessage))
     }
   }
 }
