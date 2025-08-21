@@ -25,37 +25,31 @@ class ContentCreatorChannelController @Inject()(
   /**
    * Displays the content creator channels management page (admin only).
    */
-  def index(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // TODO: Add admin check here when admin system is implemented
+  def index(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     contentCreatorChannelService.getAllContentCreatorChannels().map { channels =>
-      // TODO: Replace with proper view
-      Ok(s"Content Creator Channels: ${channels.length} channels")
+      Ok(views.html.admin.contentCreatorChannels(request.identity, channels))
     }
   }
 
   /**
    * Displays the form to create a new content creator channel (admin only).
    */
-  def create(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    // TODO: Add admin check here when admin system is implemented
-    Future.successful {
-      // TODO: Replace with proper view
-      Ok("Create Content Creator Channel Form")
-    }
+  def create(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()) { implicit request =>
+    Ok(views.html.admin.createContentCreatorChannel(request.identity))
   }
 
   /**
    * Handles the creation of a new content creator channel (admin only).
+   * Expects a YouTube channel URL like: https://www.youtube.com/@RemastrTV
    */
   def store(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val formData = request.body.asFormUrlEncoded.getOrElse(Map.empty)
 
-    val youtubeChannelIdOpt = formData.get("youtubeChannelId").flatMap(_.headOption)
-    val youtubeChannelNameOpt = formData.get("youtubeChannelName").flatMap(_.headOption)
+    val channelUrlOpt = formData.get("channelUrl").flatMap(_.headOption)
 
-    (youtubeChannelIdOpt, youtubeChannelNameOpt) match {
-      case (Some(channelId), Some(channelName)) =>
-        contentCreatorChannelService.createContentCreatorChannel(channelId.trim, channelName.trim).map {
+    channelUrlOpt match {
+      case Some(channelUrl) =>
+        contentCreatorChannelService.createContentCreatorChannelFromUrl(channelUrl.trim).map {
           case Right(channel) =>
             Redirect(routes.ContentCreatorChannelController.index())
               .flashing("success" -> s"Content creator channel '${channel.youtubeChannelName}' created successfully")
@@ -63,10 +57,10 @@ class ContentCreatorChannelController @Inject()(
             Redirect(routes.ContentCreatorChannelController.create())
               .flashing("error" -> error)
         }
-      case _ =>
+      case None =>
         Future.successful(
           Redirect(routes.ContentCreatorChannelController.create())
-            .flashing("error" -> "YouTube Channel ID and Channel Name are required")
+            .flashing("error" -> "YouTube Channel URL is required")
         )
     }
   }
