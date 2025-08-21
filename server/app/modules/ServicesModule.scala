@@ -1,18 +1,8 @@
 package modules
 
-import play.api.inject._
-import services.{
-  ParseReplayFileService, DefaultParseReplayFileService, 
-  UploadSessionService, TournamentService, TournamentServiceImpl, 
-  TournamentChallongeService, TournamentChallongeServiceImpl,
-  FileStorageService, DefaultFileStorageService,
-  UserSmurfService
-}
-import models.repository.{
-  TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, 
-  UserAliasRepository, UploadedFileRepository, UploadedFileRepositoryImpl,
-  UserSmurfRepository
-}
+import play.api.inject.*
+import services.{DefaultFileStorageService, DefaultParseReplayFileService, FileStorageService, OAuth2TokenRefreshService, ParseReplayFileService, TournamentChallongeService, TournamentChallongeServiceImpl, TournamentService, TournamentServiceImpl, UploadSessionService, UserSmurfService}
+import models.repository.{TournamentChallongeParticipantRepository, TournamentChallongeParticipantRepositoryImpl, UploadedFileRepository, UploadedFileRepositoryImpl, UserAliasRepository, UserSmurfRepository}
 import models.dao.{TournamentChallongeDAO, TournamentChallongeDAOImpl}
 
 /**
@@ -27,5 +17,6 @@ class ServicesModule extends SimpleModule(
   bind[TournamentChallongeParticipantRepository].to[TournamentChallongeParticipantRepositoryImpl],
   bind[TournamentChallongeDAO].to[TournamentChallongeDAOImpl],
   bind[UserAliasRepository].toSelf.eagerly(),
-  bind[UploadedFileRepository].to[UploadedFileRepositoryImpl]
+  bind[UploadedFileRepository].to[UploadedFileRepositoryImpl],
+  bind[OAuth2TokenRefreshService].toSelf.eagerly()
 )

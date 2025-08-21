@@ -28,16 +28,13 @@ object ReplayUploader {
   val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
 
   def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
-    println(s"$tournamentID - $challongeMatchID - $containerID")
     val container = org.scalajs.dom.document.getElementById(containerID)
     render(container, uploadDivision(uploadMatchState))
     fetchState(tournamentID: Int, challongeMatchID: Int).onComplete {
       case Success(Right(value)) => uploadMatchState.value = value
       case Success(Left(error)) => uploadMatchState.value =
-        println(error)
         UploadStateShared.errorOne()
       case Failure(error) =>
-        println(error)
         uploadMatchState.value = UploadStateShared.errorOne()
     }
   }

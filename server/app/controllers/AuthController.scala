@@ -164,7 +164,6 @@ class AuthController @Inject()(
     ytUserRepository.getByUserId(request.identity.userId).flatMap { ytUsers =>
       ytUsers.headOption match {
         case Some(ytUser) =>
-          println(ytUser.userChannelId)
           youtubeMembershipService.isSubscribedToChannel(ytUser.userChannelId, channelId).map { hasMembership =>
             Ok(Json.obj(
               "channelId" -> channelId,

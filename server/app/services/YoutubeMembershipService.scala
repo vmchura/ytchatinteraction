@@ -7,21 +7,18 @@ import play.api.libs.json._
 import models.repository.OAuth2InfoRepository
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Service for checking YouTube paid memberships/sponsorships to specific channels.
- * This ONLY checks for PAID memberships, not regular subscriptions.
- */
 @Singleton
 class YoutubeMembershipService @Inject()(
                                           ws: WSClient,
                                           config: Configuration,
-                                          oauth2InfoRepository: OAuth2InfoRepository
+                                          oauth2InfoRepository: OAuth2InfoRepository,
+                                          tokenRefreshService: OAuth2TokenRefreshService
                                         )(implicit ec: ExecutionContext) {
 
   private val baseUrl = "https://www.googleapis.com/youtube/v3"
 
   def isSubscribedToChannel(userChannelId: String, targetChannelId: String): Future[Boolean] = {
-    oauth2InfoRepository.getByChannelId(userChannelId).flatMap {
+    tokenRefreshService.refreshTokenIfNeeded(userChannelId).flatMap {
       case Some(oauth2Info) =>
         val url = s"$baseUrl/subscriptions"
 
@@ -34,19 +31,25 @@ class YoutubeMembershipService @Inject()(
           )
           .get()
           .map { response =>
-            println(response)
             response.status match {
               case 200 =>
                 val items = (response.json \ "items").as[JsArray]
-                items.value.nonEmpty // true if subscribed, false if not
+                items.value.nonEmpty
+              case 401 =>
+                println(s"Authentication failed even after token refresh for channel $userChannelId")
+                false
               case _ =>
+                println(s"YouTube API error: ${response.status} - ${response.body}")
                 false
             }
           }
       case None =>
+        println(s"Could not obtain valid token for channel $userChannelId")
         Future.successful(false)
     }.recover {
-      case _ => false
+      case ex =>
+        println(s"Error checking subscription: ${ex.getMessage}")
+        false
     }
   }
 }
