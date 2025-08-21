@@ -15,6 +15,7 @@ case class Tournament(
   tournamentStartAt: Option[Instant] = None,
   tournamentEndAt: Option[Instant] = None,
   challongeTournamentId: Option[Long] = None, // Nullable Challonge tournament ID
+  contentCreatorChannelId: Option[Long] = None, // Nullable Content Creator Channel ID
   status: TournamentStatus = TournamentStatus.RegistrationOpen,
   createdAt: Instant = Instant.now(),
   updatedAt: Instant = Instant.now()

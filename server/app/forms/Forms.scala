@@ -65,7 +65,8 @@ case class StreamerToUserCurrencyForm(
 
 // Form for creating a new tournament
 case class TournamentCreateForm(
-                                 name: String
+                                 name: String,
+                                 contentCreatorChannelId: Option[Long] = None
                                )
 
 // Form for voting on polls
@@ -149,8 +150,9 @@ object Forms:
   
   val tournamentCreateForm = Form(
     mapping(
-      "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty)
-    )(TournamentCreateForm.apply)(nn => Some(nn.name))
+      "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty),
+      "contentCreatorChannelId" -> optional(longNumber)
+    )(TournamentCreateForm.apply)(nn => Some(nn.name, nn.contentCreatorChannelId))
   )
   
   val voteForm = Form(

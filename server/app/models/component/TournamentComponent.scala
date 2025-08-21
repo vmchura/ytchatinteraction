@@ -41,12 +41,14 @@ trait TournamentComponent {
     def tournamentStartAt = column[Option[Instant]]("tournament_start_at")
     def tournamentEndAt = column[Option[Instant]]("tournament_end_at")
     def challongeTournamentId = column[Option[Long]]("challonge_tournament_id")
+    def contentCreatorChannelId = column[Option[Long]]("content_creator_channel_id")
     def status = column[TournamentStatus]("status")
     def createdAt = column[Instant]("created_at")
     def updatedAt = column[Instant]("updated_at")
 
     def * = (id, name, description, maxParticipants, registrationStartAt, registrationEndAt, 
-            tournamentStartAt, tournamentEndAt, challongeTournamentId, status, createdAt, updatedAt).mapTo[Tournament]
+            tournamentStartAt, tournamentEndAt, challongeTournamentId, contentCreatorChannelId, status, createdAt,
+      updatedAt).mapTo[Tournament]
   }
 
   lazy val tournamentsTable = TableQuery[TournamentsTable]

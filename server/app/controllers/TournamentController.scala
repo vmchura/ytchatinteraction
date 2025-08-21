@@ -4,7 +4,7 @@ import forms.Forms
 import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
 import modules.DefaultEnv
-import services.{TournamentService, TournamentChallongeService}
+import services.{ContentCreatorChannelService, TournamentService, TournamentChallongeService}
 import utils.auth.WithAdmin
 import play.api.Logger
 import play.api.i18n.I18nSupport
@@ -21,6 +21,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
                                      tournamentRepository: TournamentRepository,
                                      tournamentService: TournamentService,
                                      tournamentChallongeService: TournamentChallongeService,
+                                     contentCreatorChannelService: ContentCreatorChannelService,
                                      silhouette: Silhouette[DefaultEnv])
                                     (implicit ec: ExecutionContext, webJarsUtil: WebJarsUtil)
   extends BaseController with I18nSupport {
@@ -28,7 +29,9 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   private val logger = Logger(getClass)
 
   def showCreateForm(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
-    Future.successful(Ok(views.html.tournamentCreate(Forms.tournamentCreateForm)))
+    contentCreatorChannelService.getAllContentCreatorChannels().map { activeChannels =>
+      Ok(views.html.tournamentCreate(Forms.tournamentCreateForm, activeChannels.filter(_.isActive)))
+    }
   }
 
   def showOpenTournaments(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
@@ -136,10 +139,14 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   def createTournament(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     Forms.tournamentCreateForm.bindFromRequest().fold(
       formWithErrors => {
-        logger.warn(s"Tournament creation form has errors: ${formWithErrors.errors}")
-        Future.successful(BadRequest(views.html.tournamentCreate(formWithErrors)))
+        logger.warn("Tournament creation failed: form validation errors")
+        contentCreatorChannelService.getAllContentCreatorChannels().map { channels =>
+          BadRequest(views.html.tournamentCreate(formWithErrors, channels.filter(_.isActive)))
+        }
       },
       tournamentData => {
+        logger.info(s"Creating tournament with name: ${tournamentData.name}")
+
         val now = Instant.now()
         val defaultTournament = Tournament(
           name = tournamentData.name.trim,
@@ -150,6 +157,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
           tournamentStartAt = None,
           tournamentEndAt = None,
           challongeTournamentId = None,
+          contentCreatorChannelId = tournamentData.contentCreatorChannelId,
           status = models.TournamentStatus.RegistrationOpen,
           createdAt = now,
           updatedAt = now
@@ -159,11 +167,14 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
           logger.info(s"Created tournament: ${createdTournament.name} with ID: ${createdTournament.id}")
           Redirect(routes.TournamentController.showCreateForm())
             .flashing("success" -> s"Tournament '${createdTournament.name}' created successfully!")
-        }.recover {
+        }.recoverWith {
           case ex =>
             logger.error(s"Error creating tournament: ${ex.getMessage}", ex)
-            InternalServerError(views.html.tournamentCreate(Forms.tournamentCreateForm.fill(tournamentData)))
-              .flashing("error" -> "Error creating tournament. Please try again.")
+            // Get channels for error view
+            contentCreatorChannelService.getAllContentCreatorChannels().map { channels =>
+              InternalServerError(views.html.tournamentCreate(Forms.tournamentCreateForm.fill(tournamentData), channels.filter(_.isActive)))
+                .flashing("error" -> "Error creating tournament. Please try again.")
+            }
         }
       }
     )

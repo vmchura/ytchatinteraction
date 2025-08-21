@@ -608,7 +608,7 @@ class TournamentServiceImpl @Inject() (
       // Get the tournament and match
       tournamentOpt <- tournamentRepository.findById(tournamentMatch.tournamentId)
       result <- tournamentOpt match {
-        case Some(Tournament(_, _, _, _, _, _, _, _, Some(challongeTournamentId), _, _, _)) =>
+        case Some(Tournament(_, _, _, _, _, _, _, _, Some(challongeTournamentId), _ , _, _, _)) =>
 
 
           for {
@@ -620,7 +620,7 @@ class TournamentServiceImpl @Inject() (
             true
           }
 
-        case None =>
+        case _ =>
           Future.failed(new NoSuchElementException("Tournament not found"))
       }
     } yield result

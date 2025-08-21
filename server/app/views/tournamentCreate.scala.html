@@ -1,6 +1,7 @@
 @import play.api.mvc.ControllerHelpers.request2flash
+@import models.ContentCreatorChannel
 
-@(tournamentForm: Form[forms.TournamentCreateForm])(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
+@(tournamentForm: Form[forms.TournamentCreateForm], contentCreatorChannels: List[ContentCreatorChannel])(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
 
 @main("Create Tournament") {
     <div class="container">
@@ -40,6 +41,27 @@
                         } else {
                             <small>Enter a descriptive name for your tournament.</small>
                         }
+                    </label>
+                </fieldset>
+
+                <fieldset>
+                    <label for="contentCreatorChannelId">
+                        Content Creator Channel (Optional)
+                        <select id="contentCreatorChannelId" name="contentCreatorChannelId">
+                            <option value="">-- None / No specific channel --</option>
+                            @for(channel <- contentCreatorChannels) {
+                                <option value="@channel.id.getOrElse("")"
+                                        @if(tournamentForm("contentCreatorChannelId").value.contains(channel.id.getOrElse("").toString)) {selected}>
+                                    @channel.youtubeChannelName
+                                </option>
+                            }
+                        </select>
+                        <small>
+                            Optionally associate this tournament with a specific content creator channel.
+                            @if(contentCreatorChannels.isEmpty) {
+                                <br><em>No active content creator channels available. <a href="@routes.ContentCreatorChannelController.index()">Manage channels here</a>.</em>
+                            }
+                        </small>
                     </label>
                 </fieldset>
 
