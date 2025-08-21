@@ -56,12 +56,24 @@ class YouTubeChannelInfoService @Inject()(
    * Extracts the channel identifier and type from a YouTube URL.
    */
   private def extractChannelIdentifier(url: String): Option[(String, String)] = {
-    url.trim match {
-      case channelUrlPatterns(0)(handle) => Some((handle, "handle"))      // @username
-      case channelUrlPatterns(1)(channelId) => Some((channelId, "channel")) // /channel/UC...
-      case channelUrlPatterns(2)(customName) => Some((customName, "custom")) // /c/customname
-      case channelUrlPatterns(3)(username) => Some((username, "user"))     // /user/username
-      case _ => None
+    val trimmedUrl = url.trim
+
+    // Try each pattern sequentially
+    channelUrlPatterns.head.findFirstMatchIn(trimmedUrl) match {
+      case Some(m) => Some((m.group(1), "handle"))      // @username
+      case None =>
+        channelUrlPatterns(1).findFirstMatchIn(trimmedUrl) match {
+          case Some(m) => Some((m.group(1), "channel"))   // /channel/UC...
+          case None =>
+            channelUrlPatterns(2).findFirstMatchIn(trimmedUrl) match {
+              case Some(m) => Some((m.group(1), "custom"))  // /c/customname
+              case None =>
+                channelUrlPatterns(3).findFirstMatchIn(trimmedUrl) match {
+                  case Some(m) => Some((m.group(1), "user")) // /user/username
+                  case None => None
+                }
+            }
+        }
     }
   }
 
@@ -111,7 +123,7 @@ class YouTubeChannelInfoService @Inject()(
         "forHandle" -> handle
       )
       .get()
-      .map { response =>
+      .flatMap { response =>
         response.status match {
           case 200 =>
             val json = response.json
@@ -120,7 +132,7 @@ class YouTubeChannelInfoService @Inject()(
               val item = items.value.head
               val id = (item \ "id").as[String]
               val name = (item \ "snippet" \ "title").as[String]
-              Right(ChannelInfo(id, name))
+              Future.successful(Right(ChannelInfo(id, name)))
             } else {
               // Fallback to search if handle lookup fails
               searchChannelByName(handle)

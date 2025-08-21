@@ -26,7 +26,7 @@ class ContentCreatorChannelController @Inject()(
    */
   def index(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     // TODO: Add admin check here when admin system is implemented
-    contentCreatorChannelService.getAllContentCreatorChannels.map { channels =>
+    contentCreatorChannelService.getAllContentCreatorChannels().map { channels =>
       // TODO: Replace with proper view
       Ok(s"Content Creator Channels: ${channels.length} channels")
     }

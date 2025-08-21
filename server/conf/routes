@@ -86,7 +86,7 @@ POST   /close/:tournamentId/:challongeMatchID  controllers.MatchResultController
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()
 
-# YouTube Paid Membership routes (requires authentication)
+
 GET     /api/youtube/membership/:channelId          controllers.AuthController.isSubscribedToChannel(channelId: String)
 
 # Map static resources from the /public folder to the /assets URL path
