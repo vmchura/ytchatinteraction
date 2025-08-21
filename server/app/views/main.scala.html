@@ -17,7 +17,10 @@
         <nav class="container">
             <ul>
                 <li>
-                    <a href="@routes.HomeController.index()" class="contrast"><strong>@messages("app.title")</strong></a>
+                    <a href="@routes.HomeController.index()" class="contrast" style="display: flex; align-items: center; text-decoration: none;">
+                        <img src="@routes.Assets.versioned("images/logo_120x120.png")" alt="Logo" style="height: 120px; margin-right: 10px;">
+                        <strong>@messages("app.title")</strong>
+                    </a>
                 </li>
             </ul>
             <ul>
