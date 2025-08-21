@@ -1,0 +1,74 @@
+@import models.{User, ContentCreatorChannel}
+@(user: User, channels: List[ContentCreatorChannel])(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("Content Creator Channels", Some(user)) {
+<hgroup>
+    <h1>Content Creator Channels</h1>
+    <h2>Manage registered YouTube channels</h2>
+</hgroup>
+
+<p>
+    <a href="@routes.ContentCreatorChannelController.create()" role="button">Add New Channel</a>
+    <a href="@routes.AdminController.adminDashboard()" role="button" class="secondary">Back to Admin</a>
+</p>
+
+@if(channels.isEmpty) {
+<article>
+    <header>No Channels Registered</header>
+    <p>No content creator channels have been registered yet.</p>
+    <footer>
+        <a href="@routes.ContentCreatorChannelController.create()" role="button">Add First Channel</a>
+    </footer>
+</article>
+} else {
+<figure>
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Channel Name</th>
+            <th>YouTube Channel ID</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for(channel <- channels) {
+        <tr>
+            <td>@channel.id.getOrElse("N/A")</td>
+            <td><strong>@channel.youtubeChannelName</strong></td>
+            <td><code>@channel.youtubeChannelId</code></td>
+            <td>
+                @if(channel.isActive) {
+                <span style="color: green;">✓ Active</span>
+                } else {
+                <span style="color: red;">✗ Inactive</span>
+                }
+            </td>
+            <td>@channel.updatedAt.toString.take(10)</td>
+            <td>
+                @channel.id.map { id =>
+                <form method="post" action="@routes.ContentCreatorChannelController.toggleActive(id)" style="display: inline;">
+                    @if(channel.isActive) {
+                    <button type="submit" class="secondary" onclick="return confirm('Deactivate this channel?')">Deactivate</button>
+                    } else {
+                    <button type="submit" class="secondary" onclick="return confirm('Activate this channel?')">Activate</button>
+                    }
+                </form>
+                <a href="https://www.youtube.com/channel/@channel.youtubeChannelId" target="_blank" role="button" class="outline">View Channel</a>
+                }
+            </td>
+        </tr>
+        }
+        </tbody>
+    </table>
+</figure>
+
+<p>
+    <strong>Total channels:</strong> @channels.length |
+    <strong>Active:</strong> @channels.count(_.isActive) |
+    <strong>Inactive:</strong> @channels.count(!_.isActive)
+</p>
+}
+}

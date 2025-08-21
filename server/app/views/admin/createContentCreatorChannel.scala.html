@@ -1,0 +1,50 @@
+@import models.User
+@(user: User)(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("Add Content Creator Channel", Some(user)) {
+<hgroup>
+    <h1>Add Content Creator Channel</h1>
+    <h2>Register a new YouTube channel</h2>
+</hgroup>
+
+<p>
+    <a href="@routes.ContentCreatorChannelController.index()" role="button" class="secondary">← Back to Channels</a>
+</p>
+
+<article>
+    <header>YouTube Channel Information</header>
+
+    <form method="post" action="@routes.ContentCreatorChannelController.store()">
+        <fieldset>
+            <label for="channelUrl">
+                YouTube Channel URL
+                <input type="url"
+                       id="channelUrl"
+                       name="channelUrl"
+                       placeholder="https://www.youtube.com/@@ChannelName"
+                       required
+                       autocomplete="off">
+                <small>
+                    Enter the full YouTube URL. Supported formats:
+                    <br>• https://www.youtube.com/@@ChannelName
+                    <br>• https://www.youtube.com/channel/UC...
+                    <br>• https://www.youtube.com/c/CustomName
+                    <br>• https://www.youtube.com/user/Username
+                </small>
+            </label>
+        </fieldset>
+
+        <footer>
+            <button type="submit" role="button">Add Channel</button>
+            <a href="@routes.ContentCreatorChannelController.index()" role="button" class="secondary">Cancel</a>
+        </footer>
+    </form>
+
+    <footer>
+        <small>
+            <strong>Note:</strong> The system will automatically fetch the channel name and ID from YouTube's API.
+            Make sure you have a valid YouTube API key configured.
+        </small>
+    </footer>
+</article>
+}
