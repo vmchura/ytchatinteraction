@@ -44,6 +44,7 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
       val mockYouTubeProvider = mock[YouTubeProvider]
       val ytStreamerRepository = mock[YtStreamerRepository]
+      val mockYoutubeMembershipService = mock[services.YoutubeMembershipService]
 
       // Create a fake request
       val fakeRequest = FakeRequest()
@@ -78,7 +79,8 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
         mockYtUserRepository,
         mockLoginInfoRepository,
         mockOAuth2InfoRepository,
-        ytStreamerRepository
+        ytStreamerRepository,
+        mockYoutubeMembershipService
       )
       
       // Execute the test - call the actual controller method
@@ -103,6 +105,7 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
       val mockYouTubeProvider = mock[YouTubeProvider]
       val mockYtStreamerRepository = mock[YtStreamerRepository]
+      val mockYoutubeMembershipService = mock[services.YoutubeMembershipService]
 
       // Mock the social provider registry
       when(mockSocialProviderRegistry.get[YouTubeProvider]).thenReturn(Some(mockYouTubeProvider))
@@ -137,7 +140,8 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
         mockYtUserRepository,
         mockLoginInfoRepository,
         mockOAuth2InfoRepository,
-        mockYtStreamerRepository
+        mockYtStreamerRepository,
+        mockYoutubeMembershipService
       )
       
       // Execute the test - call the actual controller method

@@ -11,6 +11,7 @@ import org.scalatest.{BeforeAndAfterEach, RecoverMethods}
 import org.scalatestplus.mockito.MockitoSugar
 import play.api.Application
 import play.api.db.DBApi
+import evolutioncomplete.ParticipantShared
 
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
@@ -90,8 +91,11 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val secondUserId = 2
       val secondUserSmurf = "PlayerTwo"
 
+      val firstParticipant = ParticipantShared(firstUserId, "User1", Set(firstUserSmurf))
+      val secondParticipant = ParticipantShared(secondUserId, "User2", Set(secondUserSmurf))
+
       val result = await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, firstUserId, firstUserSmurf, secondUserId, secondUserSmurf
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       result must have size 2
@@ -113,9 +117,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val secondUserId = 2L
       val secondUserSmurf = "TestPlayer2"
 
+      val firstParticipant = ParticipantShared(firstUserId, "User1", Set(firstUserSmurf))
+      val secondParticipant = ParticipantShared(secondUserId, "User2", Set(secondUserSmurf))
+
       // First record the smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, firstUserId, firstUserSmurf, secondUserId, secondUserSmurf
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       // Then retrieve them
@@ -134,9 +141,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val otherUserId = 2L
       val otherUserSmurf = "OtherPlayer"
 
+      val firstParticipant = ParticipantShared(userId, "User1", Set(userSmurf))
+      val secondParticipant = ParticipantShared(otherUserId, "User2", Set(otherUserSmurf))
+
       // Record smurfs for a match
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, userId, userSmurf, otherUserId, otherUserSmurf
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       // Get specific user's smurf in the match
@@ -156,9 +166,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val beforeRecording = await(userSmurfService.hasMatchSmurfsRecorded(matchId))
       beforeRecording mustBe false
 
+      val firstParticipant = ParticipantShared(1L, "User1", Set("Player1"))
+      val secondParticipant = ParticipantShared(2L, "User2", Set("Player2"))
+
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 1L, "Player1", 2L, "Player2"
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       // Now smurfs should be recorded
@@ -176,9 +189,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val initialCount = await(userSmurfService.getMatchSmurfCount(matchId))
       initialCount mustBe 0
 
+      val firstParticipant = ParticipantShared(1L, "User1", Set("TestPlayer1"))
+      val secondParticipant = ParticipantShared(2L, "User2", Set("TestPlayer2"))
+
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 1L, "TestPlayer1", 2L, "TestPlayer2"
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       // Count should be 2
@@ -192,9 +208,12 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       val matchId = 1L
       val tournamentId = 1L
 
+      val firstParticipant = ParticipantShared(1L, "User1", Set("PlayerA"))
+      val secondParticipant = ParticipantShared(2L, "User2", Set("PlayerB"))
+
       // Record smurfs
       await(userSmurfService.recordMatchSmurfs(
-        matchId, tournamentId, 1L, "PlayerA", 2L, "PlayerB"
+        matchId, tournamentId, firstParticipant, secondParticipant
       ))
 
       // Verify they exist
