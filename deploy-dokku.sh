@@ -64,8 +64,8 @@ echo -e "${GREEN}✅ Dokku remote configured${NC}"
 echo -e "${YELLOW}🏗️  Building application locally...${NC}"
 echo -e "${BLUE}This may take a few minutes...${NC}"
 
-# Clean and stage the project
-sbt clean stage
+# Clean and stage the server project
+sbt server/stage
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Local build failed${NC}"
@@ -90,8 +90,13 @@ git commit -m "Deployment $(date)" || echo "No changes to commit"
 echo -e "${YELLOW}🚀 Deploying to Dokku...${NC}"
 echo -e "${BLUE}This may take several minutes...${NC}"
 
-# Push to Dokku using SSH key
-GIT_SSH_COMMAND="ssh -i $SSH_KEY" git push dokku HEAD:main
+# Fetch the latest from dokku remote to check status
+echo -e "${YELLOW}📥 Checking remote repository status...${NC}"
+GIT_SSH_COMMAND="ssh -i $SSH_KEY" git fetch dokku || echo "Could not fetch from remote (this is normal for first deployment)"
+
+# Push to Dokku using SSH key - force push to handle non-fast-forward issues
+echo -e "${YELLOW}🔄 Pushing to Dokku (force push to handle any conflicts)...${NC}"
+GIT_SSH_COMMAND="ssh -i $SSH_KEY" git push dokku HEAD:main --force
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Deployment failed${NC}"

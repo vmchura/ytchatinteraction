@@ -1,1 +1,1 @@
-web: target/universal/stage/bin/ytchatinteraction -Dconfig.file=conf/production.conf -Dhttp.port=$PORT -Dplay.evolutions.db.default.autoApply=true
+web: server/target/universal/stage/bin/server -Dconfig.file=server/conf/production.conf -Dhttp.port=$PORT -Dplay.evolutions.db.default.autoApply=true
