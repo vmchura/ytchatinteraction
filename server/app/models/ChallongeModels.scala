@@ -2,6 +2,7 @@ package models
 
 import evolutioncomplete.WinnerShared
 import models.MatchStatus.Completed
+import models.viewmodels.InProgressTournament
 import play.api.libs.json.*
 // Import the Tournament JSON formatters
 import models.TournamentModels._
@@ -67,7 +68,7 @@ object ChallongeParticipant {
  * Case class to represent match information for the user dashboard.
  */
 case class UserMatchInfo(
-  tournament: Tournament,
+  tournament: InProgressTournament,
   matchId: String,
   challengeMatchId: Long,
   opponent: String,
@@ -75,7 +76,3 @@ case class UserMatchInfo(
   scheduledTime: Option[String],
   winnerId: Option[Long]
 )
-
-object UserMatchInfo {
-  implicit val userMatchInfoWrites: Writes[UserMatchInfo] = Json.writes[UserMatchInfo]
-}

@@ -64,13 +64,14 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
             registrationsWithUsers <- tournamentService.getTournamentRegistrationsWithUsers(id)
             participants = registrationsWithUsers.map(_._2)
 
-            result <- tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { challongeTournamentId =>
+            result <- tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { case (challongeTournamentId, challongeUrl) =>
               logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
 
               val updatedTournament = tournament.copy(
                 status = TournamentStatus.InProgress,
                 tournamentStartAt = Some(Instant.now()),
                 challongeTournamentId = Some(challongeTournamentId),
+                challongeUrl = Some(challongeUrl),
                 updatedAt = Instant.now()
               )
 

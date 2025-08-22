@@ -24,7 +24,7 @@
             @for(matchInfo <- userMatches) {
             @defining(MatchDisplayData.fromUserMatchInfo(matchInfo)) { matchData =>
             <tr>
-                <td>@matchData.tournament.name</td>
+                <td>@matchData.tournamentName</td>
                 <td>@matchData.opponent</td>
                 <td>@renderMatchStatus(matchData.status)</td>
                 <td>@matchData.scheduledTime.getOrElse(messages("partials.matches.not.scheduled"))</td>
@@ -37,7 +37,7 @@
                 </td>
                 <td>
                     @if(matchData.canUploadReplay) {
-                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournament.id, matchData.challengeMatchId)"
+                    <a href="@routes.FileUploadController.uploadFormForMatch(matchData.tournamentID, matchData.challengeMatchId)"
                        role="button" class="outline">
                         @messages("partials.matches.upload.replay")
                     </a>

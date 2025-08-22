@@ -4,7 +4,7 @@ import models.*
 
 case class UserEventViewData(
   userEvents: UserEventsData,
-  tournaments: TournamentViewData,
+  tournaments: TournamentViewDataForUser,
   matches: List[UserMatchInfo],
   webSocketUrl: String,
   user: User
@@ -20,23 +20,10 @@ case class UserEventsData(
   def getBalanceForChannel(channelId: String): Int = channelBalances.getOrElse(channelId, 0)
 }
 
-case class TournamentViewData(
-  openTournaments: List[Tournament],
-  registrationStatus: Map[Tournament, Boolean]
-) {
-  def hasOpenTournaments: Boolean = openTournaments.nonEmpty
-  
-  def isUserRegistered(tournament: Tournament): Boolean = {
-    registrationStatus.getOrElse(tournament, false)
-  }
-  
-  def availableTournaments: List[Tournament] = {
-    openTournaments.filterNot(isUserRegistered)
-  }
-}
 
 case class MatchDisplayData(
-  tournament: Tournament,
+  tournamentName: String,
+  tournamentID: Long,
   matchId: String,
   challengeMatchId: Long,
   opponent: String,
@@ -49,7 +36,8 @@ case class MatchDisplayData(
 object MatchDisplayData {
   def fromUserMatchInfo(matchInfo: UserMatchInfo): MatchDisplayData = {
     MatchDisplayData(
-      tournament = matchInfo.tournament,
+      tournamentName = matchInfo.tournament.name,
+      tournamentID = matchInfo.tournament.id,
       matchId = matchInfo.matchId,
       challengeMatchId = matchInfo.challengeMatchId,
       opponent = matchInfo.opponent,

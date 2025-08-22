@@ -1,0 +1,37 @@
+@import models.Tournament
+@import controllers.routes
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@import models.viewmodels.*
+@import models.viewmodels.TournamentRegistrationUserStatus.*
+@(tournamentViewDataForUser: TournamentOpenDataUser)(implicit request: RequestHeader, messages: Messages)
+
+<article id="tournament-@tournamentViewDataForUser.id">
+    <header>
+        <h3>@tournamentViewDataForUser.name</h3>
+    </header>
+
+    <footer>
+        @tournamentViewDataForUser.userRegistered match {
+            case Registered => {
+                <button disabled>@messages("partials.tournament.already.registered")</button>
+            }
+            case Unregistered => {
+                <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST">
+                    @helper.CSRF.formField
+                    <button type="submit" class="contrast">@messages("partials.tournament.register")</button>
+                </form>
+            }
+            case NotAbleToRegister => {
+                <div class="grid">
+                <button disabled>@messages("partials.tournament.register")</button>
+                @tournamentViewDataForUser.contentCreatorInfo.map { contentCreator =>
+                    <small>
+                        @messages("partials.tournament.subscription.required.channel", contentCreator.youtubeChannelName)
+                    </small>
+                }
+                </div>
+            }
+        }
+    </footer>
+</article>

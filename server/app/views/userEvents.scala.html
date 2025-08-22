@@ -24,18 +24,32 @@
   @partials.availableEvents(viewData.userEvents.availableEvents)
 
   @* Open Tournaments Section *@
-  @if(viewData.tournaments.hasOpenTournaments) {
+  @if(viewData.tournaments.openTournaments.nonEmpty) {
     <section>
       <h2>@messages("events.tournaments.open.title")</h2>
       <p>@messages("events.tournaments.open.description")</p>
       
       <div class="grid">
         @for(tournament <- viewData.tournaments.openTournaments) {
-          @partials.tournamentCard(tournament, viewData.tournaments.isUserRegistered(tournament))
+          @partials.tournamentCardToRegister(tournament)
         }
       </div>
     </section>
   }
+
+    @* In Progress Tournaments Section *@
+    @if(viewData.tournaments.inProgressTournaments.nonEmpty) {
+    <section>
+        <h2>@messages("events.tournaments.in.progress.title")</h2>
+        <p>@messages("events.tournaments.in.progress.description")</p>
+
+        <div class="grid">
+            @for(tournament <- viewData.tournaments.inProgressTournaments) {
+            @partials.tournamentCardInProgress(tournament)
+            }
+        </div>
+    </section>
+    }
   
   <script type='text/javascript' src='@routes.Assets.versioned("javascripts/userEventsInterface.js")' data-websocket-url='@viewData.webSocketUrl'></script>
 }

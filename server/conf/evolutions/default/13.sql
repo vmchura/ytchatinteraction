@@ -4,6 +4,9 @@
 ALTER TABLE tournaments
 ADD COLUMN content_creator_channel_id BIGINT;
 
+ALTER TABLE tournaments
+ADD COLUMN challonge_url VARCHAR(255);
+
 -- Add foreign key constraint to content_creator_channels table
 ALTER TABLE tournaments
 ADD CONSTRAINT fk_tournaments_content_creator_channels
@@ -19,3 +22,4 @@ CREATE INDEX idx_tournaments_content_creator_channel_id ON tournaments (content_
 DROP INDEX IF EXISTS idx_tournaments_content_creator_channel_id;
 ALTER TABLE tournaments DROP CONSTRAINT IF EXISTS fk_tournaments_content_creator_channels;
 ALTER TABLE tournaments DROP COLUMN IF EXISTS content_creator_channel_id;
+ALTER TABLE tournaments DROP COLUMN IF EXISTS challonge_url;

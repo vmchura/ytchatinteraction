@@ -1,0 +1,21 @@
+@import models.Tournament
+@import controllers.routes
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@import models.viewmodels.InProgressTournament
+
+@(tournamentViewDataForUser: InProgressTournament)(implicit request: RequestHeader, messages: Messages)
+
+<article id="tournament-@tournamentViewDataForUser.id">
+    <header>
+        <h3>@tournamentViewDataForUser.name</h3>
+    </header>
+
+    <footer>
+        <a href="@tournamentViewDataForUser.challongeURL"
+           target="_blank"
+           rel="noopener noreferrer">
+            Challonge
+        </a>
+    </footer>
+</article>

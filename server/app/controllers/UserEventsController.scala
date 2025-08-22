@@ -41,10 +41,7 @@ class UserEventsController @Inject()(
           channelBalances = userEventData.channelBalanceMap,
           availableEvents = userEventData.extraActiveEventsWithFrontal
         ),
-        tournaments = models.viewmodels.TournamentViewData(
-          openTournaments = tournamentData.openTournaments,
-          registrationStatus = tournamentData.tournamentsWithRegistrationStatus
-        ),
+        tournaments = tournamentData,
         matches = userMatches,
         webSocketUrl = routes.UserEventsController.eventsUpdates.webSocketURL(),
         user = request.identity

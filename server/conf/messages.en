@@ -47,6 +47,8 @@ events.no.active = You don't have any active events. Join a participate in the e
 events.available.title = Available Events
 events.tournaments.open.title = Open Tournaments
 events.tournaments.open.description = Tournaments currently open for registration:
+events.tournaments.in.progress.title = In Progress Tournaments
+events.tournaments.in.progress.description = Tournaments currently in progress:
 
 # Change alias
 alias.title = Change Your Alias
@@ -106,6 +108,8 @@ partials.tournament.registration.ends = Registration ends:
 partials.tournament.starts = Tournament starts:
 partials.tournament.already.registered = Already Registered
 partials.tournament.register = Register for Tournament
+partials.tournament.subscription.required = Channel subscription required to participate
+partials.tournament.subscription.required.channel = Subscription to "{0}" channel required to participate
 
 # File Upload
 upload.title = File Upload

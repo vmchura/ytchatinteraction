@@ -47,6 +47,8 @@ events.no.active = No tienes eventos activos. ¡Únete y participa de los torneo
 events.available.title = Eventos Disponibles
 events.tournaments.open.title = Torneos Abiertos
 events.tournaments.open.description = Torneos actualmente abiertos para registro:
+events.tournaments.in.progress.title = Torneos en Progreso
+events.tournaments.in.progress.description = Torneos actualmente en Progreso:
 
 # Cambio de alias
 alias.title = Cambiar Tu Alias
@@ -152,6 +154,8 @@ partials.tournament.registration.ends = Registro termina:
 partials.tournament.starts = Torneo comienza:
 partials.tournament.already.registered = Ya Registrado
 partials.tournament.register = Registrarse al Torneo
+partials.tournament.subscription.required = Suscripción al canal requerida para participar
+partials.tournament.subscription.required.channel = Suscripción al canal "{0}" requerida para participar
 
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete

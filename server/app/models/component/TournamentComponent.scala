@@ -41,13 +41,14 @@ trait TournamentComponent {
     def tournamentStartAt = column[Option[Instant]]("tournament_start_at")
     def tournamentEndAt = column[Option[Instant]]("tournament_end_at")
     def challongeTournamentId = column[Option[Long]]("challonge_tournament_id")
+    def challongeUrl = column[Option[String]]("challonge_url")
     def contentCreatorChannelId = column[Option[Long]]("content_creator_channel_id")
     def status = column[TournamentStatus]("status")
     def createdAt = column[Instant]("created_at")
     def updatedAt = column[Instant]("updated_at")
 
     def * = (id, name, description, maxParticipants, registrationStartAt, registrationEndAt, 
-            tournamentStartAt, tournamentEndAt, challongeTournamentId, contentCreatorChannelId, status, createdAt,
+            tournamentStartAt, tournamentEndAt, challongeTournamentId, challongeUrl, contentCreatorChannelId, status, createdAt,
       updatedAt).mapTo[Tournament]
   }
 

@@ -27,7 +27,7 @@ trait TournamentChallongeService {
    * @param participants The list of users registered for the tournament
    * @return The Challonge tournament ID
    */
-  def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[Long]
+  def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[(Long, String)]
 
   /**
    * Generates fake users to complete the tournament if needed.
@@ -133,7 +133,7 @@ class TournamentChallongeServiceImpl @Inject()(
    * Creates a tournament in Challonge with round robin format.
    * Automatically adds fake users if needed to ensure at least 2 participants.
    */
-  override def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[Long] = {
+  override def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[(Long, String)] = {
     logger.info(s"Creating Challonge tournament for: ${tournament.name} with ${participants.length} participants")
 
     // Generate fake users if needed
@@ -183,10 +183,11 @@ class TournamentChallongeServiceImpl @Inject()(
           logger.info(s"Successfully created Challonge tournament. Response: ${response.body}")
           val json = response.json
           val tournamentId = (json \ "tournament" \ "id").as[Long]
+          val challongeFullURL = (json \ "tournament" \ "full_challonge_url").as[String]
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
           // Add all participants (real + fake) to the tournament
-          addAllParticipants(tournamentId, allParticipants, tournament.id).map(_ => tournamentId)
+          addAllParticipants(tournamentId, allParticipants, tournament.id).map(_ => (tournamentId, challongeFullURL))
 
         case status =>
           logger.error(s"Failed to create Challonge tournament. Status: $status, Response: ${response.body}")
