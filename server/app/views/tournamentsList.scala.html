@@ -35,7 +35,10 @@
             </article>
         } else {
             @defining(tournamentsData.filter(_._1.status == TournamentStatus.RegistrationOpen)) { openTournaments =>
-                @defining(tournamentsData.filter(_._1.status == TournamentStatus.InProgress)) { inProgressTournaments =>
+                @defining(tournamentsData.filter(_._1.status == TournamentStatus.RegistrationClosed)) { closedRegistrationTournaments =>
+                    @defining(tournamentsData.filter(_._1.status == TournamentStatus.InProgress)) { inProgressTournaments =>
+                        @defining(tournamentsData.filter(_._1.status == TournamentStatus.Completed)) { completedTournaments =>
+                            @defining(tournamentsData.filter(_._1.status == TournamentStatus.Cancelled)) { cancelledTournaments =>
 
             @if(openTournaments.nonEmpty) {
                 <section>
@@ -49,7 +52,7 @@
                                         <p>@tournament.description.get</p>
                                     }
                                 </header>
-                                
+
                                 <section>
                                     <h4>Tournament Details</h4>
                                     <ul>
@@ -80,18 +83,100 @@
                                 }
 
                                 <footer>
-                                    <form method="post" action="@routes.TournamentController.startTournament(tournament.id)" style="display: inline;">
-                                        @helper.CSRF.formField
-                                        <button type="submit" 
-                                                onclick="return confirm('Are you sure you want to start this tournament? This will close registration and begin the tournament. If needed, fake participants will be added to complete a round robin.');">
-                                            Start Tournament
-                                            @if(registrations.length == 0) {
-                                                (will add fake participants)
-                                            } else if(registrations.length == 1) {
-                                                (will add fake participants)
-                                            }
-                                        </button>
-                                    </form>
+                                    <div class="grid">
+                                        <form method="post" action="@routes.TournamentController.startTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit"
+                                                    onclick="return confirm('Are you sure you want to start this tournament? This will close registration and begin the tournament. If needed, fake participants will be added to complete a round robin.');">
+                                                Start Tournament
+                                                @if(registrations.length == 0) {
+                                                    (will add fake participants)
+                                                } else if(registrations.length == 1) {
+                                                    (will add fake participants)
+                                                }
+                                            </button>
+                                        </form>
+                                        <form method="post" action="@routes.TournamentController.completeTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="secondary"
+                                                    onclick="return confirm('Are you sure you want to mark this tournament as completed?');">
+                                                Complete
+                                            </button>
+                                        </form>
+                                        <form method="post" action="@routes.TournamentController.cancelTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="contrast outline"
+                                                    onclick="return confirm('Are you sure you want to cancel this tournament?');">
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    </div>
+                                </footer>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if(closedRegistrationTournaments.nonEmpty) {
+                <section>
+                    <h2>Registration Closed</h2>
+                    <div class="grid">
+                        @for((tournament, registrations) <- closedRegistrationTournaments) {
+                            <article style="border-left: 4px solid var(--pico-orange-400);">
+                                <header>
+                                    <h3>@tournament.name</h3>
+                                    @if(tournament.description.isDefined) {
+                                        <p>@tournament.description.get</p>
+                                    }
+                                </header>
+
+                                <section>
+                                    <h4>Tournament Details</h4>
+                                    <ul>
+                                        <li><strong>Participants:</strong> @registrations.length</li>
+                                        <li><strong>Status:</strong> <mark style="background-color: var(--pico-orange-400);">Registration Closed</mark></li>
+                                        <li><strong>Registration Ended:</strong> @tournament.registrationEndAt.toString.take(19).replace("T", " ")</li>
+                                        <li><strong>Created:</strong> @tournament.createdAt.toString.take(19).replace("T", " ")</li>
+                                    </ul>
+                                </section>
+
+                                <section>
+                                    <h4>Participants (@registrations.length)</h4>
+                                    <ul>
+                                        @for((registration, user) <- registrations) {
+                                            <li>
+                                                <strong>@user.userName</strong>
+                                                <small> - Registered: @registration.registeredAt.toString.take(19).replace("T", " ")</small>
+                                            </li>
+                                        }
+                                    </ul>
+                                </section>
+
+                                <footer>
+                                    <div class="grid">
+                                        <form method="post" action="@routes.TournamentController.startTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit"
+                                                    onclick="return confirm('Are you sure you want to start this tournament?');">
+                                                Start Tournament
+                                            </button>
+                                        </form>
+                                        <form method="post" action="@routes.TournamentController.completeTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="secondary"
+                                                    onclick="return confirm('Are you sure you want to mark this tournament as completed?');">
+                                                Complete
+                                            </button>
+                                        </form>
+                                        <form method="post" action="@routes.TournamentController.cancelTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="contrast outline"
+                                                    onclick="return confirm('Are you sure you want to cancel this tournament?');">
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    </div>
                                 </footer>
                             </article>
                         }
@@ -111,7 +196,7 @@
                                         <p>@tournament.description.get</p>
                                     }
                                 </header>
-                                
+
                                 <section>
                                     <h4>Tournament Details</h4>
                                     <ul>
@@ -121,6 +206,9 @@
                                             <li><strong>Started:</strong> @tournament.tournamentStartAt.get.toString.take(19).replace("T", " ")</li>
                                         }
                                         <li><strong>Created:</strong> @tournament.createdAt.toString.take(19).replace("T", " ")</li>
+                                        @if(tournament.challongeUrl.isDefined) {
+                                            <li><strong>Challonge URL:</strong> <a href="@tournament.challongeUrl.get" target="_blank">View on Challonge</a></li>
+                                        }
                                     </ul>
                                 </section>
 
@@ -137,7 +225,123 @@
                                 </section>
 
                                 <footer>
-                                    <button disabled>Tournament Running</button>
+                                    <div class="grid">
+                                        <form method="post" action="@routes.TournamentController.completeTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="secondary"
+                                                    onclick="return confirm('Are you sure you want to mark this tournament as completed?');">
+                                                Complete
+                                            </button>
+                                        </form>
+                                        <form method="post" action="@routes.TournamentController.cancelTournament(tournament.id)" style="display: inline;">
+                                            @helper.CSRF.formField
+                                            <button type="submit" class="contrast outline"
+                                                    onclick="return confirm('Are you sure you want to cancel this tournament?');">
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    </div>
+                                </footer>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if(completedTournaments.nonEmpty) {
+                <section>
+                    <h2>Completed Tournaments</h2>
+                    <div class="grid">
+                        @for((tournament, registrations) <- completedTournaments) {
+                            <article style="border-left: 4px solid var(--pico-green-400);">
+                                <header>
+                                    <h3>@tournament.name</h3>
+                                    @if(tournament.description.isDefined) {
+                                        <p>@tournament.description.get</p>
+                                    }
+                                </header>
+
+                                <section>
+                                    <h4>Tournament Details</h4>
+                                    <ul>
+                                        <li><strong>Participants:</strong> @registrations.length</li>
+                                        <li><strong>Status:</strong> <mark style="background-color: var(--pico-green-400);">Completed</mark></li>
+                                        @if(tournament.tournamentStartAt.isDefined) {
+                                            <li><strong>Started:</strong> @tournament.tournamentStartAt.get.toString.take(19).replace("T", " ")</li>
+                                        }
+                                        @if(tournament.tournamentEndAt.isDefined) {
+                                            <li><strong>Ended:</strong> @tournament.tournamentEndAt.get.toString.take(19).replace("T", " ")</li>
+                                        }
+                                        <li><strong>Created:</strong> @tournament.createdAt.toString.take(19).replace("T", " ")</li>
+                                        @if(tournament.challongeUrl.isDefined) {
+                                            <li><strong>Challonge URL:</strong> <a href="@tournament.challongeUrl.get" target="_blank">View Results</a></li>
+                                        }
+                                    </ul>
+                                </section>
+
+                                <section>
+                                    <h4>Final Participants (@registrations.length)</h4>
+                                    <ul>
+                                        @for((registration, user) <- registrations) {
+                                            <li>
+                                                <strong>@user.userName</strong>
+                                                <small> - Registered: @registration.registeredAt.toString.take(19).replace("T", " ")</small>
+                                            </li>
+                                        }
+                                    </ul>
+                                </section>
+
+                                <footer>
+                                    <p><em>This tournament has been completed.</em></p>
+                                </footer>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if(cancelledTournaments.nonEmpty) {
+                <section>
+                    <h2>Cancelled Tournaments</h2>
+                    <div class="grid">
+                        @for((tournament, registrations) <- cancelledTournaments) {
+                            <article style="border-left: 4px solid var(--pico-red-400);">
+                                <header>
+                                    <h3>@tournament.name</h3>
+                                    @if(tournament.description.isDefined) {
+                                        <p>@tournament.description.get</p>
+                                    }
+                                </header>
+
+                                <section>
+                                    <h4>Tournament Details</h4>
+                                    <ul>
+                                        <li><strong>Participants:</strong> @registrations.length</li>
+                                        <li><strong>Status:</strong> <mark style="background-color: var(--pico-red-400);">Cancelled</mark></li>
+                                        @if(tournament.tournamentStartAt.isDefined) {
+                                            <li><strong>Started:</strong> @tournament.tournamentStartAt.get.toString.take(19).replace("T", " ")</li>
+                                        }
+                                        @if(tournament.tournamentEndAt.isDefined) {
+                                            <li><strong>Cancelled:</strong> @tournament.tournamentEndAt.get.toString.take(19).replace("T", " ")</li>
+                                        }
+                                        <li><strong>Created:</strong> @tournament.createdAt.toString.take(19).replace("T", " ")</li>
+                                    </ul>
+                                </section>
+
+                                <section>
+                                    <h4>Registered Participants (@registrations.length)</h4>
+                                    <ul>
+                                        @for((registration, user) <- registrations) {
+                                            <li>
+                                                <strong>@user.userName</strong>
+                                                <small> - Registered: @registration.registeredAt.toString.take(19).replace("T", " ")</small>
+                                            </li>
+                                        }
+                                    </ul>
+                                </section>
+
+                                <footer>
+                                    <p><em>This tournament has been cancelled.</em></p>
                                 </footer>
                             </article>
                         }
@@ -149,6 +353,9 @@
                 <a href="@routes.TournamentController.showCreateForm()" role="button">Create New Tournament</a>
                 <a href="@routes.HomeController.index()" role="button" class="secondary">Back to Home</a>
             </footer>
+                            }
+                        }
+                    }
                 }
             }
         }

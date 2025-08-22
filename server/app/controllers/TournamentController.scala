@@ -37,8 +37,11 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   def showOpenTournaments(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     val future = for {
       openTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.RegistrationOpen)
+      closedRegistrationTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.RegistrationClosed)
       inProgressTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.InProgress)
-      allTournaments = openTournaments ++ inProgressTournaments
+      completedTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.Completed)
+      cancelledTournaments <- tournamentService.getTournamentsByStatus(TournamentStatus.Cancelled)
+      allTournaments = openTournaments ++ closedRegistrationTournaments ++ inProgressTournaments ++ completedTournaments ++ cancelledTournaments
       tournamentWithRegistrations <- Future.sequence(allTournaments.map { tournament =>
         tournamentService.getTournamentRegistrationsWithUsers(tournament.id).map { registrations =>
           (tournament, registrations)
@@ -134,6 +137,98 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
         logger.error(s"Error starting tournament $id: ${ex.getMessage}", ex)
         Redirect(routes.TournamentController.showOpenTournaments())
           .flashing("error" -> "Error starting tournament. Please try again.")
+    }
+  }
+
+  def completeTournament(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    val future = for {
+      tournamentOpt <- tournamentService.getTournament(id)
+      result <- tournamentOpt match {
+        case Some(tournament) if tournament.status == TournamentStatus.InProgress ||
+                                tournament.status == TournamentStatus.RegistrationOpen ||
+                                tournament.status == TournamentStatus.RegistrationClosed =>
+          val updatedTournament = tournament.copy(
+            status = TournamentStatus.Completed,
+            tournamentEndAt = Some(Instant.now()),
+            updatedAt = Instant.now()
+          )
+
+          tournamentService.updateTournament(updatedTournament).map {
+            case Some(updated) =>
+              logger.info(s"Completed tournament: ${updated.name} (ID: ${updated.id})")
+              Redirect(routes.TournamentController.showOpenTournaments())
+                .flashing("success" -> s"Tournament '${updated.name}' has been marked as completed!")
+            case None =>
+              logger.error(s"Failed to update tournament with ID $id")
+              Redirect(routes.TournamentController.showOpenTournaments())
+                .flashing("error" -> "Failed to update tournament. Please try again.")
+          }
+        case Some(tournament) =>
+          logger.warn(s"Tournament ${tournament.name} (ID: $id) cannot be completed (current status: ${tournament.status})")
+          Future.successful(
+            Redirect(routes.TournamentController.showOpenTournaments())
+              .flashing("error" -> "Tournament cannot be completed from its current status.")
+          )
+        case None =>
+          logger.warn(s"Tournament with ID $id not found")
+          Future.successful(
+            Redirect(routes.TournamentController.showOpenTournaments())
+              .flashing("error" -> "Tournament not found.")
+          )
+      }
+    } yield result
+
+    future.recover {
+      case ex =>
+        logger.error(s"Error completing tournament $id: ${ex.getMessage}", ex)
+        Redirect(routes.TournamentController.showOpenTournaments())
+          .flashing("error" -> "Error completing tournament. Please try again.")
+    }
+  }
+
+  def cancelTournament(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    val future = for {
+      tournamentOpt <- tournamentService.getTournament(id)
+      result <- tournamentOpt match {
+        case Some(tournament) if tournament.status == TournamentStatus.InProgress ||
+                                tournament.status == TournamentStatus.RegistrationOpen ||
+                                tournament.status == TournamentStatus.RegistrationClosed =>
+          val updatedTournament = tournament.copy(
+            status = TournamentStatus.Cancelled,
+            tournamentEndAt = Some(Instant.now()),
+            updatedAt = Instant.now()
+          )
+
+          tournamentService.updateTournament(updatedTournament).map {
+            case Some(updated) =>
+              logger.info(s"Cancelled tournament: ${updated.name} (ID: ${updated.id})")
+              Redirect(routes.TournamentController.showOpenTournaments())
+                .flashing("success" -> s"Tournament '${updated.name}' has been cancelled!")
+            case None =>
+              logger.error(s"Failed to update tournament with ID $id")
+              Redirect(routes.TournamentController.showOpenTournaments())
+                .flashing("error" -> "Failed to update tournament. Please try again.")
+          }
+        case Some(tournament) =>
+          logger.warn(s"Tournament ${tournament.name} (ID: $id) cannot be cancelled (current status: ${tournament.status})")
+          Future.successful(
+            Redirect(routes.TournamentController.showOpenTournaments())
+              .flashing("error" -> "Tournament cannot be cancelled from its current status.")
+          )
+        case None =>
+          logger.warn(s"Tournament with ID $id not found")
+          Future.successful(
+            Redirect(routes.TournamentController.showOpenTournaments())
+              .flashing("error" -> "Tournament not found.")
+          )
+      }
+    } yield result
+
+    future.recover {
+      case ex =>
+        logger.error(s"Error cancelling tournament $id: ${ex.getMessage}", ex)
+        Redirect(routes.TournamentController.showOpenTournaments())
+          .flashing("error" -> "Error cancelling tournament. Please try again.")
     }
   }
 

@@ -68,6 +68,8 @@ GET     /tournaments                controllers.TournamentController.showOpenTou
 GET     /tournaments/create         controllers.TournamentController.showCreateForm()
 POST    /tournaments/create         controllers.TournamentController.createTournament()
 POST    /tournaments/:id/start      controllers.TournamentController.startTournament(id: Long)
+POST    /tournaments/:id/complete   controllers.TournamentController.completeTournament(id: Long)
+POST    /tournaments/:id/cancel     controllers.TournamentController.cancelTournament(id: Long)
 
 # Tournament User routes
 # Tournament dashboard functionality merged into UserEventsController.userEvents
