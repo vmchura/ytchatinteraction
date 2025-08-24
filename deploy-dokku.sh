@@ -115,8 +115,8 @@ fi
 
 # Step 9: Configure database (if needed)
 echo -e "${YELLOW}🗄️  Checking database configuration...${NC}"
-if run_on_dokku "dokku postgres:exists postgres" 2>/dev/null; then
-    if ! run_on_dokku "dokku postgres:linked postgres $APP_NAME" 2>/dev/null; then
+if run_on_dokku "dokku postgres:exists ytchat-db" 2>/dev/null; then
+    if ! run_on_dokku "dokku postgres:linked ytchat-db $APP_NAME" 2>/dev/null; then
         echo -e "${YELLOW}🔗 Linking PostgreSQL database...${NC}"
         run_on_dokku "dokku postgres:link postgres $APP_NAME"
         echo -e "${GREEN}✅ Database linked${NC}"
