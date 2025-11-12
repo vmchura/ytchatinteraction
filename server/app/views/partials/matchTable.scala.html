@@ -14,8 +14,6 @@
             <tr>
                 <th>@messages("partials.matches.tournament")</th>
                 <th>@messages("partials.matches.opponent")</th>
-                <th>@messages("partials.matches.status")</th>
-                <th>@messages("partials.matches.scheduled.time")</th>
                 <th>@messages("partials.matches.result")</th>
                 <th>@messages("partials.matches.actions")</th>
             </tr>
@@ -26,8 +24,6 @@
             <tr>
                 <td>@matchData.tournamentName</td>
                 <td>@matchData.opponent</td>
-                <td>@renderMatchStatus(matchData.status)</td>
-                <td>@matchData.scheduledTime.getOrElse(messages("partials.matches.not.scheduled"))</td>
                 <td>
                     @if(matchData.hasResult) {
                     <span>@messages("partials.matches.see.result")</span>

@@ -109,7 +109,7 @@ object ReplayUploader {
   }
 
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
-    html"""<div class="container" id="match_result">
+    html"""<div class="container-fluid" id="match_result">
          <div class="games-list">
            <h1 class="game-row">
            <span class="player_left">${currentState.bind.firstParticipant.userName}</span>
@@ -140,7 +140,7 @@ object ReplayUploader {
         }</div>"""
       }
     }
-        <label for="file-input" class="outline add_more_replays" role="button">
+        <label for="file-input" class="secondary add_more_replays" role="button">
           ${
       val input: Binding.Stable[Input] = html"""<input type="file" id="file-input" hidden multiple>"""
       input.value.onchange = (_: Event) => {
@@ -187,58 +187,69 @@ object ReplayUploader {
       }
     }
     </div>
-      <div class="form-section">
+      <form>
         <h6>Resultado General (todas las partidas)</h6>
+        <fieldset class="grid">
         ${
       val select_winner: Binding.Stable[Select] =
         html"""<select id="match-result">
-          <option value="Undefined" selected=${currentState.bind.winner == Undefined}>Seleccionar</option>
-          ${if(currentState.bind.countValidGames > 0) {html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>"""} else Binding.Constants()}
-          ${if(currentState.bind.countValidGames > 0) {html"""<option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>"""} else Binding.Constants()}
-          ${if(currentState.bind.countValidGames > 0 && (currentState.bind.countValidGames % 2 == 0)) {html"""<option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>"""} else Binding.Constants()}
-          ${if(currentState.bind.countValidGames == 0) {html"""<option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>"""} else Binding.Constants()}
-          ${if(currentState.bind.countValidGames == 0) {html"""<option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>"""} else Binding.Constants()}
-          ${if(currentState.bind.countValidGames == 0) {html"""<option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>"""} else Binding.Constants()}
+          ${
+          if (currentState.bind.countValidGames > 0) {
+            if (currentState.bind.countValidGames % 2 == 0) {
+              html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
+                     <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
+                      <option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>
+                """
+            } else {
+              html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
+                     <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
+                """
+            }
+          } else {
+            html"""<option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>
+                   <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
+                   <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
+              """
+          }
+        }
+
         </select>"""
       select_winner.value.onchange = (event: Event) => {
         uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)
       }
       select_winner
     }
-      </div>
-
-      <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick=${ (_ : Event) =>
-      {
-        val form =  dom.document.getElementById("matchUploadForm").asInstanceOf[Form]
-        // add list1 values
-        uploadMatchState.value.firstParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
-          val input = dom.document.createElement("input").asInstanceOf[Input]
-          input.`type` = "hidden"
-          input.name = s"smurfsFirstParticipant[$i]"
-          input.value = v
-          form.appendChild(input)
-        }
-
-        // add list2 values
-        uploadMatchState.value.secondParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
-          val input = dom.document.createElement("input").asInstanceOf[Input]
-          input.`type` = "hidden"
-          input.name = s"smurfsSecondParticipant[$i]"
-          input.value = v
-          form.appendChild(input)
-        }
-
-        // add single string
-        val singleInput = dom.document.createElement("input").asInstanceOf[Input]
-        singleInput.`type` = "hidden"
-        singleInput.name = "winner"
-        singleInput.value = uploadMatchState.value.winner.toString
-        form.appendChild(singleInput)
-        form.submit()
+      <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick=${ (_: Event) => {
+      val form = dom.document.getElementById("matchUploadForm").asInstanceOf[Form]
+      // add list1 values
+      uploadMatchState.value.firstParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
+        val input = dom.document.createElement("input").asInstanceOf[Input]
+        input.`type` = "hidden"
+        input.name = s"smurfsFirstParticipant[$i]"
+        input.value = v
+        form.appendChild(input)
       }
+
+      // add list2 values
+      uploadMatchState.value.secondParticipant.smurfs.zipWithIndex.foreach { case (v, i) =>
+        val input = dom.document.createElement("input").asInstanceOf[Input]
+        input.`type` = "hidden"
+        input.name = s"smurfsSecondParticipant[$i]"
+        input.value = v
+        form.appendChild(input)
+      }
+
+      // add single string
+      val singleInput = dom.document.createElement("input").asInstanceOf[Input]
+      singleInput.`type` = "hidden"
+      singleInput.name = "winner"
+      singleInput.value = uploadMatchState.value.winner.toString
+      form.appendChild(singleInput)
+      form.submit()
+    }
     }>
-        <span>Enviar resultado global</span><br/><small>Ya no podrás modificar replays, smurfs ni resultado</small>
-      </button>
+        <span>Enviar resultado global</span><br/><small>Ya no podrás modificar nada</small>
+      </button></fieldset><form>
     </div>"""
   }
 }

@@ -1,7 +1,7 @@
 package services
 
 import evolutioncomplete.GameStateShared.*
-import evolutioncomplete.WinnerShared.Undefined
+import evolutioncomplete.WinnerShared.Cancelled
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 import models.StarCraftModels.{SCMatchMode, Team}
 import models.{MatchStatus, User}
@@ -92,7 +92,7 @@ class UploadSessionService @Inject()(
               sessionId = sessionKey,
               challongeMatchID = challongeMatchID,
               userId = user.userId,
-              uploadState = UploadStateShared(challongeMatchID = challongeMatchID, tournamentID = tournamentId, firstParticipant = ParticipantShared(firstUser.userId, firstUser.userName, Set.empty[String]), secondParticipant = ParticipantShared(secondUser.userId, secondUser.userName, Set.empty[String]), games = Nil, winner = Undefined),
+              uploadState = UploadStateShared(challongeMatchID = challongeMatchID, tournamentID = tournamentId, firstParticipant = ParticipantShared(firstUser.userId, firstUser.userName, Set.empty[String]), secondParticipant = ParticipantShared(secondUser.userId, secondUser.userName, Set.empty[String]), games = Nil, winner = Cancelled),
               createdAt = Instant.now(),
               lastUpdated = Instant.now()
             )
@@ -169,7 +169,7 @@ class UploadSessionService @Inject()(
               case Left(error) => currentSession.copy(lastUpdated = java.time.Instant.now(),
                 uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(error, uuid)))
               case Right(storedInfo) => currentSession.copy(lastUpdated = java.time.Instant.now(),
-                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => ValidGame(teams.flatMap(_.participants.map(_.name)), mapName, LocalDateTime.now(), sha256Hash, uuid)),
+                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => ValidGame(teams.flatMap(_.participants.map(_.name)), mapName, LocalDateTime.now(), sha256Hash, uuid)).calculateWinner(),
                 hash2StoreInformation = currentSession.hash2StoreInformation + (sha256Hash -> storedInfo))
             }
           case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
@@ -201,7 +201,7 @@ class UploadSessionService @Inject()(
   def removeFileFromSession(currentSession: UploadSession, sessionUUID: UUID): UploadSession = {
     currentSession.copy(uploadState = currentSession.uploadState.copy(games = currentSession.uploadState.games.filter{
       _.sessionID.compareTo(sessionUUID) != 0
-    }))
+    }).calculateWinner())
   }
 
   /**

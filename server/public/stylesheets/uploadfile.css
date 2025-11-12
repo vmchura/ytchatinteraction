@@ -10,7 +10,14 @@
   grid-template-columns: subgrid;
   grid-column: 1 / -1;
   align-items: center;
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--pico-muted-border-color);
+  margin-bottom: 0;
 }
+.game-row:last-of-type {
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+
 .status-icon { grid-column: 1; }
 .player_left { grid-column: 2; text-align: right; }
 .vs { grid-column: 3; text-align: center; }

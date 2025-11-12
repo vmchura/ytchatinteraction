@@ -94,6 +94,13 @@ case class UploadStateShared(challongeMatchID: Long, tournamentID: Long,
   def withWinner(winnerShared: String): UploadStateShared = {
     copy(winner=WinnerShared.valueOf(winnerShared))
   }
+  
+  def calculateWinner(): UploadStateShared = {
+    winner match {
+      case Cancelled => copy(winner = if(games.nonEmpty) WinnerShared.FirstUser else WinnerShared.Cancelled) 
+      case _ => this
+    }
+  }
 
   def withGames(newGames: List[GameStateShared]): UploadStateShared = {
     copy(games = games ::: newGames)
