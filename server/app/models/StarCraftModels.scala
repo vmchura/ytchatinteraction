@@ -13,12 +13,14 @@ object StarCraftModels {
   sealed trait SCRace
 
   case object Zerg extends SCRace
-  case object Terran extends SCRace  
+
+  case object Terran extends SCRace
+
   case object Protoss extends SCRace
 
   implicit val scRaceWrites: Writes[SCRace] = {
     case Zerg => JsString("Zerg")
-    case Terran => JsString("Terran") 
+    case Terran => JsString("Terran")
     case Protoss => JsString("Protoss")
   }
 
@@ -37,9 +39,13 @@ object StarCraftModels {
   sealed trait SCMatchMode
 
   case object TopVsBottom extends SCMatchMode
+
   case object Melee extends SCMatchMode
+
   case object OneVsOneMode extends SCMatchMode
+
   case object DangerMode extends SCMatchMode
+
   case object UnknownMode extends SCMatchMode
 
   implicit val scMatchModeWrites: Writes[SCMatchMode] = {
@@ -63,7 +69,7 @@ object StarCraftModels {
   /**
    * StarCraft player
    */
-  case class SCPlayer(name: String, race: SCRace)
+  case class SCPlayer(name: String, race: SCRace, id: Int)
 
   object SCPlayer {
     implicit val scPlayerFormat: Format[SCPlayer] = Json.format[SCPlayer]
@@ -84,18 +90,19 @@ object StarCraftModels {
   sealed trait GameInfo
 
   case class ReplayParsed(
-    mapName: Option[String],
-    startTime: Option[String], 
-    gameMode: SCMatchMode,
-    teams: List[Team],
-    winnerTeamIndex: Int
-  ) extends GameInfo
+                           mapName: Option[String],
+                           startTime: Option[String],
+                           gameMode: SCMatchMode,
+                           teams: List[Team],
+                           winnerTeamIndex: Int,
+                           frames: Option[Int]
+                         ) extends GameInfo
 
   case object ImpossibleToParse extends GameInfo
 
   object GameInfo {
     implicit val replayParsedFormat: Format[ReplayParsed] = Json.format[ReplayParsed]
-    
+
     implicit val gameInfoWrites: Writes[GameInfo] = {
       case rp: ReplayParsed => Json.toJson(rp)
       case ImpossibleToParse => Json.obj("type" -> "ImpossibleToParse")
@@ -129,25 +136,27 @@ object StarCraftModels {
           .asInstanceOf[JsArray]
         val mapName = (json \ "Header" \ "Map").asOpt[String]
         val startTime = (json \ "Header" \ "StartTime").asOpt[String]
+        val frames = (json \ "Header" \ "Frames").asOpt[Int]
         val players = playersJson.value.toList
           .flatMap { p =>
             for {
               _ <- (p \ "Type" \ "Name").asOpt[String].flatMap {
                 case "Human" => Some(true)
-                case _       => None
+                case _ => None
               }
               team <- (p \ "Team").asOpt[Int]
               name <- (p \ "Name").asOpt[String]
+              id <- (p \ "ID").asOpt[Int]
               race <- {
                 (p \ "Race" \ "Name").asOpt[String].flatMap {
-                  case "Zerg"    => Some(Zerg)
-                  case "Terran"  => Some(Terran)
+                  case "Zerg" => Some(Zerg)
+                  case "Terran" => Some(Terran)
                   case "Protoss" => Some(Protoss)
-                  case _         => None
+                  case _ => None
                 }
               }
             } yield {
-              (team, SCPlayer(name, race))
+              (team, SCPlayer(name, race, id))
             }
 
           }
@@ -158,14 +167,14 @@ object StarCraftModels {
 
         val gameMode: SCMatchMode = {
           (json \ "Header" \ "Type" \ "ShortName").asOpt[String] match {
-            case Some("TvB")   => TopVsBottom
+            case Some("TvB") => TopVsBottom
             case Some("Melee") => Melee
-            case Some("1v1")   => OneVsOneMode
+            case Some("1v1") => OneVsOneMode
             case Some("FFA") | Some("UMS") => DangerMode
-            case _                         => UnknownMode
+            case _ => UnknownMode
           }
         }
-        
+
         (json \ "Computed" \ "WinnerTeam").asOpt[Int] match {
           case Some(winnerTeam) =>
             if (players.exists(t => t.index == winnerTeam)) {
@@ -174,7 +183,8 @@ object StarCraftModels {
                 startTime,
                 gameMode,
                 players,
-                winnerTeam
+                winnerTeam,
+                frames
               )
             } else {
               if (players.nonEmpty) {
@@ -183,7 +193,8 @@ object StarCraftModels {
                   startTime,
                   gameMode,
                   players,
-                  players.head.index
+                  players.head.index,
+                  frames
                 )
               } else {
                 ImpossibleToParse
@@ -196,7 +207,8 @@ object StarCraftModels {
                 startTime,
                 gameMode,
                 players,
-                players.head.index
+                players.head.index,
+                frames
               )
             } else {
               ImpossibleToParse

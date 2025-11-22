@@ -1,0 +1,20 @@
+@import models.User
+@import services.{FileProcessResult, MultiFileUploadResult}
+@import models.StarCraftModels._
+@import helper._
+@(user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+
+@main(messages("upload.title"), Some(user)) {
+<div id="file-upload-container"></div>
+<form method="post"
+      id="matchUploadForm"
+      action="@routes.AnalyticalUploadController.updateState()"
+      enctype="multipart/form-data">
+    @helper.CSRF.formField
+    <fieldset>
+        <input type="file" id="analyticalFile" name="analyticalFile"/>
+        <input type="submit"/>
+    </fieldset>
+</form>
+
+}

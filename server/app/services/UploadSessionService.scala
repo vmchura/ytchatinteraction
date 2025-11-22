@@ -20,13 +20,13 @@ import models.StarCraftModels.ReplayParsed
 import java.nio.file.Files
 
 
-
 /**
  * Key for identifying upload sessions by user and match
  */
 case class SessionKey(userId: Long, matchId: Long, tournamentId: Long) {
   override def toString: String = s"${userId}_${matchId}_$tournamentId"
 }
+
 /**
  * Represents an upload session for a specific user and match
  */
@@ -47,8 +47,9 @@ case class UploadSession(
       lastUpdated = Instant.now()
     )
   }
+
   def withUploadStateShared(uploadStateShared: UploadStateShared): UploadSession = {
-    copy(uploadState = uploadState.copy(games = uploadState.games ++ uploadStateShared.games.filter{
+    copy(uploadState = uploadState.copy(games = uploadState.games ++ uploadStateShared.games.filter {
       case PendingGame(_) => true
       case _ => false
     }, winner = uploadStateShared.winner,
@@ -56,6 +57,7 @@ case class UploadSession(
       secondParticipant = uploadState.secondParticipant.copy(smurfs = uploadStateShared.secondParticipant.smurfs)))
   }
 }
+
 /**
  * In-memory service for managing upload sessions
  */
@@ -72,17 +74,19 @@ class UploadSessionService @Inject()(
 
   // Session timeout in minutes
   private val sessionTimeoutMinutes = 30
+
   def persistState(uploadSession: UploadSession): UploadSession = {
     sessions.put(uploadSession.sessionId, uploadSession)
     uploadSession
   }
+
   /**
    * Start a new upload session for a user and match
    */
   def startSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
     val futSession = tournamentService.getMatch(tournamentId, challongeMatchID).flatMap {
-      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, MatchStatus.Pending | MatchStatus.InProgress,_, createdAt)) =>
+      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, MatchStatus.Pending | MatchStatus.InProgress, _, createdAt)) =>
         for {
           firstUserOpt <- userRepository.getById(firstUserId)
           secondUserOpt <- userRepository.getById(secondUserId)
@@ -110,20 +114,21 @@ class UploadSessionService @Inject()(
    * Get existing session or create a new one if it doesn't exist
    */
   def getOrCreateSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
-      val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
-      Option(sessions.get(sessionKey)) match {
-        case Some(existingSession) if !isSessionExpired(existingSession) =>
-          logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
-          Future.successful(Some(existingSession))
-        case Some(expiredSession) =>
-          logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
-          sessions.remove(sessionKey)
-          Future.successful(None)
-        case None =>
-          logger.info(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
-          startSession(user, challongeMatchID, tournamentId)
-      }
+    val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
+    Option(sessions.get(sessionKey)) match {
+      case Some(existingSession) if !isSessionExpired(existingSession) =>
+        logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
+        Future.successful(Some(existingSession))
+      case Some(expiredSession) =>
+        logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
+        sessions.remove(sessionKey)
+        Future.successful(None)
+      case None =>
+        logger.info(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
+        startSession(user, challongeMatchID, tournamentId)
+    }
   }
+
   def getSession(user: User, challongeMatchID: Long, tournamentId: Long): Option[UploadSession] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
     Option(sessions.get(sessionKey)) match {
@@ -162,10 +167,10 @@ class UploadSessionService @Inject()(
           } => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
             uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en esta sesión", uuid))))
           case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
-          Some(mapName), Some(startTime), _, teams, _)), Some(sha256Hash), path) =>
+          Some(mapName), Some(startTime), _, teams, _, _)), Some(sha256Hash), path) =>
             fileStorageService.storeFile(Files.readAllBytes(path), fileName,
-              fileResult.contentType,currentSession.userId, currentSession.challongeMatchID,
-              currentSession.sessionId.toString).map{
+              fileResult.contentType, currentSession.userId, currentSession.challongeMatchID,
+              currentSession.sessionId.toString).map {
               case Left(error) => currentSession.copy(lastUpdated = java.time.Instant.now(),
                 uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(error, uuid)))
               case Right(storedInfo) => currentSession.copy(lastUpdated = java.time.Instant.now(),
@@ -199,7 +204,7 @@ class UploadSessionService @Inject()(
    * Remove a specific file from session by SHA256 hash
    */
   def removeFileFromSession(currentSession: UploadSession, sessionUUID: UUID): UploadSession = {
-    currentSession.copy(uploadState = currentSession.uploadState.copy(games = currentSession.uploadState.games.filter{
+    currentSession.copy(uploadState = currentSession.uploadState.copy(games = currentSession.uploadState.games.filter {
       _.sessionID.compareTo(sessionUUID) != 0
     }).calculateWinner())
   }
@@ -256,6 +261,7 @@ class UploadSessionService @Inject()(
       logger.info(s"Cleaned up ${expiredKeys.length} expired sessions")
     }
   }
+
   def finalizeSession(session: UploadSession): UploadSession = {
     persistState(session.finalizeSession())
   }

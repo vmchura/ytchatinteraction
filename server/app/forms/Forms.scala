@@ -84,6 +84,8 @@ case class AliasChangeForm(
 
 case class CloseMatchData(winner: WinnerShared, smurfsFirstParticipant: List[String], smurfsSecondParticipant: List[String])
 
+case class AnalyticalFileData(playerID: Int, fileHash: String)
+
 object Forms:
   val closeMatchForm = Form(mapping(
     "winner" -> of[WinnerShared],
@@ -127,34 +129,34 @@ object Forms:
       )(PollForm.apply)(nn => Some(nn.pollQuestion, nn.options, nn.ratios))
     )(EventWithPollForm.apply)(nn => Some(nn.event, nn.poll))
   )
-  
+
   val setWinnerForm = Form(
     mapping(
       "optionId" -> number
     )(SetWinnerForm.apply)(nn => Some(nn.optionId))
   )
-  
+
   val currencyTransferForm = Form(
     mapping(
       "channelId" -> nonEmptyText,
       "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
     )(CurrencyTransferForm.apply)(nn => Some(nn.channelId, nn.amount))
   )
-  
+
   val streamerToUserCurrencyForm = Form(
     mapping(
       "userId" -> longNumber,
       "amount" -> number.verifying("Amount must be greater than 0", _ > 0)
     )(StreamerToUserCurrencyForm.apply)(nn => Some(nn.userId, nn.amount))
   )
-  
+
   val tournamentCreateForm = Form(
     mapping(
       "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty),
       "contentCreatorChannelId" -> optional(longNumber)
     )(TournamentCreateForm.apply)(nn => Some(nn.name, nn.contentCreatorChannelId))
   )
-  
+
   val voteForm = Form(
     mapping(
       "optionId" -> number,
@@ -163,13 +165,20 @@ object Forms:
       "pollId" -> number
     )(VoteFormData.apply)(nn => Some(nn.optionId, nn.confidence, nn.eventId, nn.pollId))
   )
-  
+
   val aliasChangeForm = Form(
     mapping(
       "newAlias" -> nonEmptyText
         .verifying("Alias cannot be empty", _.trim.nonEmpty)
         .verifying("Alias must be between 1 and 50 characters", alias => alias.trim.length >= 1 && alias.trim.length <= 50)
-        .verifying("Alias can only contain letters, numbers, spaces, and basic punctuation", alias => 
+        .verifying("Alias can only contain letters, numbers, spaces, and basic punctuation", alias =>
           alias.matches("^[a-zA-Z0-9\\s\\-_\\.]+$"))
     )(AliasChangeForm.apply)(nn => Some(nn.newAlias))
+  )
+
+  val analyticalFileDataForm = Form(
+    mapping(
+      "playerID" -> number(0, 16, strict = true),
+      "fileHash" -> nonEmptyText
+    )(AnalyticalFileData.apply)(nn => Some(nn.playerID, nn.fileHash))
   )

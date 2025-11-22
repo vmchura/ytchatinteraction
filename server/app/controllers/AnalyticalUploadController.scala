@@ -1,0 +1,137 @@
+package controllers
+
+import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
+import evolutioncomplete.WinnerShared.Draw
+import evolutioncomplete.{ParticipantShared, UploadStateShared}
+import forms.Forms
+import models.repository.AnalyticalFileRepository
+
+import java.nio.file.Files
+import javax.inject.*
+import play.api.mvc.*
+import play.api.libs.json.{JsValue, Json, OWrites, Writes}
+import play.api.libs.Files.TemporaryFile
+import play.api.Logger
+
+import scala.concurrent.{ExecutionContext, Future}
+import services.{AnalyticalUploadSessionService, FileProcessResult, FileStorageService, ParseReplayFileService, StoredFileInfo, UploadSession, UploadSessionService}
+import models.{AnalyticalFile, TournamentMatch, User}
+import play.silhouette.api.actions.SecuredRequest
+import utils.auth.WithAdmin
+import upickle.default.*
+
+import scala.util.Try
+import java.time.LocalDateTime
+import java.util.UUID
+
+@Singleton
+class AnalyticalUploadController @Inject()(
+                                            components: DefaultSilhouetteControllerComponents,
+                                            parseReplayFileService: ParseReplayFileService,
+                                            uploadSessionService: AnalyticalUploadSessionService,
+                                            fileStorageService: FileStorageService,
+                                            analyticalFileRepository: AnalyticalFileRepository,
+                                            tournamentService: services.TournamentService,
+                                            userRepository: models.repository.UserRepository
+                                          )(implicit ec: ExecutionContext)
+  extends SilhouetteController(components) {
+
+  private val logger = Logger(getClass)
+
+  def uploadAnalyticalFile(): Action[AnyContent] = silhouette.SecuredAction {
+    implicit request =>
+      Ok(
+        views.html.analyticalUpload(
+          request.identity
+        )
+      )
+
+  }
+
+  def updateState(): Action[MultipartFormData[TemporaryFile]] =
+    silhouette.SecuredAction.async(parse.multipartFormData) {
+      implicit request =>
+        val session = request.body.files
+          .find(_.key == "analyticalFile") match {
+          case Some(part) =>
+            for {
+              processed <- parseReplayFileService
+                .validateAndProcessSingleFile(part)
+              newSession <- uploadSessionService.startSession(request.identity, processed)
+            } yield {
+              newSession
+            }
+          case None => Future.successful(None)
+        }
+
+        session.map {
+          case None =>
+            BadRequest(
+              views.html.analyticalUpload(
+                request.identity
+              )
+            )
+          case Some(session) =>
+            Ok(
+              views.html.analyticalUploadSmurf(
+                request.identity,
+                session
+              )
+            )
+        }
+    }
+
+  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    Forms.analyticalFileDataForm.bindFromRequest().fold(
+      formWithErrors => {
+        Future.successful(
+          BadRequest(
+            views.html.analyticalUpload(
+              request.identity
+            )
+          ))
+      },
+      analyticalFileData => {
+        uploadSessionService.getSession(request.identity) match {
+          case Some(session) if session.sha256Hash.equals(analyticalFileData.fileHash) =>
+            val analyticalFile = for {
+              userRace <- session.userRaceGivenPlayerId(analyticalFileData.playerID)
+              rivalRace <- session.rivalRaceGivenPlayerId(analyticalFileData.playerID)
+              frames <- session.frames
+            } yield {
+              AnalyticalFile(0,
+                request.identity.userId,
+                session.sha256Hash,
+                session.storageInfo.originalFileName, session.storageInfo.storedPath,
+                session.storageInfo.storedFileName, session.storageInfo.storedAt,
+                analyticalFileData.playerID, userRace,
+                rivalRace, frames
+              )
+            }
+            analyticalFile match {
+              case Some(af) => analyticalFileRepository.create(af).map { _ =>
+                Ok(
+                  views.html.analyticalUpload(
+                    request.identity
+                  )
+                )
+              }
+              case None => Future.successful(BadRequest(
+                views.html.analyticalUpload(
+                  request.identity
+                )
+              ))
+            }
+
+          case _ =>
+            Future.successful(BadRequest(
+              views.html.analyticalUpload(
+                request.identity
+              )
+            ))
+        }
+      })
+  }
+
+
+}

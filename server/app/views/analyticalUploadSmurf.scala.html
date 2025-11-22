@@ -1,0 +1,28 @@
+@import models.User
+@import services.{FileProcessResult, MultiFileUploadResult}
+@import models.StarCraftModels._
+@import helper._
+@import play.api.data.Form
+@import services.AnalyticalUploadSession
+@(user: User, session: AnalyticalUploadSession)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+
+@main(messages("upload.title"), Some(user)) {
+<div id="file-upload-container"></div>
+<form method="post" id="matchUploadForm" action="@routes.AnalyticalUploadController.finalizeSmurf()">
+    @helper.CSRF.formField
+    <fieldset>
+        <legend>Tu smurf:</legend>
+        @for((player, index) <- session.players.zipWithIndex) {
+        <label>
+            <input type="radio" name="playerID" value="@{player.id}" @if(index==0) { checked }/>
+            @player.name
+        </label>
+        }
+        <input type="hidden" name="fileHash" value="@session.sha256Hash">
+
+    </fieldset>
+    <input type="submit"/>
+
+</form>
+
+}
