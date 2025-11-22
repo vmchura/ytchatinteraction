@@ -18,6 +18,7 @@ app.subtitle = Connect with your audience and community.
 # Navigation
 nav.home = Home
 nav.my.events = My Events
+nav.add.history = Your base games
 nav.login = Login with YouTube
 nav.logout = Logout
 nav.change.alias = Change Alias
@@ -156,6 +157,7 @@ upload.js.extension.error = File must have .rep extension
 upload.js.size.error = File size ({0}MB) exceeds 1MB limit
 upload.js.unknown.player = Unknown Player
 upload.confirm.delete = Are you sure you want to delete the file "{0}"? This action cannot be undone.
+upload.analytical.file = Send base game
 
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete

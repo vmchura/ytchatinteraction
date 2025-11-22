@@ -18,6 +18,7 @@ app.subtitle = Conecta con tu audiencia de YouTube en tiempo real.
 # Navegación
 nav.home = Inicio
 nav.my.events = Mis Eventos
+nav.add.history = Tus Partidas Base
 nav.login = Iniciar Sesión con YouTube
 nav.logout = Cerrar Sesión
 nav.change.alias = Cambiar Alias
@@ -118,6 +119,7 @@ upload.js.extension.error = El archivo debe tener extensión .rep
 upload.js.size.error = El tamaño del archivo ({0}MB) excede el límite de 1MB
 upload.js.unknown.player = Jugador Desconocido
 upload.confirm.delete = ¿Estás seguro de que quieres eliminar el archivo "{0}"? Esta acción no se puede deshacer.
+upload.analytical.file = Enviar replay base
 
 # Partiales - Tabla de Partidas
 partials.matches.title = Tus Partidas del Torneo

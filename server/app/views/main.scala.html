@@ -4,61 +4,64 @@
 @(title: String, user: Option[User] = None)(content: Html)(implicit flash: Flash, messages: Messages, request: RequestHeader)
 <!DOCTYPE html>
 <html lang="@messages.lang.code" data-theme="light">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>@title</title>
-        <link rel="stylesheet" href="@routes.Assets.versioned("lib/picocss__pico/css/pico.min.css")">
-        <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
-        <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/uploadfile.css")">
-        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
-    </head>
-    <body>
-        <nav class="container">
-            <ul>
-                <li>
-                    <a href="@routes.HomeController.index()" class="contrast" style="display: flex; align-items: center; text-decoration: none;">
-                        <img src="@routes.Assets.versioned("images/logo_120x120.png")" alt="Logo" style="height: 120px; margin-right: 10px;">
-                        <strong>@messages("app.title")</strong>
-                    </a>
-                </li>
-            </ul>
-            <ul>
-                @user.map { u =>
-                    <li><a href="@routes.UserEventsController.userEvents()">@messages("nav.my.events")</a></li>
-                    <li>
-                        <details class="dropdown">
-                            <summary>@u.userName</summary>
-                            <ul>
-                                <li><a href="@routes.AliasController.showChangeAliasForm()">@messages("nav.change.alias")</a></li>
-                                <li><a href="@routes.LanguageController.changeLanguage("es")">Español</a></li>
-                                <li><a href="@routes.LanguageController.changeLanguage("en")">English</a></li>
-                            </ul>
-                        </details>
-                    </li>
-                    <li><a href="@routes.AuthController.signOut" role="button" class="contrast" id="logout">@messages("nav.logout")</a></li>
-                }.getOrElse {
-                    <li><a href="@routes.AuthController.authenticate("youtube")" role="button">@messages("nav.login")</a></li>
-                }
-            </ul>
-        </nav>
-        <main class="container">
-            @flash.get("error").map { error =>
-                <article class="error">@error</article>
-            }
-            @flash.get("success").map { successMessage =>
-                <article class="success">@successMessage</article>
-            }
-            @content
-            
-        </main>
-        <footer class="container">
-            <small>@Html(messages("footer.copyright"))</small>
-            <footer>
-                <a href="/assets/privacy.html">Privacy Policy</a> |
-                <a href="/assets/terms.html">Terms of Service</a>
-            </footer>
-        </footer>
-        
-    </body>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>@title</title>
+    <link rel="stylesheet" href="@routes.Assets.versioned("lib/picocss__pico/css/pico.min.css")">
+    <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/main.css")">
+    <link rel="stylesheet" href="@routes.Assets.versioned("stylesheets/uploadfile.css")">
+    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+</head>
+<body>
+<nav class="container">
+    <ul>
+        <li>
+            <a href="@routes.HomeController.index()" class="contrast"
+               style="display: flex; align-items: center; text-decoration: none;">
+                <img src="@routes.Assets.versioned(" images/logo_120x120.png")" alt="Logo" style="height: 120px; margin-right: 10px;">
+                <strong>@messages("app.title")</strong>
+            </a>
+        </li>
+    </ul>
+    <ul>
+        @user.map { u =>
+        <li><a href="@routes.UserEventsController.userEvents()">@messages("nav.my.events")</a></li>
+        <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">@messages("nav.add.history")</a></li>
+        <li>
+            <details class="dropdown">
+                <summary>@u.userName</summary>
+                <ul>
+                    <li><a href="@routes.AliasController.showChangeAliasForm()">@messages("nav.change.alias")</a></li>
+                    <li><a href="@routes.LanguageController.changeLanguage("es")">Español</a></li>
+                    <li><a href="@routes.LanguageController.changeLanguage("en")">English</a></li>
+                </ul>
+            </details>
+        </li>
+        <li><a href="@routes.AuthController.signOut" role="button" class="contrast"
+               id="logout">@messages("nav.logout")</a></li>
+        }.getOrElse {
+        <li><a href="@routes.AuthController.authenticate(" youtube")" role="button">@messages("nav.login")</a></li>
+        }
+    </ul>
+</nav>
+<main class="container">
+    @flash.get("error").map { error =>
+    <article class="error">@error</article>
+    }
+    @flash.get("success").map { successMessage =>
+    <article class="success">@successMessage</article>
+    }
+    @content
+
+</main>
+<footer class="container">
+    <small>@Html(messages("footer.copyright"))</small>
+    <footer>
+        <a href="/assets/privacy.html">Privacy Policy</a> |
+        <a href="/assets/terms.html">Terms of Service</a>
+    </footer>
+</footer>
+
+</body>
 </html>

@@ -1,3 +1,7 @@
+nav details.dropdown {
+  display: inline-block;
+}
+
 /* Chat message styles */
 
 .youtube-message {
