@@ -157,7 +157,10 @@ upload.js.extension.error = File must have .rep extension
 upload.js.size.error = File size ({0}MB) exceeds 1MB limit
 upload.js.unknown.player = Unknown Player
 upload.confirm.delete = Are you sure you want to delete the file "{0}"? This action cannot be undone.
-upload.analytical.file = Send base game
 
 # Footer
 footer.copyright = &copy; 2025 Evolution Complete
+
+# Analytical
+upload.analytical.file = Send base game
+quantity.expected = Minimum replays for match: 2

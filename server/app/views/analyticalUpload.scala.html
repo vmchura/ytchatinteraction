@@ -2,10 +2,29 @@
 @import services.{FileProcessResult, MultiFileUploadResult}
 @import models.StarCraftModels._
 @import helper._
-@(user: User)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: User, matches: Map[SCRace, Map[SCRace, Int]])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("upload.title"), Some(user)) {
-<div id="file-upload-container"></div>
+
+<table>
+    <thead>
+    <tr>
+        <th scope="col">Match</th>
+        <th scope="col">@messages("quantity.expected")</th>
+    </tr>
+    <tbody>
+    @for((playerRace, opponentMatches) <- matches) {
+    @for((opponentRace, count) <- opponentMatches) {
+    <tr>
+        <td>@playerRace vs @opponentRace</td>
+        <td>@count</td>
+    </tr>
+    }
+    }
+    </tbody>
+    </thead>
+</table>
+
 <form method="post"
       id="matchUploadForm"
       action="@routes.AnalyticalUploadController.updateState()"

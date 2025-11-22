@@ -4,6 +4,7 @@ import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 import forms.Forms
+import models.StarCraftModels.Terran
 import models.repository.AnalyticalFileRepository
 
 import java.nio.file.Files
@@ -38,13 +39,19 @@ class AnalyticalUploadController @Inject()(
 
   private val logger = Logger(getClass)
 
-  def uploadAnalyticalFile(): Action[AnyContent] = silhouette.SecuredAction {
+  def uploadAnalyticalFile(): Action[AnyContent] = silhouette.SecuredAction.async {
     implicit request =>
-      Ok(
-        views.html.analyticalUpload(
-          request.identity
+
+      analyticalFileRepository.findByUserId(request.identity.userId).map { files =>
+        val groupedFiles = files.groupBy(_.userRace).map(u => (u._1, u._2.groupBy(_.rivalRace).map(r => (r._1, r._2.length))))
+        Ok(
+          views.html.analyticalUpload(
+            request.identity,
+            groupedFiles
+          )
         )
-      )
+      }
+
 
   }
 
@@ -66,10 +73,8 @@ class AnalyticalUploadController @Inject()(
 
         session.map {
           case None =>
-            BadRequest(
-              views.html.analyticalUpload(
-                request.identity
-              )
+            Redirect(
+              routes.AnalyticalUploadController.uploadAnalyticalFile()
             )
           case Some(session) =>
             Ok(
@@ -85,10 +90,8 @@ class AnalyticalUploadController @Inject()(
     Forms.analyticalFileDataForm.bindFromRequest().fold(
       formWithErrors => {
         Future.successful(
-          BadRequest(
-            views.html.analyticalUpload(
-              request.identity
-            )
+          Redirect(
+            routes.AnalyticalUploadController.uploadAnalyticalFile()
           ))
       },
       analyticalFileData => {
@@ -110,24 +113,21 @@ class AnalyticalUploadController @Inject()(
             }
             analyticalFile match {
               case Some(af) => analyticalFileRepository.create(af).map { _ =>
-                Ok(
-                  views.html.analyticalUpload(
-                    request.identity
-                  )
+                Redirect(
+                  routes.AnalyticalUploadController.uploadAnalyticalFile()
                 )
               }
-              case None => Future.successful(BadRequest(
-                views.html.analyticalUpload(
-                  request.identity
+              case None => Future.successful(
+                Redirect(
+                  routes.AnalyticalUploadController.uploadAnalyticalFile()
                 )
-              ))
+              )
             }
+        
 
           case _ =>
-            Future.successful(BadRequest(
-              views.html.analyticalUpload(
-                request.identity
-              )
+            Future.successful(Redirect(
+              routes.AnalyticalUploadController.uploadAnalyticalFile()
             ))
         }
       })
