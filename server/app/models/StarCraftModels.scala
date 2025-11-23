@@ -1,6 +1,8 @@
 package models
 
-import play.api.libs.json._
+import play.api.libs.json.*
+
+import javax.json.JsonArray
 
 /**
  * StarCraft related models for replay parsing
@@ -95,7 +97,8 @@ object StarCraftModels {
                            gameMode: SCMatchMode,
                            teams: List[Team],
                            winnerTeamIndex: Int,
-                           frames: Option[Int]
+                           frames: Option[Int],
+                           commands: JsArray
                          ) extends GameInfo
 
   case object ImpossibleToParse extends GameInfo
@@ -137,6 +140,7 @@ object StarCraftModels {
         val mapName = (json \ "Header" \ "Map").asOpt[String]
         val startTime = (json \ "Header" \ "StartTime").asOpt[String]
         val frames = (json \ "Header" \ "Frames").asOpt[Int]
+        val commands = (json \ "Commands" \ "Cmds").getOrElse(JsArray.empty).asInstanceOf[JsArray]
         val players = playersJson.value.toList
           .flatMap { p =>
             for {
@@ -184,7 +188,8 @@ object StarCraftModels {
                 gameMode,
                 players,
                 winnerTeam,
-                frames
+                frames,
+                commands
               )
             } else {
               if (players.nonEmpty) {
@@ -194,7 +199,8 @@ object StarCraftModels {
                   gameMode,
                   players,
                   players.head.index,
-                  frames
+                  frames,
+                  commands
                 )
               } else {
                 ImpossibleToParse
@@ -208,7 +214,8 @@ object StarCraftModels {
                 gameMode,
                 players,
                 players.head.index,
-                frames
+                frames,
+                commands
               )
             } else {
               ImpossibleToParse

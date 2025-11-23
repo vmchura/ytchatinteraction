@@ -27,7 +27,7 @@ case class AnalyticalUploadSession(
                                     isFinalized: Boolean = false
                                   ) {
   val players: Seq[StarCraftModels.SCPlayer] = fileResult.gameInfo match {
-    case Some(ReplayParsed(_, _, _, teams, _, _)) =>
+    case Some(ReplayParsed(_, _, _, teams, _, _, _)) =>
 
       val all = teams.flatMap(_.participants)
       if (all.length == 2) {
@@ -44,7 +44,7 @@ case class AnalyticalUploadSession(
   def rivalRaceGivenPlayerId(playerId: Int): Option[SCRace] = players.find(_.id != playerId).map(p => p.race)
 
   val frames: Option[Int] = fileResult.gameInfo match {
-    case Some(ReplayParsed(_, _, _, _, _, Some(frames))) if frames > 12_000 =>
+    case Some(ReplayParsed(_, _, _, _, _, Some(frames), _)) if frames > 12_000 =>
       Some(frames)
     case _ => None
   }
@@ -99,7 +99,7 @@ class AnalyticalUploadSessionService @Inject()(
           case FileProcessResult(_, _, _, _, _, errorMessage, _, None, _) =>
             Future.successful(None)
           case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
-          Some(mapName), Some(startTime), _, teams, _, _)), Some(sha256Hash), path) =>
+          Some(mapName), Some(startTime), _, teams, _, _, _)), Some(sha256Hash), path) =>
             fileStorageService.storeAnalyticalFile(Files.readAllBytes(path), fileName,
               fileResult.contentType, user.userId).map {
               case Left(error) =>

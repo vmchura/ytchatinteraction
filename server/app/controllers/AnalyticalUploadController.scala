@@ -123,7 +123,7 @@ class AnalyticalUploadController @Inject()(
                 )
               )
             }
-        
+
 
           case _ =>
             Future.successful(Redirect(

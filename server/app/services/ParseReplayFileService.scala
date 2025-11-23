@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import java.nio.file.{Files, Path}
 import java.util.Base64
 import java.security.MessageDigest
-import models.StarCraftModels.GameInfo
+import models.StarCraftModels.{GameInfo, ReplayParsed}
 
 case class FileProcessResult(
                               fileName: String,
@@ -56,30 +56,34 @@ case object MatchingUsers extends FileProcessState
 
 case class FileUploadComplete(result: String) extends FileProcessState
 
-/**
- * Service for parsing replay files
+/** Service for parsing replay files
  */
 trait ParseReplayFileService {
 
-  def validateAndProcessSingleFile(file: MultipartFormData.FilePart[TemporaryFile]): Future[FileProcessResult]
+  def validateAndProcessSingleFile(
+                                    file: MultipartFormData.FilePart[TemporaryFile]
+                                  ): Future[FileProcessResult]
+
+  def processSingleFile(path: Path): Future[Option[ReplayParsed]]
 }
 
-/**
- * Implementation that delegates to the external replay parser service
+/** Implementation that delegates to the external replay parser service
  */
 @Singleton
 class DefaultParseReplayFileService @Inject()(
                                                wsClient: WSClient,
                                                configuration: Configuration
-                                             )(implicit ec: ExecutionContext) extends ParseReplayFileService {
+                                             )(implicit ec: ExecutionContext)
+  extends ParseReplayFileService {
 
   private val logger = Logger(getClass)
   private val replayParserUrl = configuration.get[String]("replayparser.url")
 
-  /**
-   * Process a single file and return result
+  /** Process a single file and return result
    */
-  override def validateAndProcessSingleFile(file: MultipartFormData.FilePart[TemporaryFile]): Future[FileProcessResult] = {
+  override def validateAndProcessSingleFile(
+                                             file: MultipartFormData.FilePart[TemporaryFile]
+                                           ): Future[FileProcessResult] = {
     val validation = for {
       _ <- validateFileSize(file)
       _ <- validateFileType(file)
@@ -89,29 +93,35 @@ class DefaultParseReplayFileService @Inject()(
       case Right(validFile) =>
         processFileToResult(validFile)
       case Left(error) =>
-        val fileBytes = try {
-          Files.readAllBytes(file.ref.path)
-        } catch {
-          case _: Exception => Array.empty[Byte]
-        }
+        val fileBytes =
+          try {
+            Files.readAllBytes(file.ref.path)
+          } catch {
+            case _: Exception => Array.empty[Byte]
+          }
 
-        val sha256 = if (fileBytes.nonEmpty) Some(calculateSHA256(fileBytes)) else None
+        val sha256 =
+          if (fileBytes.nonEmpty) Some(calculateSHA256(fileBytes)) else None
 
-        Future.successful(FileProcessResult(
-          fileName = file.filename,
-          originalSize = tryGetFileSize(file),
-          contentType = file.contentType.getOrElse("unknown"),
-          processedAt = java.time.Instant.now().toString,
-          success = false,
-          errorMessage = Some(getErrorMessage(error)),
-          gameInfo = None,
-          sha256Hash = sha256,
-          file.ref.path
-        ))
+        Future.successful(
+          FileProcessResult(
+            fileName = file.filename,
+            originalSize = tryGetFileSize(file),
+            contentType = file.contentType.getOrElse("unknown"),
+            processedAt = java.time.Instant.now().toString,
+            success = false,
+            errorMessage = Some(getErrorMessage(error)),
+            gameInfo = None,
+            sha256Hash = sha256,
+            file.ref.path
+          )
+        )
     }
   }
 
-  private def tryGetFileSize(file: MultipartFormData.FilePart[TemporaryFile]): Long = {
+  private def tryGetFileSize(
+                              file: MultipartFormData.FilePart[TemporaryFile]
+                            ): Long = {
     try {
       Files.size(file.ref.path)
     } catch {
@@ -119,8 +129,7 @@ class DefaultParseReplayFileService @Inject()(
     }
   }
 
-  /**
-   * Calculate SHA256 hash of file content
+  /** Calculate SHA256 hash of file content
    */
   private def calculateSHA256(fileBytes: Array[Byte]): String = {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -128,7 +137,9 @@ class DefaultParseReplayFileService @Inject()(
     hashBytes.map("%02x".format(_)).mkString
   }
 
-  private def validateFileSize(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
+  private def validateFileSize(
+                                file: MultipartFormData.FilePart[TemporaryFile]
+                              ): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
     val maxSizeBytes = 1 * 1024 * 1024 // 1MB limit
     val fileSize = tryGetFileSize(file)
 
@@ -139,7 +150,9 @@ class DefaultParseReplayFileService @Inject()(
     }
   }
 
-  private def validateFileType(file: MultipartFormData.FilePart[TemporaryFile]): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
+  private def validateFileType(
+                                file: MultipartFormData.FilePart[TemporaryFile]
+                              ): Either[FileUploadError, MultipartFormData.FilePart[TemporaryFile]] = {
     val allowedExtensions = Seq(".rep") // Add your allowed extensions
     val fileName = file.filename
 
@@ -150,14 +163,18 @@ class DefaultParseReplayFileService @Inject()(
     }
   }
 
-  private def processFileToResult(file: MultipartFormData.FilePart[TemporaryFile]): Future[FileProcessResult] = {
+  private def processFileToResult(
+                                   file: MultipartFormData.FilePart[TemporaryFile]
+                                 ): Future[FileProcessResult] = {
     try {
       val fileBytes = Files.readAllBytes(file.ref.path)
       val sha256Hash = calculateSHA256(fileBytes)
       val base64Content = Base64.getEncoder.encodeToString(fileBytes)
       val fileName = file.filename
 
-      logger.info(s"Processing file: $fileName, size: ${fileBytes.length} bytes, SHA256: $sha256Hash")
+      logger.info(
+        s"Processing file: $fileName, size: ${fileBytes.length} bytes, SHA256: $sha256Hash"
+      )
 
       // Prepare request payload for the Go replay parser service
       val requestPayload = Json.obj(
@@ -166,7 +183,8 @@ class DefaultParseReplayFileService @Inject()(
       )
 
       // Call the replay parser service
-      wsClient.url(s"$replayParserUrl/parse-replay")
+      wsClient
+        .url(s"$replayParserUrl/parse-replay")
         .withHttpHeaders("Content-Type" -> "application/json")
         .post(requestPayload)
         .map { response =>
@@ -175,13 +193,16 @@ class DefaultParseReplayFileService @Inject()(
             val responseBody = response.body[String]
 
             // Parse GameInfo from the JSON response
-            val gameInfo = try {
-              Some(GameInfo.parseFromJson(responseBody))
-            } catch {
-              case ex: Exception =>
-                logger.warn(s"Failed to parse GameInfo from response for file $fileName: ${ex.getMessage}")
-                None
-            }
+            val gameInfo =
+              try {
+                Some(GameInfo.parseFromJson(responseBody))
+              } catch {
+                case ex: Exception =>
+                  logger.warn(
+                    s"Failed to parse GameInfo from response for file $fileName: ${ex.getMessage}"
+                  )
+                  None
+              }
 
             FileProcessResult(
               fileName = fileName,
@@ -195,22 +216,29 @@ class DefaultParseReplayFileService @Inject()(
               path = file.ref.path
             )
           } else {
-            logger.error(s"Replay parser service returned error ${response.status}: ${response.body[String]}")
+            logger.error(
+              s"Replay parser service returned error ${response.status}: ${response.body[String]}"
+            )
             FileProcessResult(
               fileName = fileName,
               originalSize = fileBytes.length,
               contentType = file.contentType.getOrElse("unknown"),
               processedAt = java.time.Instant.now().toString,
               success = false,
-              errorMessage = Some(s"Parser service error (${response.status}): ${response.body[String]}"),
+              errorMessage = Some(
+                s"Parser service error (${response.status}): ${response.body[String]}"
+              ),
               gameInfo = None,
               sha256Hash = Some(sha256Hash),
-              path=file.ref.path
+              path = file.ref.path
             )
           }
         }
         .recover { case ex: Exception =>
-          logger.error(s"Error calling replay parser service for file $fileName: ${ex.getMessage}", ex)
+          logger.error(
+            s"Error calling replay parser service for file $fileName: ${ex.getMessage}",
+            ex
+          )
           FileProcessResult(
             fileName = fileName,
             originalSize = fileBytes.length,
@@ -220,25 +248,59 @@ class DefaultParseReplayFileService @Inject()(
             errorMessage = Some(s"Service call failed: ${ex.getMessage}"),
             gameInfo = None,
             sha256Hash = Some(sha256Hash),
-            path=file.ref.path
+            path = file.ref.path
           )
         }
 
     } catch {
       case ex: Exception =>
-        logger.error(s"Error reading file ${file.filename}: ${ex.getMessage}", ex)
-        Future.successful(FileProcessResult(
-          fileName = file.filename,
-          originalSize = tryGetFileSize(file),
-          contentType = file.contentType.getOrElse("unknown"),
-          processedAt = java.time.Instant.now().toString,
-          success = false,
-          errorMessage = Some(s"File reading error: ${ex.getMessage}"),
-          gameInfo = None,
-          sha256Hash = None,
-          path=file.ref.path
-        ))
+        logger.error(
+          s"Error reading file ${file.filename}: ${ex.getMessage}",
+          ex
+        )
+        Future.successful(
+          FileProcessResult(
+            fileName = file.filename,
+            originalSize = tryGetFileSize(file),
+            contentType = file.contentType.getOrElse("unknown"),
+            processedAt = java.time.Instant.now().toString,
+            success = false,
+            errorMessage = Some(s"File reading error: ${ex.getMessage}"),
+            gameInfo = None,
+            sha256Hash = None,
+            path = file.ref.path
+          )
+        )
     }
+  }
+
+  def processSingleFile(path: Path): Future[Option[ReplayParsed]] = {
+    val fileBytes = Files.readAllBytes(path)
+    val base64Content = Base64.getEncoder.encodeToString(fileBytes)
+    val requestPayload = Json.obj(
+      "replayfile" -> base64Content,
+      "filename" -> "undefined_file_name"
+    )
+    wsClient
+      .url(s"$replayParserUrl/parse-replay")
+      .withHttpHeaders("Content-Type" -> "application/json")
+      .post(requestPayload)
+      .map { response =>
+        if (response.status == 200) {
+          val responseBody = response.body[String]
+          try {
+            GameInfo.parseFromJson(responseBody) match {
+              case rp@ReplayParsed(_, _, _, _, _, _, _) => Some(rp)
+              case _ => None
+            }
+          } catch {
+            case ex: Exception =>
+              None
+          }
+        } else {
+          None
+        }
+      }
   }
 
   private def getErrorMessage(error: FileUploadError): String = error match {

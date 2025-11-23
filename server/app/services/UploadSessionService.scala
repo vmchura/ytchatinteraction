@@ -167,7 +167,7 @@ class UploadSessionService @Inject()(
           } => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
             uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en esta sesión", uuid))))
           case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
-          Some(mapName), Some(startTime), _, teams, _, _)), Some(sha256Hash), path) =>
+          Some(mapName), Some(startTime), _, teams, _, _, _)), Some(sha256Hash), path) =>
             fileStorageService.storeFile(Files.readAllBytes(path), fileName,
               fileResult.contentType, currentSession.userId, currentSession.challongeMatchID,
               currentSession.sessionId.toString).map {
