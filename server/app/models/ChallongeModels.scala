@@ -19,7 +19,8 @@ case class ChallongeMatch(
   loserId: Option[Long],
   scheduledTime: Option[String],
   opponent: String,
-  scores_csv: Option[String]
+  scores_csv: Option[String],
+  winner: Option[String]                       
 ) {
   def matchStatus: models.MatchStatus = {
     state match {
@@ -74,5 +75,6 @@ case class UserMatchInfo(
   opponent: String,
   status: String,
   scheduledTime: Option[String],
-  winnerId: Option[Long]
+  winnerId: Option[Long],
+  winner: Option[String]
 )

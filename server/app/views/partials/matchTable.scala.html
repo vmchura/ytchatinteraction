@@ -1,7 +1,7 @@
 @import models.UserMatchInfo
 @import models.viewmodels.{MatchDisplayData, MatchStatus}
 
-@(userMatches: List[UserMatchInfo])(implicit request: RequestHeader, messages: Messages)
+@(user: User, userMatches: List[UserMatchInfo])(implicit request: RequestHeader, messages: Messages)
 
 @if(userMatches.nonEmpty) {
 <section>
@@ -20,13 +20,13 @@
             </thead>
             <tbody>
             @for(matchInfo <- userMatches) {
-            @defining(MatchDisplayData.fromUserMatchInfo(matchInfo)) { matchData =>
+            @defining(MatchDisplayData.fromUserMatchInfo(matchInfo, user)) { matchData =>
             <tr>
                 <td>@matchData.tournamentName</td>
                 <td>@matchData.opponent</td>
                 <td>
                     @if(matchData.hasResult) {
-                    <span>@messages("partials.matches.see.result")</span>
+                        <span>@matchData.winner</span>
                     } else {
                     <span>@messages("partials.matches.pending")</span>
                     }
@@ -37,6 +37,10 @@
                        role="button" class="outline">
                         @messages("partials.matches.upload.replay")
                     </a>
+                    }else{
+                        @if(matchData.hasResult) {
+                            <a href="@routes.MatchResultController.viewResults(matchData.challengeMatchId)">@messages("partials.matches.see.result")</a>
+                        }
                     }
                 </td>
             </tr>

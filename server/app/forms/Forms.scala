@@ -178,7 +178,7 @@ object Forms:
 
   val analyticalFileDataForm = Form(
     mapping(
-      "playerID" -> number(0, 16, strict = true),
+      "playerID" -> number(0, 16),
       "fileHash" -> nonEmptyText
     )(AnalyticalFileData.apply)(nn => Some(nn.playerID, nn.fileHash))
   )

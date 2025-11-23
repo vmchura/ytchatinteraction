@@ -76,7 +76,8 @@ class TournamentMatchService @Inject()(
               opponent = challengeMatch.opponent,
               status = challengeMatch.state,
               scheduledTime = challengeMatch.scheduledTime,
-              winnerId = challengeMatch.winnerId
+              winnerId = challengeMatch.winnerId,
+              winner = challengeMatch.winner
             )))
         case None =>
           Future.successful(List.empty[UserMatchInfo])

@@ -395,7 +395,8 @@ class TournamentChallongeServiceImpl @Inject()(
                 loserId = (matchData \ "loser_id").asOpt[Long],
                 scheduledTime = (matchData \ "scheduled_time").asOpt[String],
                 opponent = "Unknown",
-                scores_csv= (matchData \ "scores_csv").asOpt[String]
+                scores_csv= (matchData \ "scores_csv").asOpt[String],
+                winner = None
               )
             }
             logger.debug(s"Retrieved ${matches.length} matches for tournament $challongeTournamentId")
@@ -442,7 +443,7 @@ class TournamentChallongeServiceImpl @Inject()(
         
         val opponentName = opponentId.flatMap(participantMap.get).getOrElse("Unknown")
         
-        match_.copy(opponent = opponentName)
+        match_.copy(opponent = opponentName, winner = match_.winnerId.flatMap(wid => participantMap.get(if(wid == participantId) participantId else opponentId.getOrElse(0))))
       }
     }
   }
@@ -515,6 +516,7 @@ class TournamentChallongeServiceImpl @Inject()(
               scheduledTime = (matchData \ "scheduled_time").asOpt[String],
               opponent = "Unknown",
               scores_csv= (matchData \ "scores_csv").asOpt[String],
+              winner=None
             )
             logger.debug(s"Retrieved match $matchId for tournament $challongeTournamentId")
             Some(challongeMatch)

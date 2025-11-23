@@ -24,8 +24,7 @@
         <td>@response.userAlias</td>
         <td>@{response.userRace.shortLabel}v@{response.rivalRace.shortLabel}</td>
         <td>@response.originalFileName</td>
-        <td>@response.analysisStartedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd
-            HH:mm"))
+        <td>@response.analysisStartedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
         </td>
         <td>
             @response.analysisFinishedAt match {

@@ -87,7 +87,7 @@ class AnalyticalUploadController @Inject()(
         }
     }
 
-  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     Forms.analyticalFileDataForm.bindFromRequest().fold(
       formWithErrors => {
         Future.successful(

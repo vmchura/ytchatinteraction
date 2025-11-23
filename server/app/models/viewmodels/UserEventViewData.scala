@@ -30,11 +30,12 @@ case class MatchDisplayData(
   status: MatchStatus,
   scheduledTime: Option[String],
   hasResult: Boolean,
-  canUploadReplay: Boolean
+  canUploadReplay: Boolean,
+  winner: Option[String]
 )
 
 object MatchDisplayData {
-  def fromUserMatchInfo(matchInfo: UserMatchInfo): MatchDisplayData = {
+  def fromUserMatchInfo(matchInfo: UserMatchInfo, user: User): MatchDisplayData = {
     MatchDisplayData(
       tournamentName = matchInfo.tournament.name,
       tournamentID = matchInfo.tournament.id,
@@ -44,7 +45,8 @@ object MatchDisplayData {
       status = MatchStatus.fromString(matchInfo.status),
       scheduledTime = matchInfo.scheduledTime,
       hasResult = matchInfo.winnerId.isDefined,
-      canUploadReplay = matchInfo.status == "open"
+      canUploadReplay = matchInfo.status == "open",
+      winner = matchInfo.winner
     )
   }
 }
