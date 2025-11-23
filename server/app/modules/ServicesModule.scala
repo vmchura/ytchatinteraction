@@ -22,5 +22,6 @@ class ServicesModule extends SimpleModule(
   bind[YouTubeChannelInfoService].toSelf,
   bind[ContentCreatorChannelService].to[ContentCreatorChannelServiceImpl],
   bind[AnalyticalFileRepository].to[AnalyticalFileRepositoryImpl],
-  bind[AnalyticalReplayService].to[AnalyticalReplayServiceImpl]
+  bind[AnalyticalReplayService].to[AnalyticalReplayServiceImpl],
+  bind[AnalyticalResultRepository].to[AnalyticalResultRepositoryImpl]
 )
