@@ -10,8 +10,8 @@ CREATE TABLE analytical_result (
     rivalRace VARCHAR(12) NOT NULL,
     originalFileName VARCHAR(500) NOT NULL,
     analysis_started_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    analysis_finished_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    algorith_version VARCHAR(12) NOT NULL,
+    analysis_finished_at TIMESTAMP WITH TIME ZONE,
+    algorith_version VARCHAR(12),
     result BOOLEAN
 );
 

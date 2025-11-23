@@ -87,7 +87,7 @@ POST   /close/:tournamentId/:challongeMatchID  controllers.MatchResultController
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
 POST /analytical/upload controllers.AnalyticalUploadController.updateState()
 POST /analytical/setSmurf controllers.AnalyticalUploadController.finalizeSmurf()
-GET /analytical/processMatch/:userID/:matchID controllers.AnalyticalUploadController.analyzeMatchResults(userID: Long, matchID: Long)
+GET /analytical/processMatch/:tournamentID/:matchID controllers.AnalyticalUploadController.analyzeMatchResults(tournamentID: Long, matchID: Long)
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

@@ -134,8 +134,8 @@ class AnalyticalUploadController @Inject()(
       })
   }
 
-  def analyzeMatchResults(userID: Long, matchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
-    analyticalReplayService.analyticalProcess(userID, matchID).map(response =>
+  def analyzeMatchResults(tournamentID: Long, matchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    analyticalReplayService.analyticalProcessMatch(tournamentID, matchID).map(response =>
       println(response)
       Ok)
 

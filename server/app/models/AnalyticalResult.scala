@@ -13,7 +13,7 @@ case class AnalyticalResult(
                              rivalRace: SCRace,
                              originalFileName: String,
                              analysisStartedAt: Instant,
-                             analysisFinishedAt: Instant,
-                             algorithmVersion: String,
+                             analysisFinishedAt: Option[Instant],
+                             algorithmVersion: Option[String],
                              result: Option[Boolean]
                            )

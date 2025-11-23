@@ -38,9 +38,9 @@ trait AnalyticalResultComponent {
 
     def analysisStartedAt = column[Instant]("analysis_started_at")
 
-    def analysisFinishedAt = column[Instant]("analysis_finished_at")
+    def analysisFinishedAt = column[Option[Instant]]("analysis_finished_at")
 
-    def algorithmVersion = column[String]("algorith_version")
+    def algorithmVersion = column[Option[String]]("algorith_version")
 
     def result = column[Option[Boolean]]("result")
 
