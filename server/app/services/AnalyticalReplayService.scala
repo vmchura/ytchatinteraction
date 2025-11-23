@@ -5,9 +5,11 @@ import models.StarCraftModels.*
 import models.repository.*
 import models.*
 import play.api.{Configuration, Logger}
-import play.api.libs.json.JsArray
-import java.nio.file.Path
+import play.api.libs.json.{JsArray, Json}
+import play.api.libs.ws.WSClient
+import play.api.libs.ws.JsonBodyWritables.*
 
+import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 
 case class RecoverPlaysMatch(uploadedFiles: Seq[UploadedFile], userRequestSmurf: List[String], rivalSmurf: List[String])
@@ -59,8 +61,21 @@ trait AnalyticalReplayService(implicit ec: ExecutionContext):
     }
   }
 
+  def analyticalProcess(gamePlays: Seq[GamePlay], gameTest: GamePlay): Future[Option[Boolean]]
+
+  def analyticalProcess(userID: Long, matchID: Long): Future[Seq[Option[Boolean]]] = {
+    for {
+      gamePlays <- getGamePlays(userID, matchID)
+      validReferences = gamePlays._2.flatten
+      response <- Future.sequence(gamePlays._1.map(test => test.fold(Future.successful(None))(gp => analyticalProcess(validReferences, gp))))
+    } yield {
+      response
+    }
+  }
+
 @Singleton
-class AnalyticalReplayServiceImpl @Inject(configuration: Configuration,
+class AnalyticalReplayServiceImpl @Inject(wsClient: WSClient,
+                                          configuration: Configuration,
                                           parseReplayService: ParseReplayFileService,
                                           fileStorageService: FileStorageService,
                                           uploadedFileRepository: UploadedFileRepository,
@@ -70,6 +85,7 @@ class AnalyticalReplayServiceImpl @Inject(configuration: Configuration,
                                            implicit ec: ExecutionContext
                                          ) extends AnalyticalReplayService {
   private val logger = Logger(getClass)
+  private val replayAnalyticalUrl = configuration.get[String]("replayanalytical.url")
 
   def recoverReplays(userID: Long, matchID: Long): Future[RecoverPlaysMatch] = {
 
@@ -107,4 +123,26 @@ class AnalyticalReplayServiceImpl @Inject(configuration: Configuration,
     parseReplayService.processSingleFile(storedPath)
   }
 
+  def analyticalProcess(gamePlays: Seq[GamePlay], gameTest: GamePlay): Future[Option[Boolean]] = {
+    val requestPayload = Json.obj(
+      "game_plays" -> JsArray(gamePlays.map(_.gamePlay)),
+      "game_test" -> gameTest.gamePlay
+    )
+    wsClient
+      .url(s"$replayAnalyticalUrl/analyze")
+      .withHttpHeaders("Content-Type" -> "application/json")
+      .post(requestPayload)
+      .map { response =>
+        logger.debug(s"Response analytical")
+        logger.debug(response.toString)
+        if (response.status == 200) {
+          (response.json \ "is_different").asOpt[Boolean]
+        } else {
+          logger.warn(s"Analysis service returned status ${response.status}: ${response.body}")
+          None
+        }
+      }.recover {
+        case ex: Exception => None
+      }
+  }
 }

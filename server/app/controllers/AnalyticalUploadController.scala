@@ -135,9 +135,8 @@ class AnalyticalUploadController @Inject()(
   }
 
   def analyzeMatchResults(userID: Long, matchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
-    analyticalReplayService.getGamePlays(userID, matchID).map(response =>
-      println(response._1)
-      println(response._2)
+    analyticalReplayService.analyticalProcess(userID, matchID).map(response =>
+      println(response)
       Ok)
 
   }
