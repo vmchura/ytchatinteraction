@@ -21,5 +21,6 @@ class ServicesModule extends SimpleModule(
   bind[OAuth2TokenRefreshService].toSelf.eagerly(),
   bind[YouTubeChannelInfoService].toSelf,
   bind[ContentCreatorChannelService].to[ContentCreatorChannelServiceImpl],
-  bind[AnalyticalFileRepository].to[AnalyticalFileRepositoryImpl]
+  bind[AnalyticalFileRepository].to[AnalyticalFileRepositoryImpl],
+  bind[AnalyticalReplayService].to[AnalyticalReplayServiceImpl]
 )

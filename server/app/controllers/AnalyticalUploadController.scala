@@ -15,8 +15,8 @@ import play.api.libs.Files.TemporaryFile
 import play.api.Logger
 
 import scala.concurrent.{ExecutionContext, Future}
-import services.{AnalyticalUploadSessionService, FileProcessResult, FileStorageService, ParseReplayFileService, StoredFileInfo, UploadSession, UploadSessionService}
-import models.{AnalyticalFile, TournamentMatch, User}
+import services.*
+import models.*
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
 import upickle.default.*
@@ -33,7 +33,8 @@ class AnalyticalUploadController @Inject()(
                                             fileStorageService: FileStorageService,
                                             analyticalFileRepository: AnalyticalFileRepository,
                                             tournamentService: services.TournamentService,
-                                            userRepository: models.repository.UserRepository
+                                            userRepository: models.repository.UserRepository,
+                                            analyticalReplayService: AnalyticalReplayService
                                           )(implicit ec: ExecutionContext)
   extends SilhouetteController(components) {
 
@@ -131,6 +132,14 @@ class AnalyticalUploadController @Inject()(
             ))
         }
       })
+  }
+
+  def analyzeMatchResults(userID: Long, matchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    analyticalReplayService.getGamePlays(userID, matchID).map(response =>
+      println(response._1)
+      println(response._2)
+      Ok)
+
   }
 
 
