@@ -164,3 +164,15 @@ footer.copyright = &copy; 2025 Evolution Complete
 # Analytical
 upload.analytical.file = Send base game
 quantity.expected = Minimum replays for match: 2
+match.result.user.alias=User
+match.result.matchup=Matchup
+match.result.file.name=File Name
+match.result.analysis.started=Analysis Started At
+match.result.analysis.duration=Duration (s)
+match.result.algorithm.version=Algorithm Version
+match.result.result=Results of algorithm
+match.result.analysis.pending=Pending
+match.result.valid=Valid
+match.result.invalid=Invalid
+match.result.error=Analysis Error
+match.result.title=Analysis Results

@@ -161,3 +161,15 @@ footer.copyright = &copy; 2025 Evolution Complete
 
 upload.analytical.file = Enviar replay base
 quantity.expected = Cantidad mínima replays por match: 2
+match.result.user.alias=Usuario
+match.result.matchup=Enfrentamiento
+match.result.file.name=Nombre del Archivo
+match.result.analysis.started=Análisis iniciado
+match.result.analysis.duration=Duración (s)
+match.result.algorithm.version=Versión del Algoritmo
+match.result.result=Resultado algoritmo
+match.result.analysis.pending=Pendiente
+match.result.valid=Válido
+match.result.invalid=Inválido
+match.result.error=Error de Análisis
+match.result.title=Resultados de Análisis

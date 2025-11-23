@@ -17,3 +17,12 @@ case class AnalyticalResult(
                              algorithmVersion: Option[String],
                              result: Option[Boolean]
                            )
+
+case class AnalyticalResultView(userAlias: String,
+                                userRace: SCRace,
+                                rivalRace: SCRace,
+                                originalFileName: String,
+                                analysisStartedAt: Instant,
+                                analysisFinishedAt: Option[Instant],
+                                algorithmVersion: Option[String],
+                                result: Option[Boolean])

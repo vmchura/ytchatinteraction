@@ -12,13 +12,21 @@ object StarCraftModels {
   /**
    * StarCraft races
    */
-  sealed trait SCRace
+  sealed trait SCRace {
+    def shortLabel: Char
+  }
 
-  case object Zerg extends SCRace
+  case object Zerg extends SCRace {
+    val shortLabel = 'Z'
+  }
 
-  case object Terran extends SCRace
+  case object Terran extends SCRace {
+    val shortLabel = 'T'
+  }
 
-  case object Protoss extends SCRace
+  case object Protoss extends SCRace {
+    val shortLabel = 'P'
+  }
 
   implicit val scRaceWrites: Writes[SCRace] = {
     case Zerg => JsString("Zerg")

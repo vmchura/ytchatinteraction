@@ -83,11 +83,13 @@ GET    /fetchstate/:challongeMatchID/:tournamentId controllers.FileUploadControl
 POST   /updatestate controllers.FileUploadController.updateState()
 POST   /remove/:tournamentId/:challongeMatchID/:sessionUUID  controllers.FileUploadController.removeFile(tournamentId: Long, challongeMatchID: Long, sessionUUID: java.util.UUID)
 POST   /close/:tournamentId/:challongeMatchID  controllers.MatchResultController.closeMatch(tournamentId: Long, challongeMatchID: Long)
+GET     /results/match/:challongeMatchID controllers.MatchResultController.viewResults(challongeMatchID: Long)
+
 # Analytical Routes
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
 POST /analytical/upload controllers.AnalyticalUploadController.updateState()
 POST /analytical/setSmurf controllers.AnalyticalUploadController.finalizeSmurf()
-GET /analytical/processMatch/:tournamentID/:matchID controllers.AnalyticalUploadController.analyzeMatchResults(tournamentID: Long, matchID: Long)
+
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

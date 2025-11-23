@@ -1,13 +1,13 @@
 package controllers
 
-import models.repository.UploadedFileRepository
-import models.{MatchStatus, TournamentMatch, UserSmurf}
+import models.repository.{AnalyticalResultRepository, UploadedFileRepository, UserAliasRepository}
+import models.{AnalyticalResultView, MatchStatus, TournamentMatch, UserSmurf}
 
 import javax.inject.*
 import play.api.mvc.*
 import play.api.data.*
 import play.api.data.Forms.*
-import services.{FileProcessResult, UploadSession}
+import services.{AnalyticalReplayService, FileProcessResult, UploadSession}
 import evolutioncomplete.GameStateShared.ValidGame
 import evolutioncomplete.ParticipantShared
 import evolutioncomplete.WinnerShared.*
@@ -23,7 +23,10 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
                                       tournamentService: services.TournamentService,
                                       userSmurfService: services.UserSmurfService,
                                       uploadSessionService: services.UploadSessionService,
-                                      uploadedFileRepository: UploadedFileRepository
+                                      uploadedFileRepository: UploadedFileRepository,
+                                      analyticalReplayService: AnalyticalReplayService,
+                                      analyticalResultRepository: AnalyticalResultRepository,
+                                      userAliasRepository: UserAliasRepository
                                      )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
 
   private def recordMatchSmurfs(tournamentMatch: TournamentMatch,
@@ -70,10 +73,10 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
         Future.successful(BadRequest(views.html.index(Some(request.identity))))
       },
       winnerData => {
-        for{
+        for {
           tournamentMatchOption <- tournamentService.getMatch(tournamentId, challongeMatchID)
           tournamentMatch <- tournamentMatchOption match {
-            case Some(tm @ TournamentMatch(_, _, _, _, _, Pending | InProgress, _, _)) => Future.successful(tm)
+            case Some(tm@TournamentMatch(_, _, _, _, _, Pending | InProgress, _, _)) => Future.successful(tm)
             case Some(_) => Future.failed(new IllegalStateException("Match already resolved"))
             case _ => Future.failed(new IllegalStateException("Match not found"))
           }
@@ -88,10 +91,24 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
             secondParticipantSmurfs = winnerData.smurfsSecondParticipant.toSet)
           _ <- persistMetaDataSessionFiles(currentSession)
           _ = uploadSessionService.finalizeSession(currentSession)
-        }yield{
+        } yield {
+          analyticalReplayService.analyticalProcessMatch(tournamentId, challongeMatchID)
           Ok(views.html.index(Some(request.identity)))
         }
       })
+  }
+
+  def viewResults(challongeMatchID: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    for {
+      analyticalResults <- analyticalResultRepository.findByMatchId(challongeMatchID)
+      distinctUsers = analyticalResults.map(_.userId).distinct
+      userAlias <- Future.sequence(distinctUsers.map(userID => userAliasRepository.getCurrentAlias(userID).map(r => r.map(v => userID -> v))))
+      validUserAlias = userAlias.flatten.toMap
+    } yield {
+      Ok(views.html.singleMatchResult(request.identity, analyticalResults.flatMap(ar => validUserAlias.get(ar.userId).map(alias =>
+        AnalyticalResultView(alias, ar.userRace, ar.rivalRace, ar.originalFileName, ar.analysisStartedAt,
+          ar.analysisFinishedAt, ar.algorithmVersion, ar.result))).toList.sortBy(_.originalFileName)))
+    }
   }
 
 
