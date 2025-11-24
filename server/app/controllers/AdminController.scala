@@ -3,7 +3,7 @@ package controllers
 import modules.DefaultEnv
 import play.api.mvc.{Action, AnyContent}
 import play.silhouette.api.Silhouette
-import services.UserService
+import services.{AnalyticalReplayService, UserService}
 import utils.auth.WithAdmin
 
 import javax.inject.Inject
@@ -16,7 +16,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class AdminController @Inject()(
   components: DefaultSilhouetteControllerComponents,
   silhouette: Silhouette[DefaultEnv],
-  userService: UserService
+  userService: UserService,
+  analyticalReplayService: AnalyticalReplayService
 )(implicit ec: ExecutionContext) extends SilhouetteController(components) {
 
   /**
@@ -26,5 +27,8 @@ class AdminController @Inject()(
     Future.successful {
       Ok(views.html.admin.dashboard(request.identity))
     }
+  }
+  def reRunAnalysis(tournamentId: Long, challongeMatchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    analyticalReplayService.analyticalProcessMatch(tournamentId, challongeMatchID).map(_ => Ok)
   }
 }

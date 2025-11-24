@@ -33,6 +33,7 @@ POST    /profile/change-alias       controllers.AliasController.changeAlias()
 
 # Admin routes (requires admin authorization)
 GET     /admin                      controllers.AdminController.adminDashboard()
+GET     /rerun/:tournamentId/:challongeMatchID   controllers.AdminController.reRunAnalysis(tournamentId: Long, challongeMatchID: Long)
 
 # Content Creator Channel management routes (admin only)
 GET     /admin/content-creators     controllers.ContentCreatorChannelController.index()

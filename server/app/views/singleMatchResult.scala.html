@@ -39,10 +39,10 @@
         <td>@response.algorithmVersion.getOrElse("-")</td>
         <td>
             @response.result match {
-            case Some(true) => {
+            case Some(false) => {
             <span style="color: green;">✓ @messages("match.result.valid")</span>
             }
-            case Some(false) => {
+            case Some(true) => {
             <span style="color: red;">✗ @messages("match.result.invalid")</span>
             }
             case None => {
