@@ -44,8 +44,8 @@ class ReplayParserHealthController @Inject()(
 
   private val logger = Logger(getClass)
 
-  private val replayParserUrl = configuration.getOptional[String]("replayparser.url")
-    .getOrElse("http://localhost:5000")
+  private val replayParserUrl = configuration.get[String]("replayparser.url")
+  private val replayAnalyticalUrl = configuration.get[String]("replayanalytical.url")
 
   private val uploadStoragePath = configuration.get[String]("app.storage.uploads.path")
 
@@ -53,14 +53,16 @@ class ReplayParserHealthController @Inject()(
     logger.info("Performing health checks for page rendering")
 
     val parserHealthFuture = checkParserHealthOnce()
+    val analyticalHealthFuture = checkAnalyticalHealthOnce()
     val storageHealthFuture = Future.successful(checkStorageHealthSync())
 
     for {
       parserHealth <- parserHealthFuture
+      analyticalHealth <- analyticalHealthFuture
       storageHealth <- storageHealthFuture
     } yield {
-      logger.info(s"Health check complete - Parser: ${parserHealth.status}, Storage: ${storageHealth.status}")
-      Ok(views.html.replayParserHealth(None, Some(parserHealth), Some(storageHealth)))
+      logger.info(s"Health check complete - Parser: ${parserHealth.status}, Analytical: ${analyticalHealth.status}, Storage: ${storageHealth.status}")
+      Ok(views.html.replayParserHealth(None, Some(parserHealth), Some(analyticalHealth), Some(storageHealth)))
     }
   }
 
@@ -163,6 +165,50 @@ class ReplayParserHealthController @Inject()(
           logger.error(s"Failed to reach replay-parser service: ${ex.getMessage}", ex)
           HealthStatus(
             service = "replay-parser",
+            status = "unreachable",
+            reachable = false,
+            responseTime = Some(responseTime),
+            error = Some(ex.getMessage)
+          )
+      }
+  }
+
+  private def checkAnalyticalHealthOnce(): Future[HealthStatus] = {
+    val startTime = System.currentTimeMillis()
+
+    logger.info(s"Checking health of replay-analytical service at $replayAnalyticalUrl")
+
+    ws.url(s"$replayAnalyticalUrl/health")
+      .withRequestTimeout(scala.concurrent.duration.Duration(10, "seconds"))
+      .get()
+      .map { response =>
+        val responseTime = System.currentTimeMillis() - startTime
+
+        if (response.status == 200) {
+          logger.info(s"Replay-analytical service is healthy (${responseTime}ms)")
+          HealthStatus(
+            service = "replay-analytical",
+            status = "healthy",
+            reachable = true,
+            responseTime = Some(responseTime)
+          )
+        } else {
+          logger.warn(s"Replay-analytical service returned status ${response.status}")
+          HealthStatus(
+            service = "replay-analytical",
+            status = "unhealthy",
+            reachable = true,
+            responseTime = Some(responseTime),
+            error = Some(s"HTTP ${response.status}")
+          )
+        }
+      }
+      .recover {
+        case ex =>
+          val responseTime = System.currentTimeMillis() - startTime
+          logger.error(s"Failed to reach replay-analytical service: ${ex.getMessage}", ex)
+          HealthStatus(
+            service = "replay-analytical",
             status = "unreachable",
             reachable = false,
             responseTime = Some(responseTime),

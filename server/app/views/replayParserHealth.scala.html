@@ -1,101 +1,135 @@
 @import models.User
 @import controllers.{StorageHealthStatus, HealthStatus}
-@(user: Option[User], parserHealth: Option[HealthStatus] = None, storageHealth: Option[StorageHealthStatus] = None)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: Option[User], parserHealth: Option[HealthStatus] = None, analyticalHealth: Option[HealthStatus] = None, storageHealth: Option[StorageHealthStatus] = None)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("System Health", user) {
-    <div id="health-container">
-        <header>
-            <h1>System Health Status</h1>
-            <p>Current status of the StarCraft replay parsing service and file storage system</p>
-        </header>
+<div id="health-container">
+    <header>
+        <h1>System Health Status</h1>
+        <p>Current status of the StarCraft replay parsing service, analytical service, and file storage system</p>
+    </header>
 
-        <section>
-            <div class="grid">
-                <div>
-                    <article>
-                        <header>
-                            <h3>Replay Parser Service</h3>
-                        </header>
-                        <div>
-                            @parserHealth match {
-                                case Some(parser) => {
-                                    <p><strong>Status:</strong> @{parser.status.capitalize}</p>
-                                    <p><strong>Service:</strong> @parser.service</p>
-                                    <p><strong>Reachable:</strong> @{if(parser.reachable) "Yes" else "No"}</p>
-                                    @parser.responseTime.map { time =>
-                                        <p><strong>Response Time:</strong> @{time}ms</p>
-                                    }
-                                    @parser.error.map { error =>
-                                        <p><strong>Error:</strong> <mark>@error</mark></p>
-                                    }
-                                }
-                                case None => {
-                                    <p>Health status not available</p>
-                                }
-                            }
-                        </div>
-                    </article>
-                </div>
-                
-                <div>
-                    <article>
-                        <header>
-                            <h3>File Storage</h3>
-                        </header>
-                        <div>
-                            @storageHealth match {
-                                case Some(storage) => {
-                                    <p><strong>Status:</strong> @{storage.status.capitalize}</p>
-                                    <p><strong>Path:</strong> <code>@storage.path</code></p>
-                                    <p><strong>Accessible:</strong> @{if(storage.exists && storage.readable && storage.writable) "Yes" else "No"}</p>
-                                    @storage.fileCount.map { count =>
-                                        <p><strong>Files:</strong> @count</p>
-                                    }
-                                    @storage.freeSpaceGB.map { free =>
-                                        <p><strong>Free Space:</strong> @{free}GB</p>
-                                    }
-                                    @storage.error.map { error =>
-                                        <p><strong>Error:</strong> <mark>@error</mark></p>
-                                    }
-                                    <p><strong>Checked At:</strong> @{java.time.Instant.parse(storage.checkedAt).toString}</p>
-                                }
-                                case None => {
-                                    <p>Storage status not available</p>
-                                }
-                            }
-                        </div>
-                    </article>
-                </div>
+    <section>
+        <div class="grid">
+            <div>
+                <article>
+                    <header>
+                        <h3>Replay Parser Service</h3>
+                    </header>
+                    <div>
+                        @parserHealth match {
+                        case Some(parser) => {
+                        <p><strong>Status:</strong> @{parser.status.capitalize}</p>
+                        <p><strong>Service:</strong> @parser.service</p>
+                        <p><strong>Reachable:</strong> @{if(parser.reachable) "Yes" else "No"}</p>
+                        @parser.responseTime.map { time =>
+                        <p><strong>Response Time:</strong> @{time}ms</p>
+                        }
+                        @parser.error.map { error =>
+                        <p><strong>Error:</strong>
+                            <mark>@error</mark>
+                        </p>
+                        }
+                        }
+                        case None => {
+                        <p>Health status not available</p>
+                        }
+                        }
+                    </div>
+                </article>
             </div>
-        </section>
 
-        <section>
-            <div class="grid">
-                <div>
-                    <article>
-                        <header>
-                            <h3>Health Check Information</h3>
-                        </header>
-                        <div>
-                            <p>This page shows the current health status of system services as of page load time.</p>
-                            <p>The health checks are performed once when the page is rendered - there are no automatic recurring checks.</p>
-                            <p>To refresh the status, simply reload this page.</p>
-                        </div>
-                    </article>
-                </div>
-                
-                <div>
-                    <article>
-                        <header>
-                            <h3>Manual Refresh</h3>
-                        </header>
-                        <div>
-                            <p>To get updated health information:</p>
-                            <button onclick="window.location.reload()" class="primary">Refresh Page</button>
-                        </div>
-                    </article>
-                </div>
+            <div>
+                <article>
+                    <header>
+                        <h3>Replay Analytical Service</h3>
+                    </header>
+                    <div>
+                        @analyticalHealth match {
+                        case Some(analytical) => {
+                        <p><strong>Status:</strong> @{analytical.status.capitalize}</p>
+                        <p><strong>Service:</strong> @analytical.service</p>
+                        <p><strong>Reachable:</strong> @{if(analytical.reachable) "Yes" else "No"}</p>
+                        @analytical.responseTime.map { time =>
+                        <p><strong>Response Time:</strong> @{time}ms</p>
+                        }
+                        @analytical.error.map { error =>
+                        <p><strong>Error:</strong>
+                            <mark>@error</mark>
+                        </p>
+                        }
+                        }
+                        case None => {
+                        <p>Health status not available</p>
+                        }
+                        }
+                    </div>
+                </article>
             </div>
-        </section>
-    </div>
+
+            <div>
+                <article>
+                    <header>
+                        <h3>File Storage</h3>
+                    </header>
+                    <div>
+                        @storageHealth match {
+                        case Some(storage) => {
+                        <p><strong>Status:</strong> @{storage.status.capitalize}</p>
+                        <p><strong>Path:</strong> <code>@storage.path</code></p>
+                        <p><strong>Accessible:</strong> @{if(storage.exists && storage.readable && storage.writable)
+                            "Yes" else "No"}</p>
+                        @storage.fileCount.map { count =>
+                        <p><strong>Files:</strong> @count</p>
+                        }
+                        @storage.freeSpaceGB.map { free =>
+                        <p><strong>Free Space:</strong> @{free}GB</p>
+                        }
+                        @storage.error.map { error =>
+                        <p><strong>Error:</strong>
+                            <mark>@error</mark>
+                        </p>
+                        }
+                        <p><strong>Checked At:</strong> @{java.time.Instant.parse(storage.checkedAt).toString}</p>
+                        }
+                        case None => {
+                        <p>Storage status not available</p>
+                        }
+                        }
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="grid">
+            <div>
+                <article>
+                    <header>
+                        <h3>Health Check Information</h3>
+                    </header>
+                    <div>
+                        <p>This page shows the current health status of system services as of page load time.</p>
+                        <p>The health checks are performed once when the page is rendered - there are no automatic
+                            recurring checks.</p>
+                        <p>To refresh the status, simply reload this page.</p>
+                    </div>
+                </article>
+            </div>
+
+            <div>
+                <article>
+                    <header>
+                        <h3>Manual Refresh</h3>
+                    </header>
+                    <div>
+                        <p>To get updated health information:</p>
+                        <button onclick="window.location.reload()" class="primary">Refresh Page</button>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+</div>
 }
