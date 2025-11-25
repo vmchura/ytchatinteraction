@@ -44,7 +44,7 @@ case class AnalyticalUploadSession(
   def rivalRaceGivenPlayerId(playerId: Int): Option[SCRace] = players.find(_.id != playerId).map(p => p.race)
 
   val frames: Option[Int] = fileResult.gameInfo match {
-    case Some(ReplayParsed(_, _, _, _, _, Some(frames), _)) if frames > 12_000 =>
+    case Some(ReplayParsed(_, _, _, _, _, Some(frames), _)) if frames > 9_000 =>
       Some(frames)
     case _ => None
   }
