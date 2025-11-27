@@ -48,6 +48,9 @@ POST    /youtube/get-chat-id        controllers.YoutubeFrontendController.getLiv
 POST    /youtube/start-monitoring   controllers.YoutubeFrontendController.startMonitoring()
 GET     /youtube/stop-monitoring/:id controllers.YoutubeFrontendController.stopMonitoring(id: String)
 
+# Youtube Membership
+GET     /youtube/my-content-creators controllers.YoutubeMembershipController.getSubscribedChannels()
+
 # YouTube Live Chat monitoring endpoints
 
 # Currency management endpoints

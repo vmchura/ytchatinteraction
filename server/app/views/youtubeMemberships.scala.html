@@ -1,0 +1,29 @@
+@import models.{User, ContentCreatorChannel}
+@(user: User, subscribedChannels: List[ContentCreatorChannel])(implicit request: RequestHeader, messages: Messages, flash: Flash)
+
+@main("YouTube Memberships", Some(user)) {
+<h1>@messages("youtube.my.follows")</h1>
+
+@if(subscribedChannels.isEmpty) {
+<p>@messages("youtube.no.subscriptions")</p>
+} else {
+<table>
+    <thead>
+    <tr>
+        <th>Channel</th>
+    </tr>
+    </thead>
+    <tbody>
+    @for(channel <- subscribedChannels) {
+    <tr>
+        <td>
+            <img src="@routes.Assets.versioned(" images/YouTube_Logo.svg")" alt="YouTube" style="width: 24px; height:
+            24px; vertical-align: middle; margin-right: 8px;">
+            @channel.youtubeChannelName
+        </td>
+    </tr>
+    }
+    </tbody>
+</table>
+}
+}

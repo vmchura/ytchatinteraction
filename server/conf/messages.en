@@ -23,6 +23,7 @@ nav.login = Login with YouTube
 nav.logout = Logout
 nav.change.alias = Change Alias
 nav.language = Language
+nav.subscribed.channels = My SC Channels
 
 # Home page
 home.welcome.title = Welcome to Evolution Complete
@@ -176,3 +177,7 @@ match.result.valid=Valid
 match.result.invalid=Invalid
 match.result.error=Analysis Error
 match.result.title=Analysis Results
+
+# Youtube Membership
+youtube.no.subscriptions=You are not currently subscribed to any linked StarCraft content channels.
+youtube.my.follows=My StarCraft content channels
