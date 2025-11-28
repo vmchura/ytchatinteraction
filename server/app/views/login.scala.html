@@ -1,29 +1,6 @@
 @()(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("login.title"), None) {
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                @* Display flash messages *@
-                @if(flash.get("error").isDefined) {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        @flash.get("error")
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-                @if(flash.get("success").isDefined) {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        @flash.get("success")
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-                @if(flash.get("info").isDefined) {
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        @flash.get("info")
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-                
                 <div class="card">
                     <div class="card-header">
                         <h3 class="text-center">@messages("login.signin.title")</h3>
@@ -36,7 +13,4 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 }
