@@ -25,15 +25,34 @@
     </thead>
 </table>
 
-<form method="post"
-      id="matchUploadForm"
-      action="@routes.AnalyticalUploadController.updateState()"
-      enctype="multipart/form-data">
-    @helper.CSRF.formField
-    <fieldset>
-        <input type="file" id="analyticalFile" name="analyticalFile"/>
-        <input type="submit" value="@{messages("upload.analytical.file")}"/>
-    </fieldset>
-</form>
+<div class="grid">
+    <form method="post"
+          id="matchUploadForm"
+          action="@routes.AnalyticalUploadController.updateState()"
+          enctype="multipart/form-data">
+        @helper.CSRF.formField
+        <fieldset>
+            <input type="file" id="analyticalFile" name="analyticalFile"/>
+            <input type="submit" value="@{messages("upload.analytical.file")}"/>
+        </fieldset>
+    </form>
+<article>
+    <header>Instrucciones</header>
+    <ol>
+        <li>Seleccionar una UNICA partida reciente</li>
+        <li>Presionar: @messages("upload.analytical.file") y esperar</li>
+        <li>Seleccionar el nombre de tu smurf</li>
+        <li>Enviar nuevamente</li>
+    </ol>
+    <footer>
+        <p>Si todo salio bien se incrementará un contador en el matchup, debe ser minimo 2 por matchup</p>
+        <ul>
+            <li>Partida de tiempo mínimo de 6 minutos</li>
+            <li>El archivo debe ser único</li>
+        </ul>
+    </footer>
+</article>
+
+</div>
 
 }

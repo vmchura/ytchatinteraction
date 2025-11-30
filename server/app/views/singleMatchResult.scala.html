@@ -12,8 +12,6 @@
         <th scope="col">@messages("match.result.user.alias")</th>
         <th scope="col">@messages("match.result.matchup")</th>
         <th scope="col">@messages("match.result.file.name")</th>
-        <th scope="col">@messages("match.result.analysis.started")</th>
-        <th scope="col">@messages("match.result.analysis.duration")</th>
         <th scope="col">@messages("match.result.algorithm.version")</th>
         <th scope="col">@messages("match.result.result")</th>
     </tr>
@@ -24,18 +22,6 @@
         <td>@response.userAlias</td>
         <td>@{response.userRace.shortLabel}v@{response.rivalRace.shortLabel}</td>
         <td>@response.originalFileName</td>
-        <td>@response.analysisStartedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-        </td>
-        <td>
-            @response.analysisFinishedAt match {
-            case Some(finished) => {
-            @{java.time.Duration.between(response.analysisStartedAt, finished).toSeconds}
-            }
-            case None => {
-            <span style="color: orange;">@messages("match.result.analysis.pending")</span>
-            }
-            }
-        </td>
         <td>@response.algorithmVersion.getOrElse("-")</td>
         <td>
             @response.result match {

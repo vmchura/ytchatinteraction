@@ -1,10 +1,16 @@
 @import models.viewmodels.UserEventViewData
 
-@(viewData: UserEventViewData)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(viewData: UserEventViewData, hasSingleAliasHistory: Boolean)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("events.title"), Some(viewData.user)) {
+  @if(hasSingleAliasHistory) {
+    <article>
+        <a href="@routes.AliasController.showChangeAliasForm()">@messages("alerts.update.alias")</a>
+    </article>
+  }
   <h1 id="my_event_active">@messages("events.active.title")</h1>
-  
+
+
   @if(!viewData.userEvents.hasActiveEvents) {
     <article>
       <p>@messages("events.no.active")</p>

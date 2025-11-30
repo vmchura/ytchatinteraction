@@ -182,3 +182,6 @@ match.result.title=Resultados de Análisis
 # Youtube Membership
 youtube.no.subscriptions=No tienes subscripciones en los canales de StarCraft vinculados a esta plataforma.
 youtube.my.follows=Mis canales de StarCraft
+
+#Alerts
+alerts.update.alias=Actualiza tu alias por alguno que se te identifique

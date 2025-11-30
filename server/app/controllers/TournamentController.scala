@@ -86,14 +86,9 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
                     if (started) {
                       logger.info(s"Successfully started Challonge tournament $challongeTournamentId")
                       val realParticipants = participants.length
-                      val fakeParticipants = tournamentChallongeService.generateFakeUsers(participants).length
-                      val totalParticipants = realParticipants + fakeParticipants
+                      val totalParticipants = realParticipants
 
-                      val successMessage = if (fakeParticipants > 0) {
-                        s"Tournament '${updated.name}' has been started in Challonge with $realParticipants real participant(s) and $fakeParticipants fake participant(s) (total: $totalParticipants)!"
-                      } else {
-                        s"Tournament '${updated.name}' has been started in Challonge with $totalParticipants participants!"
-                      }
+                      val successMessage = s"Tournament '${updated.name}' has been started in Challonge with $totalParticipants participants!"
 
                       Redirect(routes.TournamentController.showOpenTournaments())
                         .flashing("success" -> successMessage)

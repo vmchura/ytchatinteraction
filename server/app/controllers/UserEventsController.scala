@@ -21,7 +21,8 @@ class UserEventsController @Inject()(
   tournamentMatchService: TournamentMatchService,
   votingService: VotingService,
   webSocketAuthService: WebSocketAuthService,
-  eventUpdateService: EventUpdateService
+  eventUpdateService: EventUpdateService,
+  userService: UserService
 )(implicit ec: ExecutionContext, system: ActorSystem, mat: Materializer)
   extends SilhouetteController(components) with I18nSupport with RequestMarkerContext {
 
@@ -34,6 +35,7 @@ class UserEventsController @Inject()(
       userEventData <- userEventDataService.getUserEventData(userId)
       tournamentData <- tournamentMatchService.getTournamentData(userId)
       userMatches <- tournamentMatchService.getUserMatches(userId, tournamentData.inProgressTournaments)
+      userUpdatedHisAlias <- userService.hasSingleAliasHistory(userId)
     } yield {
       val viewData = UserEventViewData(
         userEvents = models.viewmodels.UserEventsData(
@@ -47,7 +49,7 @@ class UserEventsController @Inject()(
         user = request.identity
       )
 
-      Ok(views.html.userEvents(viewData))
+      Ok(views.html.userEvents(viewData, userUpdatedHisAlias))
     }
   }
 

@@ -72,6 +72,8 @@ trait UserService extends IdentityService[User] {
    * @return A Future containing true if the user can use this alias.
    */
   def canUserUseAlias(userId: Long, alias: String): Future[Boolean]
+
+  def hasSingleAliasHistory(userId: Long): Future[Boolean]
 }
 
 /**
@@ -179,5 +181,9 @@ class UserServiceImpl @Inject()(
    */
   override def canUserUseAlias(userId: Long, alias: String): Future[Boolean] = {
     userAliasRepository.canUserUseAlias(userId, alias.trim)
+  }
+
+  def hasSingleAliasHistory(userId: Long): Future[Boolean] = {
+    userAliasRepository.getUserAliasHistory(userId).map(r => r.length == 1).recover(_ => false)
   }
 }

@@ -70,7 +70,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
   def closeMatch(challongeMatchID: Long, tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     Forms.closeMatchForm.bindFromRequest().fold(
       formWithErrors => {
-        Future.successful(BadRequest(views.html.index(Some(request.identity))))
+        Future.successful(Redirect(routes.UserEventsController.userEvents()))
       },
       winnerData => {
         for {
@@ -93,7 +93,8 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
           _ = uploadSessionService.finalizeSession(currentSession)
         } yield {
           analyticalReplayService.analyticalProcessMatch(tournamentId, challongeMatchID)
-          Ok(views.html.index(Some(request.identity)))
+          Redirect(routes.UserEventsController.userEvents()).
+            flashing("success" -> s"Resultado actualizado")
         }
       })
   }

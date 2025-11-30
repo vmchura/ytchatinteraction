@@ -20,7 +20,6 @@ trait TournamentChallongeService {
 
   /**
    * Creates a tournament in Challonge with the given participants.
-   * If there are fewer than 2 participants, adds fake users to reach at least 2 participants (max 4 fake users).
    * Stores the mapping between users and their Challonge participant IDs.
    *
    * @param tournament   The local tournament
@@ -29,13 +28,6 @@ trait TournamentChallongeService {
    */
   def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[(Long, String)]
 
-  /**
-   * Generates fake users to complete the tournament if needed.
-   *
-   * @param existingParticipants The current participants
-   * @return A list of fake users to add (up to 4 fake users max)
-   */
-  def generateFakeUsers(existingParticipants: List[User]): List[User]
 
   /**
    * Updates an existing Challonge tournament.
@@ -129,26 +121,15 @@ class TournamentChallongeServiceImpl @Inject()(
     "User-Agent" -> "YtChatInteraction-Tournament-System"
   )
 
-  /**
-   * Creates a tournament in Challonge with round robin format.
-   * Automatically adds fake users if needed to ensure at least 2 participants.
-   */
   override def createChallongeTournament(tournament: Tournament, participants: List[User]): Future[(Long, String)] = {
     logger.info(s"Creating Challonge tournament for: ${tournament.name} with ${participants.length} participants")
 
-    // Generate fake users if needed
-    val fakeUsers = generateFakeUsers(participants)
-    val allParticipants = participants ++ fakeUsers
-
-    if (fakeUsers.nonEmpty) {
-      logger.info(s"Added ${fakeUsers.length} fake users to tournament: ${fakeUsers.map(_.userName).mkString(", ")}")
-    }
+    val allParticipants = participants
 
     val tournamentData = Json.obj(
       "tournament" -> Json.obj(
         "name" -> tournament.name,
         "description" -> tournament.description.getOrElse(s"Tournament created from ${tournament.name}"),
-        "tournament_type" -> "round robin",
         "url" -> generateTournamentUrl(tournament),
         "open_signup" -> false,
         "hold_third_place_match" -> false,
@@ -162,9 +143,9 @@ class TournamentChallongeServiceImpl @Inject()(
         "hide_forum" -> true,
         "show_rounds" -> true,
         "private" -> false,
-        "notify_users_when_matches_open" -> true,
-        "notify_users_when_the_tournament_ends" -> true,
-        "sequential_pairings" -> false,
+        "notify_users_when_matches_open" -> false,
+        "notify_users_when_the_tournament_ends" -> false,
+        "sequential_pairings" -> true,
         "signup_cap" -> tournament.maxParticipants,
         "start_at" -> tournament.tournamentStartAt.map(_.toString),
         "check_in_duration" -> null
@@ -186,7 +167,6 @@ class TournamentChallongeServiceImpl @Inject()(
           val challongeFullURL = (json \ "tournament" \ "full_challonge_url").as[String]
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
-          // Add all participants (real + fake) to the tournament
           addAllParticipants(tournamentId, allParticipants, tournament.id).map(_ => (tournamentId, challongeFullURL))
 
         case status =>
@@ -194,42 +174,6 @@ class TournamentChallongeServiceImpl @Inject()(
           Future.failed(new RuntimeException(s"Failed to create tournament in Challonge: Status $status"))
       }
     } yield challongeTournamentId
-  }
-
-  /**
-   * Generates fake users to complete the tournament if needed.
-   * Will add fake users to reach at least 2 participants, with a maximum of 4 fake users total.
-   */
-  override def generateFakeUsers(existingParticipants: List[User]): List[User] = {
-    val participantCount = existingParticipants.length
-
-    // Define some fake user names
-    val fakeUserNames = List(
-      "ChallongeBot_Alpha",
-      "ChallongeBot_Beta",
-      "ChallongeBot_Gamma",
-      "ChallongeBot_Delta"
-    )
-
-    // Determine how many fake users to add
-    val fakeUsersNeeded = if (participantCount == 0) {
-      2 // Add 2 fake users if no real participants
-    } else if (participantCount == 1) {
-      1 // Add 1 fake user if only 1 real participant
-    } else {
-      0 // No fake users needed if 2 or more real participants
-    }
-
-    // Generate fake users with negative IDs to distinguish them from real users
-    val fakeUsers = (0 until fakeUsersNeeded).map { index =>
-      User(
-        userId = -(index + 1), // Negative IDs for fake users
-        userName = fakeUserNames(index)
-      )
-    }.toList
-
-    logger.info(s"Generated ${fakeUsers.length} fake users for tournament with ${participantCount} real participants")
-    fakeUsers
   }
 
   /**
@@ -241,7 +185,6 @@ class TournamentChallongeServiceImpl @Inject()(
     val participantFutures = participants.map { user =>
       addParticipant(challongeTournamentId, user).flatMap {
         case Some(participantId) =>
-          // Only store mapping for real users (not fake users with negative IDs)
           if (user.userId > 0) {
             tournamentChallongeDAO.createChallongeParticipantMapping(
               tournamentId,
@@ -251,7 +194,7 @@ class TournamentChallongeServiceImpl @Inject()(
             ).map(_ => Option(participantId)).recover {
               case ex =>
                 logger.error(s"Failed to store Challonge participant mapping for user ${user.userId}", ex)
-                Option(participantId) // Still return the participant ID even if mapping storage fails
+                Option(participantId)
             }
           } else {
             Future.successful(Option(participantId))
