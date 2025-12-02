@@ -109,7 +109,7 @@ object ReplayUploader {
   }
 
   def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
-    html"""<div class="container-fluid" id="match_result">
+    html"""<div id="match_result">
          <div class="games-list">
            <h1 class="game-row">
            <span class="player_left">${currentState.bind.firstParticipant.userName}</span>
@@ -159,26 +159,20 @@ object ReplayUploader {
       input
     }
           + Agregar replays
-        </label>
-      <h6>Smurfs</h6>
+        </label> </div>
+        <div>
+      <h6>Relaciona smurfs/nicks con los jugadores</h6>
           ${
       Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
-        html"""<fieldset class="game-row">
-                          <span class="status-icon">${smurfSelection.smurf}</span>
+        html"""<fieldset>
+                          <span class="status-icon">Smurf en la partida <b>${smurfSelection.smurf}</b>, ¿a quién corresponde?:</span>
                           ${
           for (option <- smurfSelection.options) yield {
             val (playerOption, checked, id, name) = option
-            html"""<div class=${
-              if (id.endsWith("1")) {
-                "player_left"
-              } else {
-                "player_right"
-              }
-            }><input type="radio" id="$id" name="$name" checked=$checked onchange=${ (event: Event) => {
+            html"""<label><input type="radio" id="$id" name="$name" checked=$checked onchange=${ (event: Event) => {
               uploadMatchState.value = uploadMatchState.value.addSmurfToParticipant(id, smurfSelection.smurf)
             }
-            }/>
-                  <label htmlFor="$id">$playerOption</label></div>"""
+            }/>$playerOption</label>"""
           }
 
         }
