@@ -109,7 +109,8 @@ class AnalyticalUploadController @Inject()(
                 session.storageInfo.originalFileName, session.storageInfo.storedPath,
                 session.storageInfo.storedFileName, session.storageInfo.storedAt,
                 analyticalFileData.playerID, userRace,
-                rivalRace, frames
+                rivalRace, frames,
+                None, None
               )
             }
             analyticalFile match {

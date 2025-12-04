@@ -46,7 +46,11 @@ trait AnalyticalFileComponent {
 
     def gameFrames = column[Int]("game_frames")
 
-    def * = (id, userId, sha256Hash, originalName, relativeDirectoryPath, savedFileName, uploadedAt, slotPlayerId, userRace, rivalRace, gameFrames).mapTo[AnalyticalFile]
+    def otherUserId = column[Option[Int]]("other_user_id")
+
+    def algorithmId = column[Option[String]]("algorithm_id")
+
+    def * = (id, userId, sha256Hash, originalName, relativeDirectoryPath, savedFileName, uploadedAt, slotPlayerId, userRace, rivalRace, gameFrames, otherUserId, algorithmId).mapTo[AnalyticalFile]
 
   }
 

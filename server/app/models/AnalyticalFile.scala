@@ -15,5 +15,7 @@ case class AnalyticalFile(
                            slotPlayerId: Int,
                            userRace: SCRace,
                            rivalRace: SCRace,
-                           gameFrames: Int
+                           gameFrames: Int,
+                           otherOtherId: Option[Long],
+                           algorithmId: Option[String]
                          )
