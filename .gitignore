@@ -30,3 +30,5 @@ shared/.js/
 shared/.jvm/
 uploads/
 /uploads/
+.metals/
+.bloop/
