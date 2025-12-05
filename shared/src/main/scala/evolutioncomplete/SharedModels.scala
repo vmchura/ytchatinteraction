@@ -1,6 +1,6 @@
 package evolutioncomplete
 
-import evolutioncomplete.WinnerShared.{Cancelled, Undefined}
+import evolutioncomplete.WinnerShared._
 import upickle.default.ReadWriter as RW
 import upickle.default.*
 
@@ -60,6 +60,18 @@ case class UploadStateShared(
     games: List[GameStateShared],
     winner: WinnerShared
 ) derives ReadWriter {
+  def getLabelStatus(): String = {
+    winner match {
+      case Undefined                            => "-"
+      case FirstUser | FirstUserByOnlyPresented =>
+        f"Gana ${firstParticipant.userName}"
+      case SecondUser | SecondUserByOnlyPresented =>
+        f"Gana ${secondParticipant.userName}"
+      case Draw      => "Empate"
+      case Cancelled => "Cancelado"
+    }
+  }
+
   def getGameDescription(game: GameStateShared): (String, String) = {
     game match {
       case ValidGame(smurf1 :: smurf2 :: _, _, _, _, _) =>

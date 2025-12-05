@@ -248,7 +248,9 @@ object ReplayUploader {
       form.submit()
     }
     }>
-        <span>Enviar resultado global</span><br/><small>Ya no podrás modificar nada</small>
+        <small>Enviar resultado global</small><br/>
+        <span>${currentState.bind.getLabelStatus()}</span><br/>
+        <small>Ya no podrás modificar nada</small>
       </button></form>
     </article>
     </div>
