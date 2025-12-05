@@ -3,7 +3,7 @@
 @import models.StarCraftModels._
 @import models.PotentialAnalyticalFile
 @import helper._
-@(user: User, matches: Map[SCRace, Map[SCRace, Int]], potentials: Seq[PotentialAnalyticalFile])(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: User, userToUpdateId: Long, matches: Map[SCRace, Map[SCRace, Int]], potentials: Seq[PotentialAnalyticalFile])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("upload.title"), Some(user)) {
 
@@ -25,35 +25,36 @@
     </tbody>
     </thead>
 </table>
+<table>
+  <thead>
+    <tr>
+      <th scope="col">User</th>
+      <th scope="col">UserRace</th>
+      <th scope="col">vs</th>
+      <th scope="col">Rival</th>
+      <th scope="col">RivalRace</th>
+      <th scope="col">Enviar</th>
+    </tr>
+  </thead>
+  <tbody>
+@for(potential <- potentials){
+<tr>
+<th>@potential.userPlayer.name</th>
+<th>@potential.userPlayer.race</th>
+<th>vs</th>
+<th>@potential.rivalPlayer.name</th>
+<th>@potential.rivalPlayer.race</th>
+<th>
+<form method="post"
+action="#">
+@helper.CSRF.formField
 
-<div class="grid">
-    <form method="post"
-          id="matchUploadForm"
-          action="@routes.AnalyticalUploadController.updateState()"
-          enctype="multipart/form-data">
-        @helper.CSRF.formField
-        <fieldset>
-            <input type="file" id="analyticalFile" name="analyticalFile"/>
-            <input type="submit" value="@{messages("upload.analytical.file")}"/>
-        </fieldset>
-    </form>
-<article>
-    <header>Instrucciones</header>
-    <ol>
-        <li>Seleccionar una UNICA partida reciente</li>
-        <li>Presionar: @messages("upload.analytical.file") y esperar</li>
-        <li>Seleccionar el nombre de tu smurf</li>
-        <li>Enviar nuevamente</li>
-    </ol>
-    <footer>
-        <p>Si todo salio bien se incrementará un contador en el matchup, debe ser minimo 2 por matchup</p>
-        <ul>
-            <li>Partida de tiempo mínimo de 6 minutos</li>
-            <li>El archivo debe ser único</li>
-        </ul>
-    </footer>
-</article>
+<input type="submit" value="Usar"/>
 
-</div>
-
+</form>
+</th>
+</tr>
+}
+</tbody>
+</table>
 }

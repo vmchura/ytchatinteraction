@@ -93,7 +93,7 @@ GET     /results/match/:challongeMatchID controllers.MatchResultController.viewR
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
 POST /analytical/upload controllers.AnalyticalUploadController.updateState()
 POST /analytical/setSmurf controllers.AnalyticalUploadController.finalizeSmurf()
-
+GET /analytical/copy/:userId controllers.AnalyticalCopyController.showUserOptions(userId: Long)
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

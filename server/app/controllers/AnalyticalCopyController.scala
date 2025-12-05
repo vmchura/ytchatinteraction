@@ -26,7 +26,7 @@ import scala.util.Try
 import java.time.LocalDateTime
 import java.util.UUID
 import models.StarCraftModels.ReplayParsed
-
+import models.StarCraftModels.SCRace
 @Singleton
 class AnalyticalCopyController @Inject() (
     components: DefaultSilhouetteControllerComponents,
@@ -81,7 +81,7 @@ class AnalyticalCopyController @Inject() (
                 (
                   singleFile,
                   matchId,
-                  ReplayParsed(_, _, _, teams, _, _, _),
+                  ReplayParsed(_, _, _, teams, _, Some(frames), _),
                   userSmurfs
                 )
               ) =>
@@ -92,7 +92,7 @@ class AnalyticalCopyController @Inject() (
                 userSmurfs.exists(_.smurf.equals(sc.name))
               )
               Option.when(user.nonEmpty && rival.nonEmpty) {
-                (singleFile, user.head, matchId, rival.head)
+                (singleFile, user.head, matchId, rival.head, frames)
 
               }
             } else {
@@ -102,108 +102,63 @@ class AnalyticalCopyController @Inject() (
         }
 
       } yield {
-        Ok
+        val potentialAnalyticalFiles = validMatchSingleFile.map {
+          case (singleFile, userPlayer, matchId, rivalPlayer, frames) =>
+            PotentialAnalyticalFile(
+              singleFile,
+              userPlayer,
+              matchId,
+              rivalPlayer,
+              frames
+            )
+        }
+        Ok(
+          views.html.analyticalCopy(
+            request.identity,
+            userId,
+            groupedFiles,
+            potentialAnalyticalFiles.toSeq
+          )
+        )
 
       }
 
     }
 
-  def updateState(): Action[MultipartFormData[TemporaryFile]] =
-    silhouette.SecuredAction.async(parse.multipartFormData) {
-      implicit request =>
-        val session = request.body.files
-          .find(_.key == "analyticalFile") match {
-          case Some(part) =>
-            for {
-              processed <- parseReplayFileService
-                .validateAndProcessSingleFile(part)
-              newSession <- uploadSessionService.startSession(
-                request.identity,
-                processed
-              )
-            } yield {
-              newSession
-            }
-          case None => Future.successful(None)
-        }
-
-        session.map {
-          case None =>
-            Redirect(
-              routes.AnalyticalUploadController.uploadAnalyticalFile()
-            )
-          case Some(session) =>
-            Ok(
-              views.html.analyticalUploadSmurf(
-                request.identity,
-                session
-              )
-            )
-        }
+  def moveTournamentToAnalytical(
+      uploadedFileId: Long,
+      userUpdatedId: Long,
+      userSlot: Int,
+      userRace: SCRace,
+      rivalRace: SCRace,
+      frames: Int
+  ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    for {
+      fileUploadedOption <- uploadedFileRepository.findById(uploadedFileId)
+      fileUploaded <- fileUploadedOption.fold(
+        Future.failed(new IllegalStateException("No file uploaded"))
+      )(Future.successful)
+      analyticalFile = AnalyticalFile(
+        0,
+        userUpdatedId,
+        fileUploaded.sha256Hash,
+        fileUploaded.originalName,
+        fileUploaded.relativeDirectoryPath,
+        fileUploaded.originalName,
+        fileUploaded.uploadedAt,
+        userSlot,
+        userRace,
+        rivalRace,
+        frames,
+        Some(request.identity.userId),
+        None
+      )
+      moveAnalytica <- analyticalFileRepository.create(analyticalFile)
+    } yield {
+      Redirect(
+        routes.AnalyticalCopyController.showUserOptions(userUpdatedId)
+      )
     }
 
-  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async {
-    implicit request =>
-      Forms.analyticalFileDataForm
-        .bindFromRequest()
-        .fold(
-          formWithErrors => {
-            Future.successful(
-              Redirect(
-                routes.AnalyticalUploadController.uploadAnalyticalFile()
-              )
-            )
-          },
-          analyticalFileData => {
-            uploadSessionService.getSession(request.identity) match {
-              case Some(session)
-                  if session.sha256Hash.equals(analyticalFileData.fileHash) =>
-                val analyticalFile = for {
-                  userRace <- session
-                    .userRaceGivenPlayerId(analyticalFileData.playerID)
-                  rivalRace <- session
-                    .rivalRaceGivenPlayerId(analyticalFileData.playerID)
-                  frames <- session.frames
-                } yield {
-                  AnalyticalFile(
-                    0,
-                    request.identity.userId,
-                    session.sha256Hash,
-                    session.storageInfo.originalFileName,
-                    session.storageInfo.storedPath,
-                    session.storageInfo.storedFileName,
-                    session.storageInfo.storedAt,
-                    analyticalFileData.playerID,
-                    userRace,
-                    rivalRace,
-                    frames,
-                    None,
-                    None
-                  )
-                }
-                analyticalFile match {
-                  case Some(af) =>
-                    analyticalFileRepository.create(af).map { _ =>
-                      Redirect(
-                        routes.AnalyticalUploadController.uploadAnalyticalFile()
-                      )
-                    }
-                  case None =>
-                    Future.successful(
-                      Redirect(
-                        routes.AnalyticalUploadController.uploadAnalyticalFile()
-                      )
-                    )
-                }
-
-              case _ =>
-                Future.successful(
-                  Redirect(
-                    routes.AnalyticalUploadController.uploadAnalyticalFile()
-                  )
-                )
-            }
-          }
-        )
   }
 }

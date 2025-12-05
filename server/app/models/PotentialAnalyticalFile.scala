@@ -5,5 +5,6 @@ case class PotentialAnalyticalFile(
     uploadedFile: UploadedFile,
     userPlayer: SCPlayer,
     matchId: Long,
-    rivalPlayer: SCPlayer
+    rivalPlayer: SCPlayer,
+    frames: Int
 )
