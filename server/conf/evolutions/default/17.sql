@@ -3,6 +3,7 @@ CREATE TABLE elo_users (
     user_id bigint NOT NULL,
     user_race varchar(12) NOT NULL,
     rival_race varchar(12) NOT NULL,
+    elo int NOT NULL,
     updated_at timestamp with time zone NOT NULL
 );
 

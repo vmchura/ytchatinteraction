@@ -23,5 +23,6 @@ class ServicesModule extends SimpleModule(
   bind[ContentCreatorChannelService].to[ContentCreatorChannelServiceImpl],
   bind[AnalyticalFileRepository].to[AnalyticalFileRepositoryImpl],
   bind[AnalyticalReplayService].to[AnalyticalReplayServiceImpl],
-  bind[AnalyticalResultRepository].to[AnalyticalResultRepositoryImpl]
+  bind[AnalyticalResultRepository].to[AnalyticalResultRepositoryImpl],
+  bind[EloRepository].to[EloRepositoryImpl]
 )

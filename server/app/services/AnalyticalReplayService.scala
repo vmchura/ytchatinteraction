@@ -173,7 +173,8 @@ class AnalyticalReplayServiceImpl @Inject (
     analyticalFileRepository: AnalyticalFileRepository,
     tournamentService: TournamentService,
     analyticalResultRepository: AnalyticalResultRepository,
-    futures: Futures
+    futures: Futures,
+    eloRepository: EloRepository
 )(implicit
     ec: ExecutionContext
 ) extends AnalyticalReplayService(futures) {
@@ -310,6 +311,18 @@ class AnalyticalReplayServiceImpl @Inject (
         singleMatch.secondUserId,
         challongeMatchID
       ).recover(_ => Nil)
+      firstUserRace = resultFirstUser.map(_.userRace).toSet
+      secondUserRace = resultSecondUser.map(_.userRace).toSet
+      _ = Option.when((firstUserRace.size == 1) && (secondUserRace.size == 1)) {
+        eloRepository.apply_first_user_win(
+          singleMatch.firstUserId,
+          firstUserRace.head,
+          singleMatch.secondUserId,
+          secondUserRace.head,
+          Some(singleMatch.matchId),
+          None
+        )
+      }
       registrationResults <- Future.sequence(
         (resultFirstUser ++ resultSecondUser).map(ar =>
           analyticalResultRepository.create(ar)
@@ -320,4 +333,3 @@ class AnalyticalReplayServiceImpl @Inject (
     }
   }
 }
-
