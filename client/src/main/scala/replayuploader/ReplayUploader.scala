@@ -160,8 +160,9 @@ object ReplayUploader {
     }
           + Agregar replays
         </label> </div>
-        <div>
-      <h6>Relaciona smurfs/nicks con los jugadores</h6>
+        <div class="grid">
+        <article>
+      <header>Relaciona smurfs/nicks con los jugadores</header>
           ${
       Constants(currentState.bind.getSmurfs *).flatMap { smurfSelection =>
         html"""<fieldset>
@@ -180,39 +181,44 @@ object ReplayUploader {
                       """
       }
     }
-    </div>
+    </article>
+    <article>
+      <header>Resultado General (todas las partidas)</header>
       <form>
-        <h6>Resultado General (todas las partidas)</h6>
-        <fieldset class="grid">
-        ${
-      val select_winner: Binding.Stable[Select] =
-        html"""<select id="match-result">
           ${
-          if (currentState.bind.countValidGames > 0) {
-            if (currentState.bind.countValidGames % 2 == 0) {
-              html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
-                     <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
-                      <option value="Draw" selected=${currentState.bind.winner == Draw}>Empate</option>
-                """
-            } else {
-              html"""<option value="FirstUser" selected=${currentState.bind.winner == FirstUser}>Gana ${currentState.bind.firstParticipant.userName}</option>
-                     <option value="SecondUser" selected=${currentState.bind.winner == SecondUser}>Gana ${currentState.bind.secondParticipant.userName}</option>
-                """
-            }
-          } else {
-            html"""<option value="Cancelled" selected=${currentState.bind.winner == Cancelled}>WO para los dos, cancelado</option>
-                   <option value="FirstUserByOnlyPresented" selected=${currentState.bind.winner == FirstUserByOnlyPresented}>Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)</option>
-                   <option value="SecondUserByOnlyPresented" selected=${currentState.bind.winner == SecondUserByOnlyPresented}>Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)</option>
-              """
-          }
-        }
-
-        </select>"""
-      select_winner.value.onchange = (event: Event) => {
-        uploadMatchState.value = uploadMatchState.value.withWinner(select_winner.value.value)
+  val radioName = "match-result"
+  
+  def createRadio(value: String, label: String, isSelected: Boolean) = {
+    val radio: Binding.Stable[Input] = html"""<input type="radio" name=$radioName value=$value checked=$isSelected />"""
+    radio.value.onchange = (event: Event) => {
+      if (radio.value.checked) {
+        uploadMatchState.value = uploadMatchState.value.withWinner(value)
       }
-      select_winner
     }
+    html"""<label>$radio $label</label>"""
+  }
+  
+  if (currentState.bind.countValidGames > 0) {
+    if (currentState.bind.countValidGames % 2 == 0) {
+      html"""<fieldset>
+        ${createRadio("FirstUser", s"Gana ${currentState.bind.firstParticipant.userName}", currentState.bind.winner == FirstUser)}
+        ${createRadio("SecondUser", s"Gana ${currentState.bind.secondParticipant.userName}", currentState.bind.winner == SecondUser)}
+        ${createRadio("Draw", "Empate", currentState.bind.winner == Draw)}
+      </fieldset>"""
+    } else {
+      html"""<fieldset>
+        ${createRadio("FirstUser", s"Gana ${currentState.bind.firstParticipant.userName}", currentState.bind.winner == FirstUser)}
+        ${createRadio("SecondUser", s"Gana ${currentState.bind.secondParticipant.userName}", currentState.bind.winner == SecondUser)}
+      </fieldset>"""
+    }
+  } else {
+    html"""<fieldset>
+      ${createRadio("Cancelled", "WO para los dos, cancelado", currentState.bind.winner == Cancelled)}
+      ${createRadio("FirstUserByOnlyPresented", s"Gana ${currentState.bind.firstParticipant.userName} (rival W.O.)", currentState.bind.winner == FirstUserByOnlyPresented)}
+      ${createRadio("SecondUserByOnlyPresented", s"Gana ${currentState.bind.secondParticipant.userName} (rival W.O.)", currentState.bind.winner == SecondUserByOnlyPresented)}
+    </fieldset>"""
+  }
+}
       <button type="button" disabled=${uploadMatchState.bind.notEnoughToBeClosed} class="primary" onclick=${ (_: Event) => {
       val form = dom.document.getElementById("matchUploadForm").asInstanceOf[Form]
       // add list1 values
@@ -243,7 +249,9 @@ object ReplayUploader {
     }
     }>
         <span>Enviar resultado global</span><br/><small>Ya no podrás modificar nada</small>
-      </button></fieldset><form>
+      </button></form>
+    </article>
+    </div>
     </div>"""
   }
 }
