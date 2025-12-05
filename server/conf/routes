@@ -94,6 +94,7 @@ GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFi
 POST /analytical/upload controllers.AnalyticalUploadController.updateState()
 POST /analytical/setSmurf controllers.AnalyticalUploadController.finalizeSmurf()
 GET /analytical/copy/:userId controllers.AnalyticalCopyController.showUserOptions(userId: Long)
+POST /analytical/copy/ controllers.AnalyticalCopyController.moveTournamentToAnalytical()
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

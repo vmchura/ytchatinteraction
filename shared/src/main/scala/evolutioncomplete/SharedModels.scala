@@ -10,10 +10,10 @@ import GameStateShared.*
 import java.util.UUID
 
 case class ParticipantShared(
-                              userID: Long,
-                              userName: String,
-                              smurfs: Set[String]
-                            ) derives ReadWriter
+    userID: Long,
+    userName: String,
+    smurfs: Set[String]
+) derives ReadWriter
 
 sealed trait GameStateShared {
   def sessionID: UUID
@@ -21,18 +21,18 @@ sealed trait GameStateShared {
 
 object GameStateShared {
   case class ValidGame(
-                        smurfs: List[String],
-                        mapName: String,
-                        playedAt: LocalDateTime,
-                        hash: String,
-                        sessionID: UUID
-                      ) extends GameStateShared derives ReadWriter
+      smurfs: List[String],
+      mapName: String,
+      playedAt: LocalDateTime,
+      hash: String,
+      sessionID: UUID
+  ) extends GameStateShared derives ReadWriter
 
   case class PendingGame(sessionID: UUID) extends GameStateShared
-    derives ReadWriter
+      derives ReadWriter
 
   case class InvalidGame(errorMessage: String, sessionID: UUID)
-    extends GameStateShared derives ReadWriter
+      extends GameStateShared derives ReadWriter
 
   given ReadWriter[LocalDateTime] =
     readwriter[String].bimap[LocalDateTime](
@@ -45,21 +45,21 @@ object GameStateShared {
 
 enum WinnerShared derives ReadWriter:
   case Undefined, FirstUser, SecondUser, Draw, FirstUserByOnlyPresented,
-  SecondUserByOnlyPresented, Cancelled
+    SecondUserByOnlyPresented, Cancelled
 
 case class SmurfSelection(
-                           smurf: String,
-                           options: List[(String, Boolean, String, String)]
-                         )
+    smurf: String,
+    options: List[(String, Boolean, String, String)]
+)
 
 case class UploadStateShared(
-                              challongeMatchID: Long,
-                              tournamentID: Long,
-                              firstParticipant: ParticipantShared,
-                              secondParticipant: ParticipantShared,
-                              games: List[GameStateShared],
-                              winner: WinnerShared
-                            ) derives ReadWriter {
+    challongeMatchID: Long,
+    tournamentID: Long,
+    firstParticipant: ParticipantShared,
+    secondParticipant: ParticipantShared,
+    games: List[GameStateShared],
+    winner: WinnerShared
+) derives ReadWriter {
   def getGameDescription(game: GameStateShared): (String, String) = {
     game match {
       case ValidGame(smurf1 :: smurf2 :: _, _, _, _, _) =>
@@ -69,13 +69,13 @@ case class UploadStateShared(
           secondParticipant.smurfs.contains(smurf1),
           secondParticipant.smurfs.contains(smurf2)
         ) match {
-          case (true, false, false, true) => (s"$smurf1", s"$smurf2")
+          case (true, false, false, true)  => (s"$smurf1", s"$smurf2")
           case (true, false, false, false) => (s"$smurf1", s"[$smurf2]?")
-          case (false, true, true, false) => (s"$smurf2", s"$smurf1")
+          case (false, true, true, false)  => (s"$smurf2", s"$smurf1")
           case (false, true, false, false) => (s"$smurf2", s"[$smurf1]?")
           case (false, false, true, false) => (s"[$smurf2]?", s"$smurf1")
           case (false, false, false, true) => (s"[$smurf1]?", s"$smurf2")
-          case (_, _, _, _) => (s"[$smurf1]?", s"[$smurf2]?")
+          case (_, _, _, _)                => (s"[$smurf1]?", s"[$smurf2]?")
         }
       case _ => throw new IllegalStateException("Description of invalid")
     }
@@ -125,7 +125,7 @@ case class UploadStateShared(
         id.split("_").tail.map(_.toInt) match {
           case Array(1) => addSmurfToFirstParticipant(smurf)
           case Array(2) => addSmurfToSecondParticipant(smurf)
-          case _ => this
+          case _        => this
         }
       }
 
@@ -138,7 +138,7 @@ case class UploadStateShared(
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap {
       case ValidGame(smurfs, _, _, _, _) => smurfs
-      case _ => Nil
+      case _                             => Nil
     }.distinct
     allSmurfs.zipWithIndex.map { case (singleSmurf, i) =>
       SmurfSelection(
@@ -183,7 +183,7 @@ case class UploadStateShared(
   def updateOnePendingTo(f: UUID => GameStateShared): UploadStateShared = {
     val (noPending, firstPends) = games.span {
       case PendingGame(_) => false
-      case _ => true
+      case _              => true
     }
     firstPends match {
       case PendingGame(uuid) :: rest =>
@@ -203,22 +203,22 @@ case class UploadStateShared(
 
   def notEnoughToBeClosed: Boolean = {
     (winner == Undefined) || (if (
-      games.count {
-        case _: ValidGame => true
-        case _ => false
-      } > 0
-    ) {
-      (firstParticipant.smurfs ++ secondParticipant.smurfs).isEmpty
-    } else false) || games.exists {
+                                games.count {
+                                  case _: ValidGame => true
+                                  case _            => false
+                                } > 0
+                              ) {
+                                (firstParticipant.smurfs ++ secondParticipant.smurfs).isEmpty
+                              } else false) || games.exists {
       case _: PendingGame => true
-      case _ => false
+      case _              => false
     }
   }
 
   def countValidGames: Int = {
     games.count {
       case _: ValidGame => true
-      case _ => false
+      case _            => false
     }
   }
 }
@@ -242,3 +242,11 @@ object UploadStateShared {
     Cancelled
   )
 }
+case class PotentialAnalyticalFileShared(
+    uploadedFile: Long,
+    userSlotId: Int,
+    userRace: String,
+    rivalRace: String,
+    frames: Int,
+    userId: Long
+)

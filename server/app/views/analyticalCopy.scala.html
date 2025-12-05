@@ -26,35 +26,40 @@
     </thead>
 </table>
 <table>
-  <thead>
+    <thead>
     <tr>
-      <th scope="col">User</th>
-      <th scope="col">UserRace</th>
-      <th scope="col">vs</th>
-      <th scope="col">Rival</th>
-      <th scope="col">RivalRace</th>
-      <th scope="col">Enviar</th>
+        <th scope="col">User</th>
+        <th scope="col">UserRace</th>
+        <th scope="col">vs</th>
+        <th scope="col">Rival</th>
+        <th scope="col">RivalRace</th>
+        <th scope="col">Enviar</th>
     </tr>
-  </thead>
-  <tbody>
-@for(potential <- potentials){
-<tr>
-<th>@potential.userPlayer.name</th>
-<th>@potential.userPlayer.race</th>
-<th>vs</th>
-<th>@potential.rivalPlayer.name</th>
-<th>@potential.rivalPlayer.race</th>
-<th>
-<form method="post"
-action="#">
-@helper.CSRF.formField
+    </thead>
+    <tbody>
+    @for(potential <- potentials){
+    <tr>
+        <th>@potential.userPlayer.name</th>
+        <th>@potential.userPlayer.race</th>
+        <th>vs</th>
+        <th>@potential.rivalPlayer.name</th>
+        <th>@potential.rivalPlayer.race</th>
+        <th>
+            <form method="post"
+                  action="@routes.AnalyticalCopyController.moveTournamentToAnalytical()">
+                @helper.CSRF.formField
+                <input type="hidden" name="uploadedFile" value=@{potential.uploadedFile.id}>
+                <input type="hidden" name="userSlotId" value=@{potential.userPlayer.id}>
+                <input type="hidden" name="userRace" value="@{potential.userPlayer.race}">
+                <input type="hidden" name="rivalRace" value="@{potential.rivalPlayer.race}">
+                <input type="hidden" name="frames" value=@{potential.frames}>
+                <input type="hidden" name="userId" value=@{userToUpdateId}>
+                <input type="submit" value="Usar"/>
 
-<input type="submit" value="Usar"/>
-
-</form>
-</th>
-</tr>
-}
-</tbody>
+            </form>
+        </th>
+    </tr>
+    }
+    </tbody>
 </table>
 }

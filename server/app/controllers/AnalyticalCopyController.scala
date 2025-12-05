@@ -45,10 +45,10 @@ class AnalyticalCopyController @Inject() (
   private val logger = Logger(getClass)
 
   def showUserOptions(userId: Long): Action[AnyContent] =
-    silhouette.SecuredAction.async { implicit request =>
+    silhouette.SecuredAction(WithAdmin()).async { implicit request =>
       for {
         groupedFiles <- analyticalFileRepository
-          .findByUserId(request.identity.userId)
+          .findByUserId(userId)
           .map { files =>
             files
               .groupBy(_.userRace)
@@ -88,9 +88,8 @@ class AnalyticalCopyController @Inject() (
 
             val scPlayers = teams.flatMap(t => t.participants)
             if (scPlayers.length == 2) {
-              val (user, rival) = scPlayers.partition(sc =>
-                userSmurfs.exists(_.smurf.equals(sc.name))
-              )
+              val (user, rival) = scPlayers
+                .partition(sc => userSmurfs.exists(_.smurf.equals(sc.name)))
               Option.when(user.nonEmpty && rival.nonEmpty) {
                 (singleFile, user.head, matchId, rival.head, frames)
 
@@ -125,40 +124,57 @@ class AnalyticalCopyController @Inject() (
 
     }
 
-  def moveTournamentToAnalytical(
-      uploadedFileId: Long,
-      userUpdatedId: Long,
-      userSlot: Int,
-      userRace: SCRace,
-      rivalRace: SCRace,
-      frames: Int
-  ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    for {
-      fileUploadedOption <- uploadedFileRepository.findById(uploadedFileId)
-      fileUploaded <- fileUploadedOption.fold(
-        Future.failed(new IllegalStateException("No file uploaded"))
-      )(Future.successful)
-      analyticalFile = AnalyticalFile(
-        0,
-        userUpdatedId,
-        fileUploaded.sha256Hash,
-        fileUploaded.originalName,
-        fileUploaded.relativeDirectoryPath,
-        fileUploaded.originalName,
-        fileUploaded.uploadedAt,
-        userSlot,
-        userRace,
-        rivalRace,
-        frames,
-        Some(request.identity.userId),
-        None
-      )
-      moveAnalytica <- analyticalFileRepository.create(analyticalFile)
-    } yield {
-      Redirect(
-        routes.AnalyticalCopyController.showUserOptions(userUpdatedId)
-      )
-    }
+  def moveTournamentToAnalytical(): Action[AnyContent] =
+    silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+      Forms.potentialAnalyticalFileDataForm
+        .bindFromRequest()
+        .fold(
+          formWithErrors => {
+            Future.successful(
+              Redirect(
+                routes.HomeController.index()
+              )
+            )
+          },
+          analyticalFileData => {
+            for {
+              fileUploadedOption <- uploadedFileRepository
+                .findById(analyticalFileData.uploadedFile)
+              fileUploaded <- fileUploadedOption.fold(
+                Future.failed(new IllegalStateException("No file uploaded"))
+              )(Future.successful)
+              analyticalFile = AnalyticalFile(
+                0,
+                analyticalFileData.userId,
+                fileUploaded.sha256Hash,
+                fileUploaded.originalName,
+                fileUploaded.relativeDirectoryPath,
+                fileUploaded.originalName,
+                fileUploaded.uploadedAt,
+                analyticalFileData.userSlotId,
+                analyticalFileData.userRace.head match {
+                  case 'P' => StarCraftModels.Protoss
+                  case 'Z' => StarCraftModels.Zerg
+                  case 'T' => StarCraftModels.Terran
+                },
+                analyticalFileData.rivalRace.head match {
+                  case 'P' => StarCraftModels.Protoss
+                  case 'Z' => StarCraftModels.Zerg
+                  case 'T' => StarCraftModels.Terran
+                },
+                analyticalFileData.frames,
+                Some(request.identity.userId),
+                None
+              )
+              f = println(analyticalFile)
+              moveAnalytica <- analyticalFileRepository.create(analyticalFile)
+            } yield {
+              Redirect(
+                routes.AnalyticalCopyController.showUserOptions(analyticalFileData.userId)
+              )
+            }
+          }
+        )
 
-  }
+    }
 }

@@ -46,7 +46,7 @@ trait AnalyticalFileComponent {
 
     def gameFrames = column[Int]("game_frames")
 
-    def otherUserId = column[Option[Int]]("other_user_id")
+    def otherUserId = column[Option[Long]]("other_user_id")
 
     def algorithmId = column[Option[String]]("algorithm_id")
 
