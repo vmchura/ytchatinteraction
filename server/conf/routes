@@ -98,6 +98,8 @@ POST /analytical/copy/ controllers.AnalyticalCopyController.moveTournamentToAnal
 
 # Stats
 GET     /stats/:userId              controllers.EloStatsController.viewStats(userId: Long)
+GET     /stats                      controllers.EloStatsController.globalRankings()
+
 
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()

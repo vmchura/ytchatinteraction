@@ -185,7 +185,7 @@ youtube.my.follows=My StarCraft content channels
 #Alerts
 alerts.update.alias=Update your alias for one your community recognize you.
 
-#SCPower
+#SCPower - Individual Stats
 elo.stats.title=SCPower Stats - {0}
 elo.stats.header=SCPower Statistics for {0}
 elo.stats.current.title=Current SCPower Ratings
@@ -200,3 +200,13 @@ elo.stats.rival=Opponent
 elo.stats.initial=Initial SCPower
 elo.stats.new=New SCPower
 elo.stats.change=Change
+
+#SCPower - Global Rankings
+elo.global.title=Global SCPower Rankings
+elo.global.header=Global SCPower Rankings
+elo.global.no.data=No SCPower data available yet
+elo.global.rank=Rank
+elo.global.player=Player
+elo.global.matchup=Matchup
+elo.global.scpower=SCPower
+elo.global.updated=Last Updated

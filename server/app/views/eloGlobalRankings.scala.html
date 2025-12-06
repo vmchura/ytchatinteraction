@@ -1,0 +1,40 @@
+@import models.User
+@import models.EloUserWithName
+@import models.StarCraftModels._
+@import helper._
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+@(user: User, allElos: Seq[EloUserWithName])(implicit request: RequestHeader, flash: Flash, messages: Messages)
+
+@main(messages("elo.global.title"), Some(user)) {
+<h1>@messages("elo.global.header")</h1>
+
+@if(allElos.isEmpty) {
+<p>@messages("elo.global.no.data")</p>
+} else {
+<table>
+    <thead>
+    <tr>
+        <th>@messages("elo.global.rank")</th>
+        <th>@messages("elo.global.player")</th>
+        <th>@messages("elo.global.matchup")</th>
+        <th>@messages("elo.global.scpower")</th>
+        <th>@messages("elo.global.updated")</th>
+    </tr>
+    </thead>
+    <tbody>
+    @for((elo, index) <- allElos.zipWithIndex) {
+    <tr @if(elo.userId== user.userId) { class="highlight" }>
+        <td>@{index + 1}</td>
+        <td>
+            <a href="@routes.EloStatsController.viewStats(elo.userId)">@elo.userName</a>
+        </td>
+        <td>@{elo.userRace.shortLabel}v@{elo.rivalRace.shortLabel}</td>
+        <td><strong>@elo.elo</strong></td>
+        <td>@elo.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))</td>
+    </tr>
+    }
+    </tbody>
+</table>
+}
+}

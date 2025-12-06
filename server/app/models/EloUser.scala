@@ -38,3 +38,11 @@ case class EloUserLogWithRivalName(
     casualMatchId: Option[Long],
     userNewElo: Int
 )
+case class EloUserWithName(
+    userId: Long,
+    userName: String,
+    userRace: SCRace,
+    rivalRace: SCRace,
+    elo: Int,
+    updatedAt: Instant
+)

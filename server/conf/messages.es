@@ -182,18 +182,28 @@ youtube.my.follows=Mis canales de StarCraft
 #Alerts
 alerts.update.alias=Actualiza tu alias por alguno que se te identifique
 
-#SCPower
-elo.stats.title=SCPower Estadísticas - {0}
-elo.stats.header=SCPower Estadística de {0}
-elo.stats.current.title=Actual SCPower
-elo.stats.history.title=SCPower Historia
-elo.stats.no.current=No SCPower todavía
-elo.stats.no.history=Sin historia
-elo.stats.matchup=Matchup
+#SCPower - Estadísticas Individuales
+elo.stats.title=Estadísticas SCPower - {0}
+elo.stats.header=Estadísticas SCPower de {0}
+elo.stats.current.title=Clasificaciones SCPower Actuales
+elo.stats.history.title=Historial SCPower
+elo.stats.no.current=Aún no hay clasificaciones SCPower
+elo.stats.no.history=Aún no hay historial de partidas
+elo.stats.matchup=Enfrentamiento
 elo.stats.elo=SCPower
 elo.stats.updated=Última Actualización
 elo.stats.date=Fecha
-elo.stats.rival=Rival
+elo.stats.rival=Oponente
 elo.stats.initial=SCPower Inicial
 elo.stats.new=Nuevo SCPower
 elo.stats.change=Cambio
+
+#SCPower - Clasificación Global
+elo.global.title=Clasificación Global SCPower
+elo.global.header=Clasificación Global SCPower
+elo.global.no.data=Aún no hay datos SCPower disponibles
+elo.global.rank=Posición
+elo.global.player=Jugador
+elo.global.matchup=Enfrentamiento
+elo.global.scpower=SCPower
+elo.global.updated=Última Actualización

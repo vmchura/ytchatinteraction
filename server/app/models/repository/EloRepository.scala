@@ -28,6 +28,8 @@ trait EloRepository {
   def getAllElosByUserId(userId: Long): Future[Seq[EloUser]]
 
   def getAllLogsByUserId(userId: Long): Future[Seq[EloUserLogWithRivalName]]
+
+  def getAllElosWithUserNames(): Future[Seq[EloUserWithName]]
 }
 
 @Singleton
@@ -175,7 +177,9 @@ class EloRepositoryImpl @Inject() (
     )
   }
 
-  override def getAllLogsByUserId(userId: Long): Future[Seq[EloUserLogWithRivalName]] = {
+  override def getAllLogsByUserId(
+      userId: Long
+  ): Future[Seq[EloUserLogWithRivalName]] = {
     val query = for {
       log <- eloUsersLogTable.filter(_.userId === userId)
       rival <- usersTable.filter(_.userId === log.rivalUserId)
@@ -201,5 +205,24 @@ class EloRepositoryImpl @Inject() (
         log.userNewElo
       )
     })
+  }
+
+  override def getAllElosWithUserNames(): Future[Seq[EloUserWithName]] = {
+    val query = for {
+      elo <- eloUsersTable
+      user <- usersTable.filter(_.userId === elo.userId)
+    } yield (elo, user.userName)
+
+    db.run(query.result)
+      .map(_.map { case (elo, userName) =>
+        EloUserWithName(
+          elo.userId,
+          userName,
+          elo.userRace,
+          elo.rivalRace,
+          elo.elo,
+          elo.updatedAt
+        )
+      })
   }
 }
