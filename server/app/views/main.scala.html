@@ -26,9 +26,17 @@
     </ul>
     <ul>
         @user.map { u =>
-        <li><a href="@routes.UserEventsController.userEvents()">@messages("nav.my.events")</a></li>
-        <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">@messages("nav.add.history")</a></li>
-        <li><a href="@routes.YoutubeMembershipController.getSubscribedChannels()">@messages("nav.subscribed.channels")</a></li>
+        <li><a href="@routes.EloStatsController.globalRankings()">SCPower</a></li>
+        <li>
+            <details class="dropdown">
+                <summary>@messages("nav.my.options")</summary>
+                <ul>
+                    <li><a href="@routes.UserEventsController.userEvents()">@messages("nav.my.events")</a></li>
+                    <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">@messages("nav.add.history")</a></li>
+                    <li><a href="@routes.YoutubeMembershipController.getSubscribedChannels()">@messages("nav.subscribed.channels")</a></li>
+                </ul>
+            </details>
+        </li>
         <li>
             <details class="dropdown">
                 <summary>@u.userName</summary>

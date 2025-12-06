@@ -24,6 +24,7 @@ nav.logout = Cerrar Sesión
 nav.change.alias = Cambiar Alias
 nav.language = Idioma
 nav.subscribed.channels = Mis Canales de SC
+nav.my.options=Mis Opciones
 
 # Página principal
 home.welcome.title = Bienvenido a Evolution Complete
