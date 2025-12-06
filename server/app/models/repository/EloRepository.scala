@@ -1,6 +1,6 @@
 package models.repository
 
-import models.{EloUser, EloUserLog, StarCraftModels}
+import models.*
 import models.StarCraftModels.SCRace
 import models.component.EloComponent
 import play.api.db.slick.DatabaseConfigProvider
@@ -24,6 +24,10 @@ trait EloRepository {
       userRace: SCRace,
       rivalRace: SCRace
   ): Future[Option[EloUser]]
+
+  def getAllElosByUserId(userId: Long): Future[Seq[EloUser]]
+
+  def getAllLogsByUserId(userId: Long): Future[Seq[EloUserLogWithRivalName]]
 }
 
 @Singleton
@@ -161,5 +165,41 @@ class EloRepositoryImpl @Inject() (
         .result
         .headOption
     )
+  }
+
+  override def getAllElosByUserId(userId: Long): Future[Seq[EloUser]] = {
+    db.run(
+      eloUsersTable
+        .filter(_.userId === userId)
+        .result
+    )
+  }
+
+  override def getAllLogsByUserId(userId: Long): Future[Seq[EloUserLogWithRivalName]] = {
+    val query = for {
+      log <- eloUsersLogTable.filter(_.userId === userId)
+      rival <- usersTable.filter(_.userId === log.rivalUserId)
+    } yield (log, rival.userName)
+
+    db.run(
+      query
+        .sortBy(_._1.eventAt.desc)
+        .result
+    ).map(_.map { case (log, rivalName) =>
+      EloUserLogWithRivalName(
+        log.id,
+        log.userId,
+        log.userRace,
+        log.rivalUserId,
+        rivalName,
+        log.rivalRace,
+        log.eventAt,
+        log.userInitialElo,
+        log.rivalInitialElo,
+        log.matchId,
+        log.casualMatchId,
+        log.userNewElo
+      )
+    })
   }
 }

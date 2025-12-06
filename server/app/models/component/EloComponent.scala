@@ -4,7 +4,7 @@ import models.{EloUser, EloUserLog, StarCraftModels}
 import slick.jdbc.JdbcProfile
 import java.time.Instant
 
-trait EloComponent {
+trait EloComponent extends UserComponent {
   protected val profile: JdbcProfile
 
   import profile.api._

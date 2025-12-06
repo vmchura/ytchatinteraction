@@ -185,3 +185,19 @@ youtube.my.follows=Mis canales de StarCraft
 
 #Alerts
 alerts.update.alias=Actualiza tu alias por alguno que se te identifique
+
+#SCPower
+elo.stats.title=SCPower Estadísticas - {0}
+elo.stats.header=SCPower Estadística de {0}
+elo.stats.current.title=Actual SCPower
+elo.stats.history.title=SCPower Historia
+elo.stats.no.current=No SCPower todavía
+elo.stats.no.history=Sin historia
+elo.stats.matchup=Matchup
+elo.stats.elo=SCPower
+elo.stats.updated=Última Actualización
+elo.stats.date=Fecha
+elo.stats.rival=Rival
+elo.stats.initial=SCPower Inicial
+elo.stats.new=Nuevo SCPower
+elo.stats.change=Cambio
