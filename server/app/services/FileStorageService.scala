@@ -10,122 +10,113 @@ import java.time.Instant
 import java.util.UUID
 import scala.util.{Try, Success, Failure}
 
+trait BasicFileInfo:
+  def originalFileName: String
+  def storedFileName: String
+  def storedPath: String
+  def size: Long
+  def contentType: String
+  def storedAt: Instant
+  def userId: Long
+
+case class GenericFileInfo(
+    originalFileName: String,
+    storedFileName: String,
+    storedPath: String,
+    size: Long,
+    contentType: String,
+    storedAt: Instant,
+    userId: Long
+) extends BasicFileInfo
+
 case class StoredFileInfo(
-                           originalFileName: String,
-                           storedFileName: String,
-                           storedPath: String,
-                           size: Long,
-                           contentType: String,
-                           storedAt: Instant,
-                           userId: Long,
-                           matchId: Long,
-                           sessionId: String
-                         )
+    originalFileName: String,
+    storedFileName: String,
+    storedPath: String,
+    size: Long,
+    contentType: String,
+    storedAt: Instant,
+    userId: Long,
+    matchId: Long,
+    sessionId: String
+) extends BasicFileInfo
 
 case class AnalyticalFileInfo(
-                               originalFileName: String,
-                               storedFileName: String,
-                               storedPath: String,
-                               size: Long,
-                               contentType: String,
-                               storedAt: Instant,
-                               userId: Long
-                             )
+    originalFileName: String,
+    storedFileName: String,
+    storedPath: String,
+    size: Long,
+    contentType: String,
+    storedAt: Instant,
+    userId: Long
+) extends BasicFileInfo
 
-/**
- * Service for managing file storage operations
- */
+case class CasualMatchFileInfo(
+    originalFileName: String,
+    storedFileName: String,
+    storedPath: String,
+    size: Long,
+    contentType: String,
+    storedAt: Instant,
+    userId: Long,
+    casualMatchId: Long
+) extends BasicFileInfo
+
+/** Service for managing file storage operations
+  */
 trait FileStorageService {
   def storeFile(
-                 fileBytes: Array[Byte],
-                 originalFileName: String,
-                 contentType: String,
-                 userId: Long,
-                 matchId: Long,
-                 sessionId: String
-               ): Future[Either[String, StoredFileInfo]]
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long,
+      matchId: Long,
+      sessionId: String
+  ): Either[String, StoredFileInfo]
 
   def storeAnalyticalFile(
-                           fileBytes: Array[Byte],
-                           originalFileName: String,
-                           contentType: String,
-                           userId: Long,
-                         ): Future[Either[String, AnalyticalFileInfo]]
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long
+  ): Either[String, AnalyticalFileInfo]
 
   def deleteFile(storedPath: String): Future[Boolean]
 
   def fileExists(storedPath: String): Future[Boolean]
 
   def getStorageStats: Future[Map[String, Any]]
+
+  def storeBasicFile[R](
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long,
+      prefix: String,
+      objectBuilder: GenericFileInfo => R
+  ): Either[String, R]
 }
 
 @Singleton
-class DefaultFileStorageService @Inject()(
-                                           configuration: Configuration
-                                         )(implicit ec: ExecutionContext) extends FileStorageService {
+class DefaultFileStorageService @Inject() (
+    configuration: Configuration
+)(implicit ec: ExecutionContext)
+    extends FileStorageService {
 
   private val logger = Logger(getClass)
 
   // Storage path for file uploads (mounted via Dokku in production, local in development)
-  private val uploadStoragePath = configuration.get[String]("app.storage.uploads.path")
+  private val uploadStoragePath =
+    configuration.get[String]("app.storage.uploads.path")
 
-  override def storeFile(
-                          fileBytes: Array[Byte],
-                          originalFileName: String,
-                          contentType: String,
-                          userId: Long,
-                          matchId: Long,
-                          sessionId: String
-                        ): Future[Either[String, StoredFileInfo]] = Future {
-
-    try {
-      // Ensure storage directory exists
-      val storageDir = Paths.get(uploadStoragePath)
-      if (!Files.exists(storageDir)) {
-        Files.createDirectories(storageDir)
-        logger.info(s"Created storage directory: $uploadStoragePath")
-      }
-
-      // Generate unique filename to avoid conflicts
-      val fileExtension = getFileExtension(originalFileName)
-      val timestamp = Instant.now().getEpochSecond
-      val uniqueId = UUID.randomUUID().toString.substring(0, 8)
-      val storedFileName = s"${userId}_${matchId}_${timestamp}_${uniqueId}${fileExtension}"
-
-      // Create the full path
-      val storedPath = storageDir.resolve(storedFileName)
-
-      // Write the file
-      Files.write(storedPath, fileBytes)
-
-      val storedFileInfo = StoredFileInfo(
-        originalFileName = originalFileName,
-        storedFileName = storedFileName,
-        storedPath = storedPath.toString,
-        size = fileBytes.length,
-        contentType = contentType,
-        storedAt = Instant.now(),
-        userId = userId,
-        matchId = matchId,
-        sessionId = sessionId
-      )
-
-      logger.info(s"Successfully stored file: $originalFileName as $storedFileName for user $userId, match $matchId")
-      Right(storedFileInfo)
-
-    } catch {
-      case ex: Exception =>
-        logger.error(s"Failed to store file $originalFileName for user $userId, match $matchId: ${ex.getMessage}", ex)
-        Left(s"Failed to store file: ${ex.getMessage}")
-    }
-  }
-
-  override def storeAnalyticalFile(
-                                    fileBytes: Array[Byte],
-                                    originalFileName: String,
-                                    contentType: String,
-                                    userId: Long
-                                  ): Future[Either[String, AnalyticalFileInfo]] = Future {
+  override def storeBasicFile[R](
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long,
+      prefix: String,
+      objectBuilder: GenericFileInfo => R
+  ): Either[String, R] = {
 
     try {
       // Ensure storage directory exists
@@ -139,7 +130,8 @@ class DefaultFileStorageService @Inject()(
       val fileExtension = getFileExtension(originalFileName)
       val timestamp = Instant.now().getEpochSecond
       val uniqueId = UUID.randomUUID().toString.substring(0, 8)
-      val storedFileName = s"${userId}_${timestamp}_$uniqueId$fileExtension"
+      val storedFileName =
+        s"${prefix}_${timestamp}_${uniqueId}${fileExtension}"
 
       // Create the full path
       val storedPath = storageDir.resolve(storedFileName)
@@ -147,7 +139,7 @@ class DefaultFileStorageService @Inject()(
       // Write the file
       Files.write(storedPath, fileBytes)
 
-      val storedFileInfo = AnalyticalFileInfo(
+      val storedFileInfo = GenericFileInfo(
         originalFileName = originalFileName,
         storedFileName = storedFileName,
         storedPath = storedPath.toString,
@@ -157,15 +149,99 @@ class DefaultFileStorageService @Inject()(
         userId = userId
       )
 
-      logger.info(s"Successfully stored file: $originalFileName as $storedFileName for user $userId")
-      Right(storedFileInfo)
+      logger.info(
+        s"Successfully stored file: $originalFileName as $storedFileName for user $userId, with prefix ${prefix}"
+      )
+      Right(objectBuilder(storedFileInfo))
 
     } catch {
       case ex: Exception =>
-        logger.error(s"Failed to store file $originalFileName for user $userId, ${ex.getMessage}", ex)
+        logger.error(
+          s"Failed to store file $originalFileName for user $userId, with prefix ${prefix}: ${ex.getMessage}",
+          ex
+        )
         Left(s"Failed to store file: ${ex.getMessage}")
     }
   }
+
+  override def storeFile(
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long,
+      matchId: Long,
+      sessionId: String
+  ): Either[String, StoredFileInfo] = {
+
+    storeBasicFile[StoredFileInfo](
+      fileBytes,
+      originalFileName,
+      contentType,
+      userId,
+      s"${userId}_$matchId",
+      _ match {
+          case GenericFileInfo(
+                originalFileName,
+                storedFileName,
+                storedPath,
+                size,
+                contentType,
+                storedAt,
+                userId
+              ) =>
+            StoredFileInfo(
+              originalFileName,
+              storedFileName,
+              storedPath,
+              size,
+              contentType,
+              storedAt,
+              userId,
+              matchId,
+              sessionId
+            )
+        }
+    )
+
+  }
+
+  override def storeAnalyticalFile(
+      fileBytes: Array[Byte],
+      originalFileName: String,
+      contentType: String,
+      userId: Long
+  ): Either[String, AnalyticalFileInfo] = {
+
+    storeBasicFile(
+      fileBytes,
+      originalFileName,
+      contentType,
+      userId,
+      s"$userId",
+      _ match {
+          case GenericFileInfo(
+                originalFileName,
+                storedFileName,
+                storedPath,
+                size,
+                contentType,
+                storedAt,
+                userId
+              ) =>
+            AnalyticalFileInfo(
+              originalFileName,
+              storedFileName,
+              storedPath,
+              size,
+              contentType,
+              storedAt,
+              userId
+            )
+        }
+    )
+
+  }
+
 
   override def deleteFile(storedPath: String): Future[Boolean] = Future {
     try {
@@ -207,7 +283,8 @@ class DefaultFileStorageService @Inject()(
         files.close()
 
         val totalFiles = fileList.length
-        val totalSize = fileList.map(path => Try(Files.size(path)).getOrElse(0L)).sum
+        val totalSize =
+          fileList.map(path => Try(Files.size(path)).getOrElse(0L)).sum
 
         val (freeSpace, totalSpace) = Try {
           val store = Files.getFileStore(storageDir)

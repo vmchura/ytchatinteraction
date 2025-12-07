@@ -89,19 +89,19 @@ class AnalyticalUploadSessionService @Inject()(
 
   def startSession(user: User, fileResult: FileProcessResult): Future[Option[AnalyticalUploadSession]] = {
 
-    checkForDuplicateFile(fileResult).flatMap { isDuplicate =>
+    checkForDuplicateFile(fileResult).map { isDuplicate =>
       if (isDuplicate) {
         logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
-        Future.successful(None)
+        None
       } else {
 
         fileResult match {
           case FileProcessResult(_, _, _, _, _, errorMessage, _, None, _) =>
-            Future.successful(None)
+            None
           case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
           Some(mapName), Some(startTime), _, teams, _, _, _)), Some(sha256Hash), path) =>
             fileStorageService.storeAnalyticalFile(Files.readAllBytes(path), fileName,
-              fileResult.contentType, user.userId).map {
+              fileResult.contentType, user.userId) match {
               case Left(error) =>
                 None
               case Right(storedInfo) =>
@@ -114,7 +114,7 @@ class AnalyticalUploadSessionService @Inject()(
                 )
                 Option.when(newSession.isValid)(persistState(newSession))
             }
-          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => Future.successful(None)
+          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => None
         }
       }
 

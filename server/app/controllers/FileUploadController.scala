@@ -57,7 +57,7 @@ class FileUploadController @Inject()(
                                   sessionId: String,
                                   fileResult: services.FileProcessResult,
                                   fileBytes: Array[Byte]
-                                ): Future[Either[String, StoredFileInfo]] = {
+                                ): Either[String, StoredFileInfo] = {
     if (fileResult.success && fileBytes.nonEmpty && fileResult.sha256Hash.isDefined) {
       for {
         // Store the file on disk
@@ -71,7 +71,7 @@ class FileUploadController @Inject()(
         )
       } yield storageResult
     } else {
-      Future.successful(Left(s"Cannot store failed file: ${fileResult.errorMessage.getOrElse("Unknown error")}"))
+      Left(s"Cannot store failed file: ${fileResult.errorMessage.getOrElse("Unknown error")}")
     }
   }
   def fetchState(challongeMatchID: Long, tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>

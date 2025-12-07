@@ -20,8 +20,6 @@ lazy val server = (project in file("server"))
       "org.scalatestplus.play" %% "scalatestplus-play" % scalaTestPlusPlayVersion % Test,
       "org.playframework" %% "play-slick" % slickVersion,
       "org.playframework" %% "play-slick-evolutions" % slickVersion,
-
-      // PostgreSQL driver for production
       "org.postgresql" % "postgresql" % postgresql,
 
       // Silhouette dependencies
@@ -87,6 +85,5 @@ lazy val client = (project in file("client"))
 lazy val shared = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("shared"))
-  .settings(libraryDependencies += "com.lihaoyi" %%% "upickle" % "4.2.1")
+  .settings(libraryDependencies += "com.lihaoyi" %%% "upickle" % "4.4.1")
   .jsConfigure(_.enablePlugins(ScalaJSWeb))
-

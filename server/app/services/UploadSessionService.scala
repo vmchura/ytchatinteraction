@@ -19,27 +19,24 @@ import models.StarCraftModels.ReplayParsed
 
 import java.nio.file.Files
 
-
-/**
- * Key for identifying upload sessions by user and match
- */
+/** Key for identifying upload sessions by user and match
+  */
 case class SessionKey(userId: Long, matchId: Long, tournamentId: Long) {
   override def toString: String = s"${userId}_${matchId}_$tournamentId"
 }
 
-/**
- * Represents an upload session for a specific user and match
- */
+/** Represents an upload session for a specific user and match
+  */
 case class UploadSession(
-                          sessionId: SessionKey,
-                          challongeMatchID: Long,
-                          userId: Long,
-                          uploadState: UploadStateShared,
-                          createdAt: Instant,
-                          lastUpdated: Instant,
-                          isFinalized: Boolean = false,
-                          hash2StoreInformation: Map[String, StoredFileInfo] = Map.empty
-                        ) {
+    sessionId: SessionKey,
+    challongeMatchID: Long,
+    userId: Long,
+    uploadState: UploadStateShared,
+    createdAt: Instant,
+    lastUpdated: Instant,
+    isFinalized: Boolean = false,
+    hash2StoreInformation: Map[String, StoredFileInfo] = Map.empty
+) {
 
   def finalizeSession(): UploadSession = {
     copy(
@@ -48,26 +45,35 @@ case class UploadSession(
     )
   }
 
-  def withUploadStateShared(uploadStateShared: UploadStateShared): UploadSession = {
-    copy(uploadState = uploadState.copy(games = uploadState.games ++ uploadStateShared.games.filter {
-      case PendingGame(_) => true
-      case _ => false
-    }, winner = uploadStateShared.winner,
-      firstParticipant = uploadState.firstParticipant.copy(smurfs = uploadStateShared.firstParticipant.smurfs),
-      secondParticipant = uploadState.secondParticipant.copy(smurfs = uploadStateShared.secondParticipant.smurfs)))
+  def withUploadStateShared(
+      uploadStateShared: UploadStateShared
+  ): UploadSession = {
+    copy(uploadState =
+      uploadState.copy(
+        games = uploadState.games ++ uploadStateShared.games.filter {
+          case PendingGame(_) => true
+          case _              => false
+        },
+        winner = uploadStateShared.winner,
+        firstParticipant = uploadState.firstParticipant
+          .copy(smurfs = uploadStateShared.firstParticipant.smurfs),
+        secondParticipant = uploadState.secondParticipant.copy(smurfs =
+          uploadStateShared.secondParticipant.smurfs
+        )
+      )
+    )
   }
 }
 
-/**
- * In-memory service for managing upload sessions
- */
+/** In-memory service for managing upload sessions
+  */
 @Singleton
-class UploadSessionService @Inject()(
-                                      uploadedFileRepository: models.repository.UploadedFileRepository,
-                                      tournamentService: TournamentService,
-                                      userRepository: UserRepository,
-                                      fileStorageService: FileStorageService
-                                    )(implicit ec: ExecutionContext) {
+class UploadSessionService @Inject() (
+    uploadedFileRepository: models.repository.UploadedFileRepository,
+    tournamentService: TournamentService,
+    userRepository: UserRepository,
+    fileStorageService: FileStorageService
+)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
   private val sessions = new ConcurrentHashMap[SessionKey, UploadSession]()
@@ -80,63 +86,110 @@ class UploadSessionService @Inject()(
     uploadSession
   }
 
-  /**
-   * Start a new upload session for a user and match
-   */
-  def startSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
+  /** Start a new upload session for a user and match
+    */
+  def startSession(
+      user: User,
+      challongeMatchID: Long,
+      tournamentId: Long
+  ): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
-    val futSession = tournamentService.getMatch(tournamentId, challongeMatchID).flatMap {
-      case Some(TournamentMatch(_, _, firstUserId, secondUserId, winnerUserId, MatchStatus.Pending | MatchStatus.InProgress, _, createdAt)) =>
-        for {
-          firstUserOpt <- userRepository.getById(firstUserId)
-          secondUserOpt <- userRepository.getById(secondUserId)
-        } yield {
-          firstUserOpt.zip(secondUserOpt).map { (firstUser, secondUser) =>
-            val session = UploadSession(
-              sessionId = sessionKey,
-              challongeMatchID = challongeMatchID,
-              userId = user.userId,
-              uploadState = UploadStateShared(challongeMatchID = challongeMatchID, tournamentID = tournamentId, firstParticipant = ParticipantShared(firstUser.userId, firstUser.userName, Set.empty[String]), secondParticipant = ParticipantShared(secondUser.userId, secondUser.userName, Set.empty[String]), games = Nil, winner = Cancelled),
-              createdAt = Instant.now(),
-              lastUpdated = Instant.now()
-            )
-            persistState(session)
-          }
+    val futSession =
+      tournamentService.getMatch(tournamentId, challongeMatchID).flatMap {
+        case Some(
+              TournamentMatch(
+                _,
+                _,
+                firstUserId,
+                secondUserId,
+                winnerUserId,
+                MatchStatus.Pending | MatchStatus.InProgress,
+                _,
+                createdAt
+              )
+            ) =>
+          for {
+            firstUserOpt <- userRepository.getById(firstUserId)
+            secondUserOpt <- userRepository.getById(secondUserId)
+          } yield {
+            firstUserOpt.zip(secondUserOpt).map { (firstUser, secondUser) =>
+              val session = UploadSession(
+                sessionId = sessionKey,
+                challongeMatchID = challongeMatchID,
+                userId = user.userId,
+                uploadState = UploadStateShared(
+                  challongeMatchID = challongeMatchID,
+                  tournamentID = tournamentId,
+                  firstParticipant = ParticipantShared(
+                    firstUser.userId,
+                    firstUser.userName,
+                    Set.empty[String]
+                  ),
+                  secondParticipant = ParticipantShared(
+                    secondUser.userId,
+                    secondUser.userName,
+                    Set.empty[String]
+                  ),
+                  games = Nil,
+                  winner = Cancelled
+                ),
+                createdAt = Instant.now(),
+                lastUpdated = Instant.now()
+              )
+              persistState(session)
+            }
 
-        }
-      case _ => Future.successful(None)
-    }
+          }
+        case _ => Future.successful(None)
+      }
 
     futSession
   }
 
-  /**
-   * Get existing session or create a new one if it doesn't exist
-   */
-  def getOrCreateSession(user: User, challongeMatchID: Long, tournamentId: Long): Future[Option[UploadSession]] = {
+  /** Get existing session or create a new one if it doesn't exist
+    */
+  def getOrCreateSession(
+      user: User,
+      challongeMatchID: Long,
+      tournamentId: Long
+  ): Future[Option[UploadSession]] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
     Option(sessions.get(sessionKey)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
-        logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
+        logger.debug(
+          s"Retrieved existing session: ${existingSession.sessionId}"
+        )
         Future.successful(Some(existingSession))
       case Some(expiredSession) =>
-        logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
+        logger.info(
+          s"Session expired: ${expiredSession.sessionId}, creating new one"
+        )
         sessions.remove(sessionKey)
         Future.successful(None)
       case None =>
-        logger.info(s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID")
+        logger.info(
+          s"No session found, creating new one for user: ${user.userId}, challongeMatchID: $challongeMatchID"
+        )
         startSession(user, challongeMatchID, tournamentId)
     }
   }
 
-  def getSession(user: User, challongeMatchID: Long, tournamentId: Long): Option[UploadSession] = {
+  def getSession(
+      user: User,
+      challongeMatchID: Long,
+      tournamentId: Long
+  ): Option[UploadSession] = {
     val sessionKey = SessionKey(user.userId, challongeMatchID, tournamentId)
     Option(sessions.get(sessionKey)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
-        logger.debug(s"Retrieved existing session: ${existingSession.sessionId}")
+        logger.debug(
+          s"Retrieved existing session: ${existingSession.sessionId}"
+        )
         Some(existingSession)
       case Some(expiredSession) =>
-        logger.info(s"Session expired: ${expiredSession.sessionId}, creating new one")
+        logger.info(
+          s"Session expired: ${expiredSession.sessionId}, creating new one"
+        )
         sessions.remove(sessionKey)
         None
       case None =>
@@ -145,52 +198,123 @@ class UploadSessionService @Inject()(
     }
   }
 
-  /**
-   * Add a file to an existing session with duplicate detection (both local and global)
-   */
-  def addFileToSession(currentSession: UploadSession, fileResult: FileProcessResult): Future[UploadSession] = {
+  /** Add a file to an existing session with duplicate detection (both local and
+    * global)
+    */
+  def addFileToSession(
+      currentSession: UploadSession,
+      fileResult: FileProcessResult
+  ): Future[UploadSession] = {
 
     // Check for duplicates before adding
-    checkForDuplicateFile(fileResult).flatMap { isDuplicate =>
+    checkForDuplicateFile(fileResult).map { isDuplicate =>
       if (isDuplicate) {
-        logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
-        Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
-          uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en otras partidas", uuid))))
+        logger.info(
+          s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping"
+        )
+        currentSession.copy(
+          lastUpdated = java.time.Instant.now(),
+          uploadState = currentSession.uploadState.updateOnePendingTo(uuid =>
+            InvalidGame("Duplicado en otras partidas", uuid)
+          )
+        )
       } else {
         fileResult match {
           case FileProcessResult(_, _, _, _, _, errorMessage, _, None, _) =>
-            Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
-              uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("No Hash, archivo corrupto"), uuid))))
-          case FileProcessResult(_, _, _, _, _, _, _, Some(sha256Hash), _) if currentSession.uploadState.games.exists {
-            case ValidGame(_, _, _, hash, _) if hash.equals(sha256Hash) => true
-            case _ => false
-          } => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
-            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame("Duplicado en esta sesión", uuid))))
-          case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
-          Some(mapName), Some(startTime), _, teams, _, _, _)), Some(sha256Hash), path) =>
-            fileStorageService.storeFile(Files.readAllBytes(path), fileName,
-              fileResult.contentType, currentSession.userId, currentSession.challongeMatchID,
-              currentSession.sessionId.toString).map {
-              case Left(error) => currentSession.copy(lastUpdated = java.time.Instant.now(),
-                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(error, uuid)))
-              case Right(storedInfo) => currentSession.copy(lastUpdated = java.time.Instant.now(),
-                uploadState = currentSession.uploadState.updateOnePendingTo(uuid => ValidGame(teams.flatMap(_.participants.map(_.name)), mapName, LocalDateTime.now(), sha256Hash, uuid)).calculateWinner(),
-                hash2StoreInformation = currentSession.hash2StoreInformation + (sha256Hash -> storedInfo))
+            currentSession.copy(
+              lastUpdated = java.time.Instant.now(),
+              uploadState =
+                currentSession.uploadState.updateOnePendingTo(uuid =>
+                  InvalidGame(
+                    errorMessage.getOrElse("No Hash, archivo corrupto"),
+                    uuid
+                  )
+                )
+            )
+          case FileProcessResult(_, _, _, _, _, _, _, Some(sha256Hash), _)
+              if currentSession.uploadState.games.exists {
+                case ValidGame(_, _, _, hash, _) if hash.equals(sha256Hash) =>
+                  true
+                case _ => false
+              } =>
+            currentSession.copy(
+              lastUpdated = java.time.Instant.now(),
+              uploadState = currentSession.uploadState.updateOnePendingTo(
+                uuid => InvalidGame("Duplicado en esta sesión", uuid)
+              )
+            )
+          case FileProcessResult(
+                fileName,
+                originalSize,
+                contentType,
+                processedAt,
+                success,
+                _,
+                Some(
+                  ReplayParsed(
+                    Some(mapName),
+                    Some(startTime),
+                    _,
+                    teams,
+                    _,
+                    _,
+                    _
+                  )
+                ),
+                Some(sha256Hash),
+                path
+              ) =>
+            fileStorageService.storeFile(
+              Files.readAllBytes(path),
+              fileName,
+              fileResult.contentType,
+              currentSession.userId,
+              currentSession.challongeMatchID,
+              currentSession.sessionId.toString
+            ) match {
+              case Left(error) =>
+                currentSession.copy(
+                  lastUpdated = java.time.Instant.now(),
+                  uploadState = currentSession.uploadState.updateOnePendingTo(
+                    uuid => InvalidGame(error, uuid)
+                  )
+                )
+              case Right(storedInfo) =>
+                currentSession.copy(
+                  lastUpdated = java.time.Instant.now(),
+                  uploadState = currentSession.uploadState
+                    .updateOnePendingTo(uuid =>
+                      ValidGame(
+                        teams.flatMap(_.participants.map(_.name)),
+                        mapName,
+                        LocalDateTime.now(),
+                        sha256Hash,
+                        uuid
+                      )
+                    )
+                    .calculateWinner(),
+                  hash2StoreInformation =
+                    currentSession.hash2StoreInformation + (sha256Hash -> storedInfo)
+                )
             }
-          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) => Future.successful(currentSession.copy(lastUpdated = java.time.Instant.now(),
-            uploadState = currentSession.uploadState.updateOnePendingTo(uuid => InvalidGame(errorMessage.getOrElse("Otro error"), uuid))))
+          case FileProcessResult(_, _, _, _, _, errorMessage, _, _, _) =>
+            currentSession.copy(
+              lastUpdated = java.time.Instant.now(),
+              uploadState = currentSession.uploadState.updateOnePendingTo(
+                uuid => InvalidGame(errorMessage.getOrElse("Otro error"), uuid)
+              )
+            )
         }
       }
-
 
     }
   }
 
-
-  /**
-   * Check if a file already exists globally in the UploadedFileRepository
-   */
-  private def checkForDuplicateFile(fileResult: FileProcessResult): Future[Boolean] = {
+  /** Check if a file already exists globally in the UploadedFileRepository
+    */
+  private def checkForDuplicateFile(
+      fileResult: FileProcessResult
+  ): Future[Boolean] = {
     fileResult.sha256Hash match {
       case Some(sha256) =>
         val r = uploadedFileRepository.findBySha256Hash(sha256)
@@ -200,18 +324,23 @@ class UploadSessionService @Inject()(
     }
   }
 
-  /**
-   * Remove a specific file from session by SHA256 hash
-   */
-  def removeFileFromSession(currentSession: UploadSession, sessionUUID: UUID): UploadSession = {
-    currentSession.copy(uploadState = currentSession.uploadState.copy(games = currentSession.uploadState.games.filter {
-      _.sessionID.compareTo(sessionUUID) != 0
-    }).calculateWinner())
+  /** Remove a specific file from session by SHA256 hash
+    */
+  def removeFileFromSession(
+      currentSession: UploadSession,
+      sessionUUID: UUID
+  ): UploadSession = {
+    currentSession.copy(uploadState =
+      currentSession.uploadState
+        .copy(games = currentSession.uploadState.games.filter {
+          _.sessionID.compareTo(sessionUUID) != 0
+        })
+        .calculateWinner()
+    )
   }
 
-  /**
-   * Get all active sessions (for debugging/monitoring)
-   */
+  /** Get all active sessions (for debugging/monitoring)
+    */
   def getAllActiveSessions: List[UploadSession] = {
     val activeSessions = sessions.asScala.values
       .filter(session => !isSessionExpired(session))
@@ -223,20 +352,20 @@ class UploadSessionService @Inject()(
     activeSessions
   }
 
-  /**
-   * Get sessions for a specific match (both users)
-   */
+  /** Get sessions for a specific match (both users)
+    */
   def getSessionsForMatch(matchId: Long): List[UploadSession] = {
     val matchSessions = sessions.asScala.values
-      .filter(session => session.challongeMatchID == matchId && !isSessionExpired(session))
+      .filter(session =>
+        session.challongeMatchID == matchId && !isSessionExpired(session)
+      )
       .toList
 
     matchSessions
   }
 
-  /**
-   * Check if a session has expired
-   */
+  /** Check if a session has expired
+    */
   private def isSessionExpired(session: UploadSession): Boolean = {
     val timeoutMillis = sessionTimeoutMinutes * 60 * 1000
     val now = Instant.now()
@@ -244,13 +373,15 @@ class UploadSessionService @Inject()(
     session.lastUpdated.plusMillis(timeoutMillis).isBefore(now)
   }
 
-  /**
-   * Clean up expired sessions
-   */
+  /** Clean up expired sessions
+    */
   private def cleanupExpiredSessions(): Unit = {
-    val expiredKeys = sessions.asScala.filter { case (_, session) =>
-      isSessionExpired(session)
-    }.keys.toList
+    val expiredKeys = sessions.asScala
+      .filter { case (_, session) =>
+        isSessionExpired(session)
+      }
+      .keys
+      .toList
 
     expiredKeys.foreach { key =>
       sessions.remove(key)
