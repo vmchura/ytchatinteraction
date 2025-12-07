@@ -4,7 +4,7 @@ import evolutioncomplete.GameStateShared.*
 import evolutioncomplete.WinnerShared.Cancelled
 import evolutioncomplete.{ParticipantShared, UploadStateShared}
 import models.StarCraftModels.{ReplayParsed, SCMatchMode, SCRace, Team}
-import models.{MatchStatus, StarCraftModels, User}
+import models.*
 
 import javax.inject.*
 import java.util.concurrent.ConcurrentHashMap

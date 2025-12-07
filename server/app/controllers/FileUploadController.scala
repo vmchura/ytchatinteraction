@@ -9,9 +9,10 @@ import play.api.mvc.*
 import play.api.libs.json.{JsValue, Json, OWrites, Writes}
 import play.api.libs.Files.TemporaryFile
 import play.api.Logger
+import models._
 
 import scala.concurrent.{ExecutionContext, Future}
-import services.{FileProcessResult, FileStorageService, ParseReplayFileService, StoredFileInfo, UploadSession, UploadSessionService}
+import services.{FileProcessResult, FileStorageService, ParseReplayFileService, UploadSession, UploadSessionService}
 import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin

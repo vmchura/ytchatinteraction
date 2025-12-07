@@ -9,58 +9,7 @@ import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.time.Instant
 import java.util.UUID
 import scala.util.{Try, Success, Failure}
-
-trait BasicFileInfo:
-  def originalFileName: String
-  def storedFileName: String
-  def storedPath: String
-  def size: Long
-  def contentType: String
-  def storedAt: Instant
-  def userId: Long
-
-case class GenericFileInfo(
-    originalFileName: String,
-    storedFileName: String,
-    storedPath: String,
-    size: Long,
-    contentType: String,
-    storedAt: Instant,
-    userId: Long
-) extends BasicFileInfo
-
-case class StoredFileInfo(
-    originalFileName: String,
-    storedFileName: String,
-    storedPath: String,
-    size: Long,
-    contentType: String,
-    storedAt: Instant,
-    userId: Long,
-    matchId: Long,
-    sessionId: String
-) extends BasicFileInfo
-
-case class AnalyticalFileInfo(
-    originalFileName: String,
-    storedFileName: String,
-    storedPath: String,
-    size: Long,
-    contentType: String,
-    storedAt: Instant,
-    userId: Long
-) extends BasicFileInfo
-
-case class CasualMatchFileInfo(
-    originalFileName: String,
-    storedFileName: String,
-    storedPath: String,
-    size: Long,
-    contentType: String,
-    storedAt: Instant,
-    userId: Long,
-    casualMatchId: Long
-) extends BasicFileInfo
+import models.*
 
 /** Service for managing file storage operations
   */
