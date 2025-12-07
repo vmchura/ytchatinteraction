@@ -149,7 +149,7 @@ object ReplayUploader {
 
 
         val pendingFiles = validFiles.map(_ => PendingGame(UUID.randomUUID()))
-        uploadMatchState.value = uploadMatchState.value.withGames(pendingFiles ::: invalidFilesReason)
+        uploadMatchState.value = uploadMatchState.value.withExtraGames(pendingFiles ::: invalidFilesReason)
         postState(validFiles, uploadMatchState.value).onComplete {
           case Success(Right(value)) => uploadMatchState.value = value
           case Success(Left(error)) => println(error)

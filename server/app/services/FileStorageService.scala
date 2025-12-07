@@ -10,25 +10,11 @@ import java.time.Instant
 import java.util.UUID
 import scala.util.{Try, Success, Failure}
 import models.*
+import evolutioncomplete.TUploadStateShared
 
 /** Service for managing file storage operations
   */
 trait FileStorageService {
-  def storeFile(
-      fileBytes: Array[Byte],
-      originalFileName: String,
-      contentType: String,
-      userId: Long,
-      matchId: Long,
-      sessionId: String
-  ): Either[String, StoredFileInfo]
-
-  def storeAnalyticalFile(
-      fileBytes: Array[Byte],
-      originalFileName: String,
-      contentType: String,
-      userId: Long
-  ): Either[String, AnalyticalFileInfo]
 
   def deleteFile(storedPath: String): Future[Boolean]
 
@@ -36,14 +22,13 @@ trait FileStorageService {
 
   def getStorageStats: Future[Map[String, Any]]
 
-  def storeBasicFile[R](
+  def storeBasicFile[US <: TSessionUploadFile[US, F, SS], F <: BasicFileInfo, SS <: TUploadStateShared[SS]](
       fileBytes: Array[Byte],
       originalFileName: String,
       contentType: String,
       userId: Long,
-      prefix: String,
-      objectBuilder: GenericFileInfo => R
-  ): Either[String, R]
+      sessionUploadFile: US
+  ): Either[String, F]
 }
 
 @Singleton
@@ -58,14 +43,13 @@ class DefaultFileStorageService @Inject() (
   private val uploadStoragePath =
     configuration.get[String]("app.storage.uploads.path")
 
-  override def storeBasicFile[R](
+  override def storeBasicFile[US <: TSessionUploadFile[US, F, SS], F <: BasicFileInfo, SS <: TUploadStateShared[SS]](
       fileBytes: Array[Byte],
       originalFileName: String,
       contentType: String,
       userId: Long,
-      prefix: String,
-      objectBuilder: GenericFileInfo => R
-  ): Either[String, R] = {
+      sessionUploadFile: US
+  ): Either[String, F] = {
 
     try {
       // Ensure storage directory exists
@@ -80,7 +64,7 @@ class DefaultFileStorageService @Inject() (
       val timestamp = Instant.now().getEpochSecond
       val uniqueId = UUID.randomUUID().toString.substring(0, 8)
       val storedFileName =
-        s"${prefix}_${timestamp}_${uniqueId}${fileExtension}"
+        s"${sessionUploadFile.key}_${timestamp}_${uniqueId}${fileExtension}"
 
       // Create the full path
       val storedPath = storageDir.resolve(storedFileName)
@@ -99,98 +83,19 @@ class DefaultFileStorageService @Inject() (
       )
 
       logger.info(
-        s"Successfully stored file: $originalFileName as $storedFileName for user $userId, with prefix ${prefix}"
+        s"Successfully stored file: $originalFileName as $storedFileName for user $userId, with prefix ${sessionUploadFile.key}"
       )
-      Right(objectBuilder(storedFileInfo))
+      Right(sessionUploadFile.fromGenericFileInfo(storedFileInfo))
 
     } catch {
       case ex: Exception =>
         logger.error(
-          s"Failed to store file $originalFileName for user $userId, with prefix ${prefix}: ${ex.getMessage}",
+          s"Failed to store file $originalFileName for user $userId, with prefix ${sessionUploadFile.key}: ${ex.getMessage}",
           ex
         )
         Left(s"Failed to store file: ${ex.getMessage}")
     }
   }
-
-  override def storeFile(
-      fileBytes: Array[Byte],
-      originalFileName: String,
-      contentType: String,
-      userId: Long,
-      matchId: Long,
-      sessionId: String
-  ): Either[String, StoredFileInfo] = {
-
-    storeBasicFile[StoredFileInfo](
-      fileBytes,
-      originalFileName,
-      contentType,
-      userId,
-      s"${userId}_$matchId",
-      _ match {
-          case GenericFileInfo(
-                originalFileName,
-                storedFileName,
-                storedPath,
-                size,
-                contentType,
-                storedAt,
-                userId
-              ) =>
-            StoredFileInfo(
-              originalFileName,
-              storedFileName,
-              storedPath,
-              size,
-              contentType,
-              storedAt,
-              userId,
-              matchId,
-              sessionId
-            )
-        }
-    )
-
-  }
-
-  override def storeAnalyticalFile(
-      fileBytes: Array[Byte],
-      originalFileName: String,
-      contentType: String,
-      userId: Long
-  ): Either[String, AnalyticalFileInfo] = {
-
-    storeBasicFile(
-      fileBytes,
-      originalFileName,
-      contentType,
-      userId,
-      s"$userId",
-      _ match {
-          case GenericFileInfo(
-                originalFileName,
-                storedFileName,
-                storedPath,
-                size,
-                contentType,
-                storedAt,
-                userId
-              ) =>
-            AnalyticalFileInfo(
-              originalFileName,
-              storedFileName,
-              storedPath,
-              size,
-              contentType,
-              storedAt,
-              userId
-            )
-        }
-    )
-
-  }
-
 
   override def deleteFile(storedPath: String): Future[Boolean] = Future {
     try {

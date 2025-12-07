@@ -17,15 +17,14 @@ import models.repository.UserRepository
 
 import java.nio.file.Files
 
-
 case class AnalyticalUploadSession(
-                                    userId: Long,
-                                    fileResult: FileProcessResult,
-                                    createdAt: Instant,
-                                    lastUpdated: Instant,
-                                    storageInfo: AnalyticalFileInfo,
-                                    isFinalized: Boolean = false
-                                  ) {
+    userId: Long,
+    fileResult: FileProcessResult,
+    createdAt: Instant,
+    lastUpdated: Instant,
+    storageInfo: AnalyticalFileInfo,
+    isFinalized: Boolean = false
+) {
   val players: Seq[StarCraftModels.SCPlayer] = fileResult.gameInfo match {
     case Some(ReplayParsed(_, _, _, teams, _, _, _)) =>
 
@@ -37,28 +36,32 @@ case class AnalyticalUploadSession(
       }
     case _ => List.empty
   }
-  val sha256Hash: String = fileResult.sha256Hash.getOrElse(UUID.randomUUID().toString)
+  val sha256Hash: String =
+    fileResult.sha256Hash.getOrElse(UUID.randomUUID().toString)
 
-  def userRaceGivenPlayerId(playerId: Int): Option[SCRace] = players.find(_.id == playerId).map(p => p.race)
+  def userRaceGivenPlayerId(playerId: Int): Option[SCRace] =
+    players.find(_.id == playerId).map(p => p.race)
 
-  def rivalRaceGivenPlayerId(playerId: Int): Option[SCRace] = players.find(_.id != playerId).map(p => p.race)
+  def rivalRaceGivenPlayerId(playerId: Int): Option[SCRace] =
+    players.find(_.id != playerId).map(p => p.race)
 
   val frames: Option[Int] = fileResult.gameInfo match {
     case Some(ReplayParsed(_, _, _, _, _, Some(frames), _)) if frames > 9_000 =>
       Some(frames)
     case _ => None
   }
-  val isValid: Boolean = players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
+  val isValid: Boolean =
+    players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
 
 }
 
 @Singleton
-class AnalyticalUploadSessionService @Inject()(
-                                                uploadedFileRepository: models.repository.UploadedFileRepository,
-                                                analyticalFileRepository: models.repository.AnalyticalFileRepository,
-                                                userRepository: UserRepository,
-                                                fileStorageService: FileStorageService
-                                              )(implicit ec: ExecutionContext) {
+class AnalyticalUploadSessionService @Inject() (
+    uploadedFileRepository: models.repository.UploadedFileRepository,
+    analyticalFileRepository: models.repository.AnalyticalFileRepository,
+    userRepository: UserRepository,
+    fileStorageService: FileStorageService
+)(implicit ec: ExecutionContext) {
 
   private val logger = Logger(getClass)
   private val sessions = new ConcurrentHashMap[Long, AnalyticalUploadSession]()
@@ -66,15 +69,15 @@ class AnalyticalUploadSessionService @Inject()(
   // Session timeout in minutes
   private val sessionTimeoutMinutes = 30
 
-  def persistState(uploadSession: AnalyticalUploadSession): AnalyticalUploadSession = {
+  def persistState(
+      uploadSession: AnalyticalUploadSession
+  ): AnalyticalUploadSession = {
     sessions.put(uploadSession.userId, uploadSession)
     uploadSession
   }
 
-
-  /**
-   * Get existing session or create a new one if it doesn't exist
-   */
+  /** Get existing session or create a new one if it doesn't exist
+    */
   def getSession(user: User): Option[AnalyticalUploadSession] = {
     Option(sessions.get(user.userId)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
@@ -87,21 +90,49 @@ class AnalyticalUploadSessionService @Inject()(
     }
   }
 
-  def startSession(user: User, fileResult: FileProcessResult): Future[Option[AnalyticalUploadSession]] = {
+  def startSession(
+      user: User,
+      fileResult: FileProcessResult
+  ): Future[Option[AnalyticalUploadSession]] = {
 
     checkForDuplicateFile(fileResult).map { isDuplicate =>
       if (isDuplicate) {
-        logger.info(s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping")
+        logger.info(
+          s"File ${fileResult.fileName} with SHA256 ${fileResult.sha256Hash.getOrElse("unknown")} already exists globally, skipping"
+        )
         None
       } else {
 
         fileResult match {
           case FileProcessResult(_, _, _, _, _, errorMessage, _, None, _) =>
             None
-          case FileProcessResult(fileName, originalSize, contentType, processedAt, success, _, Some(ReplayParsed(
-          Some(mapName), Some(startTime), _, teams, _, _, _)), Some(sha256Hash), path) =>
-            fileStorageService.storeAnalyticalFile(Files.readAllBytes(path), fileName,
-              fileResult.contentType, user.userId) match {
+          case FileProcessResult(
+                fileName,
+                originalSize,
+                contentType,
+                processedAt,
+                success,
+                _,
+                Some(
+                  ReplayParsed(
+                    Some(mapName),
+                    Some(startTime),
+                    _,
+                    teams,
+                    _,
+                    _,
+                    _
+                  )
+                ),
+                Some(sha256Hash),
+                path
+              ) =>
+            fileStorageService.storeAnalyticalFile(
+              Files.readAllBytes(path),
+              fileName,
+              fileResult.contentType,
+              user.userId
+            ) match {
               case Left(error) =>
                 None
               case Right(storedInfo) =>
@@ -118,20 +149,23 @@ class AnalyticalUploadSessionService @Inject()(
         }
       }
 
-
     }
   }
 
-
-  /**
-   * Check if a file already exists globally in the UploadedFileRepository
-   */
-  private def checkForDuplicateFile(fileResult: FileProcessResult): Future[Boolean] = {
+  /** Check if a file already exists globally in the UploadedFileRepository
+    */
+  private def checkForDuplicateFile(
+      fileResult: FileProcessResult
+  ): Future[Boolean] = {
     fileResult.sha256Hash match {
       case Some(sha256) =>
         for {
-          duplicateByTournaments <- uploadedFileRepository.findBySha256Hash(sha256)
-          duplicateByAnalytical <- analyticalFileRepository.findBySha256Hash(sha256)
+          duplicateByTournaments <- uploadedFileRepository.findBySha256Hash(
+            sha256
+          )
+          duplicateByAnalytical <- analyticalFileRepository.findBySha256Hash(
+            sha256
+          )
         } yield {
           duplicateByTournaments.isDefined || duplicateByAnalytical.isDefined
         }
@@ -140,9 +174,8 @@ class AnalyticalUploadSessionService @Inject()(
     }
   }
 
-  /**
-   * Get all active sessions (for debugging/monitoring)
-   */
+  /** Get all active sessions (for debugging/monitoring)
+    */
   def getAllActiveSessions: List[AnalyticalUploadSession] = {
     val activeSessions = sessions.asScala.values
       .filter(session => !isSessionExpired(session))
@@ -154,10 +187,8 @@ class AnalyticalUploadSessionService @Inject()(
     activeSessions
   }
 
-
-  /**
-   * Check if a session has expired
-   */
+  /** Check if a session has expired
+    */
   private def isSessionExpired(session: AnalyticalUploadSession): Boolean = {
     val timeoutMillis = sessionTimeoutMinutes * 60 * 1000
     val now = Instant.now()
@@ -165,13 +196,15 @@ class AnalyticalUploadSessionService @Inject()(
     session.lastUpdated.plusMillis(timeoutMillis).isBefore(now)
   }
 
-  /**
-   * Clean up expired sessions
-   */
+  /** Clean up expired sessions
+    */
   private def cleanupExpiredSessions(): Unit = {
-    val expiredKeys = sessions.asScala.filter { case (_, session) =>
-      isSessionExpired(session)
-    }.keys.toList
+    val expiredKeys = sessions.asScala
+      .filter { case (_, session) =>
+        isSessionExpired(session)
+      }
+      .keys
+      .toList
 
     expiredKeys.foreach { key =>
       sessions.remove(key)
@@ -183,7 +216,9 @@ class AnalyticalUploadSessionService @Inject()(
     }
   }
 
-  def finalizeSession(session: AnalyticalUploadSession): AnalyticalUploadSession = {
+  def finalizeSession(
+      session: AnalyticalUploadSession
+  ): AnalyticalUploadSession = {
     persistState(session.copy(isFinalized = true))
   }
 }

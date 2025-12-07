@@ -52,14 +52,16 @@ case class SmurfSelection(
     options: List[(String, Boolean, String, String)]
 )
 
-case class UploadStateShared(
-    challongeMatchID: Long,
-    tournamentID: Long,
-    firstParticipant: ParticipantShared,
-    secondParticipant: ParticipantShared,
-    games: List[GameStateShared],
-    winner: WinnerShared
-) derives ReadWriter {
+trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
+  def firstParticipant: ParticipantShared
+  def secondParticipant: ParticipantShared
+  def games: List[GameStateShared]
+  def winner: WinnerShared
+  def withFirstParticipant(participant: ParticipantShared): SS
+  def withSecondParticipant(participant: ParticipantShared): SS
+  def withGames(games: List[GameStateShared]): SS
+  def withWinner(winner: WinnerShared): SS
+
   def getLabelStatus(): String = {
     winner match {
       case Undefined                            => "-"
@@ -99,25 +101,23 @@ case class UploadStateShared(
     game
   )._2
 
-  def addSmurfToFirstParticipant(smurf: String): UploadStateShared = {
-    copy(
-      firstParticipant =
-        firstParticipant.copy(smurfs = firstParticipant.smurfs + smurf),
-      secondParticipant =
-        secondParticipant.copy(smurfs = secondParticipant.smurfs - smurf)
+  def addSmurfToFirstParticipant(smurf: String): SS = {
+    withFirstParticipant(
+      firstParticipant.copy(smurfs = firstParticipant.smurfs + smurf)
+    ).withSecondParticipant(
+      secondParticipant.copy(smurfs = secondParticipant.smurfs - smurf)
     )
   }
 
-  def addSmurfToSecondParticipant(smurf: String): UploadStateShared = {
-    copy(
-      firstParticipant =
-        firstParticipant.copy(smurfs = firstParticipant.smurfs - smurf),
-      secondParticipant =
-        secondParticipant.copy(smurfs = secondParticipant.smurfs + smurf)
+  def addSmurfToSecondParticipant(smurf: String): SS = {
+    withFirstParticipant(
+      firstParticipant.copy(smurfs = firstParticipant.smurfs - smurf)
+    ).withSecondParticipant(
+      secondParticipant.copy(smurfs = secondParticipant.smurfs + smurf)
     )
   }
 
-  def addSmurfToParticipant(id: String, smurf: String): UploadStateShared = {
+  def addSmurfToParticipant(id: String, smurf: String): SS = {
     val allSmurfs = getSmurfs.map(_._1)
     if (allSmurfs.contains(smurf)) {
       if (allSmurfs.length == 2) {
@@ -174,43 +174,43 @@ case class UploadStateShared(
 
   }
 
-  def withWinner(winnerShared: String): UploadStateShared = {
-    copy(winner = WinnerShared.valueOf(winnerShared))
+  def withWinner(winnerShared: String): SS = {
+    withWinner(WinnerShared.valueOf(winnerShared))
   }
 
-  def calculateWinner(): UploadStateShared = {
+  def calculateWinner(): SS = {
     winner match {
       case Cancelled =>
-        copy(winner =
+        withWinner(
           if (games.nonEmpty) WinnerShared.FirstUser else WinnerShared.Cancelled
         )
       case _ => this
     }
   }
 
-  def withGames(newGames: List[GameStateShared]): UploadStateShared = {
-    copy(games = games ::: newGames)
+  def withExtraGames(newGames: List[GameStateShared]): SS = {
+    withGames(games ::: newGames)
   }
 
-  def updateOnePendingTo(f: UUID => GameStateShared): UploadStateShared = {
+  def updateOnePendingTo(f: UUID => GameStateShared): SS = {
     val (noPending, firstPends) = games.span {
       case PendingGame(_) => false
       case _              => true
     }
     firstPends match {
       case PendingGame(uuid) :: rest =>
-        copy(games = f(uuid) :: rest ::: noPending)
+        withGames(f(uuid) :: rest ::: noPending)
       case _ => throw new IllegalStateException("No pending?")
     }
   }
 
-  def updateToPending(sessionUUID: UUID): UploadStateShared = {
+  def updateToPending(sessionUUID: UUID): SS = {
     val newGames = games.map {
       case g if g.sessionID.compareTo(sessionUUID) == 0 =>
         PendingGame(g.sessionID)
       case g => g
     }
-    copy(games = newGames)
+    withGames(newGames)
   }
 
   def notEnoughToBeClosed: Boolean = {
@@ -235,8 +235,51 @@ case class UploadStateShared(
   }
 }
 
-object UploadStateShared {
-  def default(): UploadStateShared = UploadStateShared(
+case class TournamentUploadStateShared(
+    challongeMatchID: Long,
+    tournamentID: Long,
+    firstParticipant: ParticipantShared,
+    secondParticipant: ParticipantShared,
+    games: List[GameStateShared],
+    winner: WinnerShared
+) extends TUploadStateShared[TournamentUploadStateShared] derives ReadWriter:
+  override def withFirstParticipant(
+      participant: ParticipantShared
+  ): TournamentUploadStateShared = copy(firstParticipant = participant)
+  override def withSecondParticipant(
+      participant: ParticipantShared
+  ): TournamentUploadStateShared = copy(secondParticipant = participant)
+  override def withGames(
+      games: List[GameStateShared]
+  ): TournamentUploadStateShared = copy(games = games)
+  override def withWinner(winner: WinnerShared): TournamentUploadStateShared =
+    copy(winner = winner)
+
+case class AnalyticalUploadStateShared(
+    firstParticipant: ParticipantShared,
+    games: List[GameStateShared]
+) extends TUploadStateShared[AnalyticalUploadStateShared] derives ReadWriter:
+  override def secondParticipant: ParticipantShared =
+    throw new IllegalAccessException("no implemented secondParticipant")
+  override def winner: WinnerShared = throw new IllegalAccessException(
+    "no implemented winner"
+  )
+  override def withFirstParticipant(
+      participant: ParticipantShared
+  ): AnalyticalUploadStateShared = copy(firstParticipant = participant)
+  override def withSecondParticipant(
+      participant: ParticipantShared
+  ): AnalyticalUploadStateShared = throw new IllegalAccessException(
+    "no implemented withSecondParticipant"
+  )
+  override def withGames(
+      games: List[GameStateShared]
+  ): AnalyticalUploadStateShared = copy(games = games)
+  override def withWinner(winner: WinnerShared): AnalyticalUploadStateShared =
+    throw new IllegalAccessException("no implemented withWinner")
+
+object TournamentUploadStateShared {
+  def default(): TournamentUploadStateShared = TournamentUploadStateShared(
     0,
     0,
     ParticipantShared(0, "Flash", Set.empty[String]),
@@ -245,7 +288,7 @@ object UploadStateShared {
     Cancelled
   )
 
-  def errorOne(): UploadStateShared = UploadStateShared(
+  def errorOne(): TournamentUploadStateShared = TournamentUploadStateShared(
     0,
     0,
     ParticipantShared(0, "Error", Set.empty[String]),
