@@ -26,35 +26,38 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Singleton
-class AnalyticalUploadController @Inject()(
-                                            components: DefaultSilhouetteControllerComponents,
-                                            parseReplayFileService: ParseReplayFileService,
-                                            uploadSessionService: AnalyticalUploadSessionService,
-                                            fileStorageService: FileStorageService,
-                                            analyticalFileRepository: AnalyticalFileRepository,
-                                            tournamentService: services.TournamentService,
-                                            userRepository: models.repository.UserRepository,
-                                            analyticalReplayService: AnalyticalReplayService
-                                          )(implicit ec: ExecutionContext)
-  extends SilhouetteController(components) {
+class AnalyticalUploadController @Inject() (
+    components: DefaultSilhouetteControllerComponents,
+    parseReplayFileService: ParseReplayFileService,
+    uploadSessionService: AnalyticalUploadSessionService,
+    fileStorageService: FileStorageService,
+    analyticalFileRepository: AnalyticalFileRepository,
+    tournamentService: services.TournamentService,
+    userRepository: models.repository.UserRepository,
+    analyticalReplayService: AnalyticalReplayService
+)(implicit ec: ExecutionContext)
+    extends SilhouetteController(components) {
 
   private val logger = Logger(getClass)
 
-  def uploadAnalyticalFile(): Action[AnyContent] = silhouette.SecuredAction.async {
-    implicit request =>
-
-      analyticalFileRepository.findByUserId(request.identity.userId).map { files =>
-        val groupedFiles = files.groupBy(_.userRace).map(u => (u._1, u._2.groupBy(_.rivalRace).map(r => (r._1, r._2.length))))
-        Ok(
-          views.html.analyticalUpload(
-            request.identity,
-            groupedFiles
+  def uploadAnalyticalFile(): Action[AnyContent] =
+    silhouette.SecuredAction.async { implicit request =>
+      analyticalFileRepository.findByUserId(request.identity.userId).map {
+        files =>
+          val groupedFiles = files
+            .groupBy(_.userRace)
+            .map(u =>
+              (u._1, u._2.groupBy(_.rivalRace).map(r => (r._1, r._2.length)))
+            )
+          Ok(
+            views.html.analyticalUpload(
+              request.identity,
+              groupedFiles
+            )
           )
-        )
       }
 
-
-  }
+    }
 
   def updateState(): Action[MultipartFormData[TemporaryFile]] =
     silhouette.SecuredAction.async(parse.multipartFormData) {
@@ -65,8 +68,9 @@ class AnalyticalUploadController @Inject()(
             for {
               processed <- parseReplayFileService
                 .validateAndProcessSingleFile(part)
-              analyticalSessionOpt = AnalyticalSession.build(request.identity, processed, 
-              newSession <- uploadSessionService.startSession(request.identity, processed)
+              newSession <- uploadSessionService.startSession(
+                MetaAnalyticalSession(request.identity.userId, processed)
+              )
             } yield {
               newSession
             }
@@ -88,51 +92,77 @@ class AnalyticalUploadController @Inject()(
         }
     }
 
-  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    Forms.analyticalFileDataForm.bindFromRequest().fold(
-      formWithErrors => {
-        Future.successful(
-          Redirect(
-            routes.AnalyticalUploadController.uploadAnalyticalFile()
-          ))
-      },
-      analyticalFileData => {
-        uploadSessionService.getSession(request.identity) match {
-          case Some(session) if session.sha256Hash.equals(analyticalFileData.fileHash) =>
-            val analyticalFile = for {
-              userRace <- session.userRaceGivenPlayerId(analyticalFileData.playerID)
-              rivalRace <- session.rivalRaceGivenPlayerId(analyticalFileData.playerID)
-              frames <- session.frames
-            } yield {
-              AnalyticalFile(0,
-                request.identity.userId,
-                session.sha256Hash,
-                session.storageInfo.originalFileName, session.storageInfo.storedPath,
-                session.storageInfo.storedFileName, session.storageInfo.storedAt,
-                analyticalFileData.playerID, userRace,
-                rivalRace, frames,
-                None, None
+  def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async {
+    implicit request =>
+      Forms.analyticalFileDataForm
+        .bindFromRequest()
+        .fold(
+          formWithErrors => {
+            Future.successful(
+              Redirect(
+                routes.AnalyticalUploadController.uploadAnalyticalFile()
               )
-            }
-            analyticalFile match {
-              case Some(af) => analyticalFileRepository.create(af).map { _ =>
-                Redirect(
-                  routes.AnalyticalUploadController.uploadAnalyticalFile()
-                )
-              }
-              case None => Future.successful(
-                Redirect(
-                  routes.AnalyticalUploadController.uploadAnalyticalFile()
-                )
-              )
-            }
+            )
+          },
+          analyticalFileData => {
+            uploadSessionService.getSession(
+              f"${request.identity.userId}"
+            ) match {
+              case Some(
+                    session @ AnalyticalSession(
+                      userId,
+                      uploadState,
+                      Some(storageInfo),
+                      lastUpdated,
+                      finalResult
+                    )
+                  ) if session.sha256Hash.equals(analyticalFileData.fileHash) =>
+                val analyticalFile = for {
+                  userRace <- session
+                    .userRaceGivenPlayerId(analyticalFileData.playerID)
+                  rivalRace <- session
+                    .rivalRaceGivenPlayerId(analyticalFileData.playerID)
+                  frames <- session.frames
+                } yield {
+                  AnalyticalFile(
+                    0,
+                    request.identity.userId,
+                    session.sha256Hash,
+                    storageInfo.originalFileName,
+                    storageInfo.storedPath,
+                    storageInfo.storedFileName,
+                    storageInfo.storedAt,
+                    analyticalFileData.playerID,
+                    userRace,
+                    rivalRace,
+                    frames,
+                    None,
+                    None
+                  )
+                }
+                analyticalFile match {
+                  case Some(af) =>
+                    analyticalFileRepository.create(af).map { _ =>
+                      Redirect(
+                        routes.AnalyticalUploadController.uploadAnalyticalFile()
+                      )
+                    }
+                  case None =>
+                    Future.successful(
+                      Redirect(
+                        routes.AnalyticalUploadController.uploadAnalyticalFile()
+                      )
+                    )
+                }
 
-
-          case _ =>
-            Future.successful(Redirect(
-              routes.AnalyticalUploadController.uploadAnalyticalFile()
-            ))
-        }
-      })
+              case _ =>
+                Future.successful(
+                  Redirect(
+                    routes.AnalyticalUploadController.uploadAnalyticalFile()
+                  )
+                )
+            }
+          }
+        )
   }
 }

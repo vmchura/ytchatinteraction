@@ -1,13 +1,13 @@
 package controllers
 
 import models.repository.{AnalyticalResultRepository, UploadedFileRepository, UserAliasRepository}
-import models.{AnalyticalResultView, MatchStatus, TournamentMatch, UserSmurf}
+import models._
 
 import javax.inject.*
 import play.api.mvc.*
 import play.api.data.*
 import play.api.data.Forms.*
-import services.{AnalyticalReplayService, FileProcessResult, UploadSession}
+import services._
 import evolutioncomplete.GameStateShared.ValidGame
 import evolutioncomplete.ParticipantShared
 import evolutioncomplete.WinnerShared.*
@@ -22,7 +22,7 @@ import utils.auth.WithAdmin
 class MatchResultController @Inject()(components: DefaultSilhouetteControllerComponents,
                                       tournamentService: services.TournamentService,
                                       userSmurfService: services.UserSmurfService,
-                                      uploadSessionService: services.UploadSessionService,
+                                      uploadSessionService: services.TournamentUploadSessionService,
                                       uploadedFileRepository: UploadedFileRepository,
                                       analyticalReplayService: AnalyticalReplayService,
                                       analyticalResultRepository: AnalyticalResultRepository,
@@ -40,7 +40,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
     )
   }
 
-  private def persistMetaDataSessionFiles(session: UploadSession): Future[Int] = {
+  private def persistMetaDataSessionFiles(session: TournamentSession): Future[Int] = {
     Future.sequence(session.uploadState.games.filter {
       case ValidGame(_, _, _, _, _) => true
       case _ => false
@@ -50,8 +50,8 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
     }.flatMap(hash => session.hash2StoreInformation.get(hash).map((hash, _)).map { case (hash, storedInfo) =>
       val uploadedFile = models.UploadedFile(
         userId = session.userId,
-        tournamentId = session.uploadState.tournamentID,
-        matchId = session.challongeMatchID,
+        tournamentId = session.tournamentId,
+        matchId = session.matchId,
         sha256Hash = hash,
         originalName = storedInfo.originalFileName,
         relativeDirectoryPath = storedInfo.storedPath,
@@ -80,7 +80,7 @@ class MatchResultController @Inject()(components: DefaultSilhouetteControllerCom
             case Some(_) => Future.failed(new IllegalStateException("Match already resolved"))
             case _ => Future.failed(new IllegalStateException("Match not found"))
           }
-          currentSessionOption = uploadSessionService.getSession(request.identity, challongeMatchID, tournamentId)
+          currentSessionOption = uploadSessionService.getSession(f"${request.identity.userId}_${challongeMatchID}_${tournamentId}")
           currentSession <- currentSessionOption match {
             case Some(session) => Future.successful(session)
             case _ => Future.failed(new IllegalStateException("No session found"))

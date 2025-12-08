@@ -2,7 +2,7 @@ package controllers
 
 import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
-import evolutioncomplete.{ParticipantShared, UploadStateShared}
+import evolutioncomplete._
 import forms.Forms
 import models.StarCraftModels.Terran
 import models.repository.{AnalyticalFileRepository, UploadedFileRepository}

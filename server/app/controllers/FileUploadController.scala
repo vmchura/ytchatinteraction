@@ -2,7 +2,7 @@ package controllers
 
 import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
-import evolutioncomplete.{ParticipantShared, UploadStateShared}
+import evolutioncomplete._
 import java.nio.file.Files
 import javax.inject.*
 import play.api.mvc.*
@@ -12,7 +12,7 @@ import play.api.Logger
 import models._
 
 import scala.concurrent.{ExecutionContext, Future}
-import services.{FileProcessResult, FileStorageService, ParseReplayFileService, UploadSession, UploadSessionService}
+import services._
 import models.{TournamentMatch, User}
 import play.silhouette.api.actions.SecuredRequest
 import utils.auth.WithAdmin
@@ -26,7 +26,7 @@ import java.util.UUID
 class FileUploadController @Inject()(
                                       components: DefaultSilhouetteControllerComponents,
                                       parseReplayFileService: ParseReplayFileService,
-                                      uploadSessionService: UploadSessionService,
+                                      uploadSessionService: TournamentUploadSessionService,
                                       fileStorageService: FileStorageService,
                                       uploadedFileRepository: models.repository.UploadedFileRepository,
                                       tournamentService: services.TournamentService,
@@ -37,7 +37,7 @@ class FileUploadController @Inject()(
 
 
   def removeFile(tournamentId: Long, matchId: Long, sessionUUID: UUID): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    uploadSessionService.getOrCreateSession(request.identity, matchId, tournamentId).map {
+    uploadSessionService.getOrCreateSession(MetaTournamentSession(request.identity.userId, matchId, tournamentId)).map {
       case Some(session) =>
         val newState = uploadSessionService.persistState(uploadSessionService.removeFileFromSession(session, sessionUUID))
         Ok(write(newState.uploadState))
@@ -52,23 +52,19 @@ class FileUploadController @Inject()(
    * Store a processed file using FileStorageService and save record to database
    */
   private def storeProcessedFile(
-                                  user: User,
-                                  tournamentId: Long,
-                                  matchId: Long,
-                                  sessionId: String,
+                                  session: TournamentSession,
                                   fileResult: services.FileProcessResult,
                                   fileBytes: Array[Byte]
                                 ): Either[String, StoredFileInfo] = {
     if (fileResult.success && fileBytes.nonEmpty && fileResult.sha256Hash.isDefined) {
       for {
         // Store the file on disk
-        storageResult <- fileStorageService.storeFile(
+        storageResult <- fileStorageService.storeBasicFile(
           fileBytes = fileBytes,
           originalFileName = fileResult.fileName,
           contentType = fileResult.contentType,
-          userId = user.userId,
-          matchId = matchId,
-          sessionId = sessionId
+          userId = session.userId,
+          sessionUploadFile = session
         )
       } yield storageResult
     } else {
@@ -76,7 +72,7 @@ class FileUploadController @Inject()(
     }
   }
   def fetchState(challongeMatchID: Long, tournamentId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    uploadSessionService.getOrCreateSession(request.identity, challongeMatchID, tournamentId).map {
+    uploadSessionService.getOrCreateSession(MetaTournamentSession(request.identity.userId, challongeMatchID, tournamentId)).map {
       case Some(session) => Ok(write(session.uploadState))
       case None => BadRequest(Json.toJson(Map(
         "error" -> "Session not available"
@@ -89,10 +85,10 @@ class FileUploadController @Inject()(
     val session = request.body.files
       .find(_.key == "state")
       .flatMap { part =>
-        Try(read[UploadStateShared](new String(Files.readAllBytes(part.ref.path), "UTF-8"))).toOption
+        Try(read[TournamentUploadStateShared](new String(Files.readAllBytes(part.ref.path), "UTF-8"))).toOption
       } match {
       case Some(value) =>
-        uploadSessionService.getOrCreateSession(request.identity, value.challongeMatchID, value.tournamentID).map(_.map(_.withUploadStateShared(value)))
+        uploadSessionService.getOrCreateSession(MetaTournamentSession(request.identity.userId, value.challongeMatchID, value.tournamentID)).map(_.map(_.withUploadStateShared(value)))
       case None => Future.successful(None)
     }
     session.flatMap{
@@ -113,7 +109,7 @@ class FileUploadController @Inject()(
           uploadSessionService.persistState(session)
         }
         
-        newSession.map(sessionUpdated => Ok(write[UploadStateShared](sessionUpdated.uploadState)))
+        newSession.map(sessionUpdated => Ok(write[TournamentUploadStateShared](sessionUpdated.uploadState)))
 
     }
   }

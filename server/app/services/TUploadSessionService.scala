@@ -71,19 +71,19 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   }
 
   def getSession(
-      potentialSession: M
+      potentialSessionKey: String
   ): Option[US] = {
-    Option(sessions.get(potentialSession.key)) match {
+    Option(sessions.get(potentialSessionKey)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
         logger.debug(
-          s"Retrieved existing session: ${potentialSession}"
+          s"Retrieved existing session: ${potentialSessionKey}"
         )
         Some(existingSession)
       case Some(expiredSession) =>
         logger.info(
-          s"Session expired: ${potentialSession} removing it"
+          s"Session expired: ${potentialSessionKey} removing it"
         )
-        sessions.remove(potentialSession.key)
+        sessions.remove(potentialSessionKey)
         None
       case None =>
         logger.info(s"No session found")

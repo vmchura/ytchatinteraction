@@ -61,10 +61,15 @@ case class CasualMatchFileInfo(
 trait TMetaSession:
   def key: String
 
-case class MetaTournamentSession(userId: Long, matchId: Long, tournamentId: Long):
+case class MetaTournamentSession(
+    userId: Long,
+    matchId: Long,
+    tournamentId: Long
+) extends TMetaSession:
   def key = f"${userId}_${matchId}_${tournamentId}"
 
-case class MetaAnalyticalSession(userId: Long, fileResult: FileProcessResult):
+case class MetaAnalyticalSession(userId: Long, fileResult: FileProcessResult)
+    extends TMetaSession:
   def key = f"${userId}"
 
 trait TSessionUploadFile[
@@ -168,7 +173,8 @@ case class AnalyticalSession(
       AnalyticalFileInfo,
       AnalyticalUploadStateShared
     ]:
-  override def hash2StoreInformation: Map[String, AnalyticalFileInfo] = throw new IllegalAccessError("hash2StoreInformation no implemented")
+  override def hash2StoreInformation: Map[String, AnalyticalFileInfo] =
+    throw new IllegalAccessError("hash2StoreInformation no implemented")
   override def key: String = s"${userId}"
   override def fromGenericFileInfo(
       genericFileInfo: GenericFileInfo
@@ -218,7 +224,9 @@ case class AnalyticalSession(
   override def withNewHash(
       hash: String,
       newFile: AnalyticalFileInfo
-  ): AnalyticalSession = throw new IllegalAccessError("with New Hash not implemented")
+  ): AnalyticalSession = throw new IllegalAccessError(
+    "with New Hash not implemented"
+  )
 
   val players: Seq[StarCraftModels.SCPlayer] = fileResult.gameInfo match {
     case Some(ReplayParsed(_, _, _, teams, _, _, _)) =>
@@ -247,5 +255,3 @@ case class AnalyticalSession(
   }
   val isValid: Boolean =
     players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
-
-

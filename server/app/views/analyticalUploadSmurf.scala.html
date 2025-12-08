@@ -3,8 +3,8 @@
 @import models.StarCraftModels._
 @import helper._
 @import play.api.data.Form
-@import services.AnalyticalUploadSession
-@(user: User, session: AnalyticalUploadSession)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@import models.AnalyticalSession
+@(user: User, session: AnalyticalSession)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("upload.title"), Some(user)) {
 <div id="file-upload-container"></div>
