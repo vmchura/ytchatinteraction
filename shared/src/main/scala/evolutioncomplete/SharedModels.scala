@@ -179,12 +179,16 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
   }
 
   def calculateWinner(): SS = {
-    winner match {
-      case Cancelled =>
-        withWinner(
-          if (games.nonEmpty) WinnerShared.FirstUser else WinnerShared.Cancelled
-        )
-      case _ => this
+    if(games.isEmpty) {
+      winner match {
+        case FirstUserByOnlyPresented | SecondUserByOnlyPresented => this 
+        case _ => withWinner(Cancelled)
+      }
+    }else{
+      winner match {
+        case FirstUser| SecondUser| Draw => this
+        case _ => withWinner(FirstUser)
+      }
     }
   }
 
