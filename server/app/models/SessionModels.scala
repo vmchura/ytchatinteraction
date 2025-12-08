@@ -97,7 +97,8 @@ case class TournamentSession(
     tournamentId: Long,
     uploadState: TournamentUploadStateShared,
     hash2StoreInformation: Map[String, StoredFileInfo],
-    lastUpdated: Instant
+    lastUpdated: Instant,
+    isFinalized: Boolean=false
 ) extends TSessionUploadFile[
       TournamentSession,
       StoredFileInfo,
@@ -161,13 +162,15 @@ case class TournamentSession(
       newFile: StoredFileInfo
   ): TournamentSession =
     copy(hash2StoreInformation = hash2StoreInformation + (hash -> newFile))
+  override def finalizeSession(): TournamentSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
 
 case class AnalyticalSession(
     userId: Long,
     uploadState: AnalyticalUploadStateShared,
     storageInfo: Option[AnalyticalFileInfo],
     lastUpdated: Instant,
-    fileResult: FileProcessResult
+    fileResult: FileProcessResult,
+    isFinalized: Boolean=false
 ) extends TSessionUploadFile[
       AnalyticalSession,
       AnalyticalFileInfo,
@@ -255,3 +258,4 @@ case class AnalyticalSession(
   }
   val isValid: Boolean =
     players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
+  override def finalizeSession(): AnalyticalSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())

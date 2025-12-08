@@ -1,7 +1,7 @@
 @import models.User
 @import services.{FileProcessResult, MultiFileUploadResult}
 @import models.StarCraftModels._
-@import services.UploadSession
+@import models.TournamentSession
 @import models.{Tournament, TournamentMatch}
 @import helper._
 @(user: User, tournamentID: Long, challongeMatchID: Long)(implicit request: RequestHeader, flash: Flash, messages: Messages)

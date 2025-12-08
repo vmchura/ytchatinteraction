@@ -114,7 +114,8 @@ class AnalyticalUploadController @Inject() (
                       uploadState,
                       Some(storageInfo),
                       lastUpdated,
-                      finalResult
+                      finalResult,
+                      _
                     )
                   ) if session.sha256Hash.equals(analyticalFileData.fileHash) =>
                 val analyticalFile = for {
