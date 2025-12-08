@@ -179,14 +179,18 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
   }
 
   def calculateWinner(): SS = {
-    if(games.isEmpty) {
+    if (games.isEmpty) {
       winner match {
-        case FirstUserByOnlyPresented | SecondUserByOnlyPresented => this 
+        case FirstUserByOnlyPresented | SecondUserByOnlyPresented => this
         case _ => withWinner(Cancelled)
       }
-    }else{
+    } else {
       winner match {
-        case FirstUser| SecondUser| Draw => this
+        case FirstUser | SecondUser => this
+        case Draw                   =>
+          if (games.length % 2 == 0)
+            this
+          else withWinner(FirstUser)
         case _ => withWinner(FirstUser)
       }
     }
