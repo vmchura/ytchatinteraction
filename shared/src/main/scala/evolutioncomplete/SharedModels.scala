@@ -259,8 +259,10 @@ case class AnalyticalUploadStateShared(
     firstParticipant: ParticipantShared,
     games: List[GameStateShared]
 ) extends TUploadStateShared[AnalyticalUploadStateShared] derives ReadWriter:
+
   override def secondParticipant: ParticipantShared =
     throw new IllegalAccessException("no implemented secondParticipant")
+
   override def winner: WinnerShared = throw new IllegalAccessException(
     "no implemented winner"
   )

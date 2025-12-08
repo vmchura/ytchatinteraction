@@ -21,7 +21,7 @@ import java.nio.file.Files
 
 trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   SS
-], US <: TSessionUploadFile[US, F, SS]](
+], US <: TSessionUploadFile[US, F, SS], M <: TMetaSession](
     uploadedFileRepository: models.repository.UploadedFileRepository,
     tournamentService: TournamentService,
     userRepository: UserRepository,
@@ -42,13 +42,13 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   /** Start a new upload session for a user and match
     */
   def startSession(
-      newSession: US
+      newSession: M
   ): Future[Option[US]]
 
   /** Get existing session or create a new one if it doesn't exist
     */
   def getOrCreateSession(
-      potentialSession: US
+      potentialSession: M
   ): Future[Option[US]] = {
     Option(sessions.get(potentialSession.key)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>
@@ -71,7 +71,7 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   }
 
   def getSession(
-      potentialSession: US
+      potentialSession: M
   ): Option[US] = {
     Option(sessions.get(potentialSession.key)) match {
       case Some(existingSession) if !isSessionExpired(existingSession) =>

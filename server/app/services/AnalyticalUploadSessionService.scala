@@ -56,7 +56,7 @@ case class AnalyticalUploadSession(
 }
 
 @Singleton
-class AnalyticalUploadSessionService @Inject() (
+class AnalyticalUploadSessionServiceOld @Inject() (
     uploadedFileRepository: models.repository.UploadedFileRepository,
     analyticalFileRepository: models.repository.AnalyticalFileRepository,
     userRepository: UserRepository,

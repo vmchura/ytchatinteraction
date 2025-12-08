@@ -1,7 +1,10 @@
 package models
 import java.time.Instant
 import evolutioncomplete._
+import StarCraftModels._
 import GameStateShared._
+import services.FileProcessResult
+import java.util.UUID
 
 trait BasicFileInfo:
   def originalFileName: String
@@ -54,6 +57,15 @@ case class CasualMatchFileInfo(
     userId: Long,
     casualMatchId: Long
 ) extends BasicFileInfo
+
+trait TMetaSession:
+  def key: String
+
+case class MetaTournamentSession(userId: Long, matchId: Long, tournamentId: Long):
+  def key = f"${userId}_${matchId}_${tournamentId}"
+
+case class MetaAnalyticalSession(userId: Long, fileResult: FileProcessResult):
+  def key = f"${userId}"
 
 trait TSessionUploadFile[
     US <: TSessionUploadFile[US, F, SS],
@@ -148,13 +160,15 @@ case class TournamentSession(
 case class AnalyticalSession(
     userId: Long,
     uploadState: AnalyticalUploadStateShared,
-    hash2StoreInformation: Map[String, AnalyticalFileInfo],
-    lastUpdated: Instant
+    storageInfo: Option[AnalyticalFileInfo],
+    lastUpdated: Instant,
+    fileResult: FileProcessResult
 ) extends TSessionUploadFile[
       AnalyticalSession,
       AnalyticalFileInfo,
       AnalyticalUploadStateShared
     ]:
+  override def hash2StoreInformation: Map[String, AnalyticalFileInfo] = throw new IllegalAccessError("hash2StoreInformation no implemented")
   override def key: String = s"${userId}"
   override def fromGenericFileInfo(
       genericFileInfo: GenericFileInfo
@@ -204,5 +218,34 @@ case class AnalyticalSession(
   override def withNewHash(
       hash: String,
       newFile: AnalyticalFileInfo
-  ): AnalyticalSession =
-    copy(hash2StoreInformation = hash2StoreInformation + (hash -> newFile))
+  ): AnalyticalSession = throw new IllegalAccessError("with New Hash not implemented")
+
+  val players: Seq[StarCraftModels.SCPlayer] = fileResult.gameInfo match {
+    case Some(ReplayParsed(_, _, _, teams, _, _, _)) =>
+
+      val all = teams.flatMap(_.participants)
+      if (all.length == 2) {
+        all
+      } else {
+        List.empty
+      }
+    case _ => List.empty
+  }
+  val sha256Hash: String =
+    fileResult.sha256Hash.getOrElse(UUID.randomUUID().toString)
+
+  def userRaceGivenPlayerId(playerId: Int): Option[SCRace] =
+    players.find(_.id == playerId).map(p => p.race)
+
+  def rivalRaceGivenPlayerId(playerId: Int): Option[SCRace] =
+    players.find(_.id != playerId).map(p => p.race)
+
+  val frames: Option[Int] = fileResult.gameInfo match {
+    case Some(ReplayParsed(_, _, _, _, _, Some(frames), _)) if frames > 9_000 =>
+      Some(frames)
+    case _ => None
+  }
+  val isValid: Boolean =
+    players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
+
+

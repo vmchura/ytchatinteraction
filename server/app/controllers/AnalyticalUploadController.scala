@@ -2,7 +2,7 @@ package controllers
 
 import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
 import evolutioncomplete.WinnerShared.Draw
-import evolutioncomplete.{ParticipantShared, UploadStateShared}
+import evolutioncomplete._
 import forms.Forms
 import models.StarCraftModels.Terran
 import models.repository.AnalyticalFileRepository
@@ -65,6 +65,7 @@ class AnalyticalUploadController @Inject()(
             for {
               processed <- parseReplayFileService
                 .validateAndProcessSingleFile(part)
+              analyticalSessionOpt = AnalyticalSession.build(request.identity, processed, 
               newSession <- uploadSessionService.startSession(request.identity, processed)
             } yield {
               newSession
