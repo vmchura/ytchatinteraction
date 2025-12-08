@@ -1,7 +1,7 @@
 package replayuploader
 
 import evolutioncomplete.WinnerShared.*
-import evolutioncomplete.{GameStateShared, ParticipantShared, UploadStateShared}
+import evolutioncomplete._
 import evolutioncomplete.GameStateShared.*
 
 import scala.concurrent.Future
@@ -25,7 +25,7 @@ import org.scalajs.dom.FormData
 import org.scalajs.dom.File
 
 object ReplayUploader {
-  val uploadMatchState = Var[UploadStateShared](UploadStateShared.default())
+  val uploadMatchState = Var[TournamentUploadStateShared](TournamentUploadStateShared.default())
 
   def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
     val container = org.scalajs.dom.document.getElementById(containerID)
@@ -33,13 +33,13 @@ object ReplayUploader {
     fetchState(tournamentID: Int, challongeMatchID: Int).onComplete {
       case Success(Right(value)) => uploadMatchState.value = value
       case Success(Left(error)) => uploadMatchState.value =
-        UploadStateShared.errorOne()
+        TournamentUploadStateShared.errorOne()
       case Failure(error) =>
-        uploadMatchState.value = UploadStateShared.errorOne()
+        uploadMatchState.value = TournamentUploadStateShared.errorOne()
     }
   }
 
-  def fetchState(tournamentID: Int, challongeMatchID: Int): Future[Either[String, UploadStateShared]] = {
+  def fetchState(tournamentID: Int, challongeMatchID: Int): Future[Either[String, TournamentUploadStateShared]] = {
 
     val request = basicRequest
       // send the body as form data (x-www-form-urlencoded)
@@ -50,7 +50,7 @@ object ReplayUploader {
     val backend = FetchBackend()
     request.send(backend).map {
       case Response(Right(jsonResponse), sttp.model.StatusCode.Ok, _, _, _, _) =>
-        Try(read[UploadStateShared](jsonResponse)) match {
+        Try(read[TournamentUploadStateShared](jsonResponse)) match {
           case Success(valid) => Right(valid)
           case Failure(error) => Left(error.getLocalizedMessage)
         }
@@ -58,7 +58,7 @@ object ReplayUploader {
     }
   }
 
-  def postState(validFiles: List[File], uploadMatchState: UploadStateShared): Future[Either[String, UploadStateShared]] = {
+  def postState(validFiles: List[File], uploadMatchState: TournamentUploadStateShared): Future[Either[String, TournamentUploadStateShared]] = {
 
     // Create file parts
     val fileParts = validFiles.map { file =>
@@ -79,7 +79,7 @@ object ReplayUploader {
     val backend = FetchBackend()
     request.send(backend).map {
       case Response(Right(jsonResponse), sttp.model.StatusCode.Ok, _, _, _, _) =>
-        Try(read[UploadStateShared](jsonResponse)) match {
+        Try(read[TournamentUploadStateShared](jsonResponse)) match {
           case Success(valid) => Right(valid)
           case Failure(error) => Left(error.getLocalizedMessage)
         }
@@ -95,7 +95,7 @@ object ReplayUploader {
     val backend = FetchBackend()
     val response = request.send(backend).map {
       case Response(Right(jsonResponse), sttp.model.StatusCode.Ok, _, _, _, _) =>
-        Try(read[UploadStateShared](jsonResponse)) match {
+        Try(read[TournamentUploadStateShared](jsonResponse)) match {
           case Success(valid) => Right(valid)
           case Failure(error) => Left(error.getLocalizedMessage)
         }
@@ -108,7 +108,7 @@ object ReplayUploader {
     }
   }
 
-  def uploadDivision(currentState: Binding[UploadStateShared]): Binding[Div] = {
+  def uploadDivision(currentState: Binding[TournamentUploadStateShared]): Binding[Div] = {
     html"""<div id="match_result">
          <div class="games-list">
            <h1 class="game-row">
