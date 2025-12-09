@@ -242,7 +242,6 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
     }
   }
 }
-
 case class TournamentUploadStateShared(
     challongeMatchID: Long,
     tournamentID: Long,

@@ -3,7 +3,7 @@ package replayuploader
 import org.scalajs.dom
 import org.scalajs.dom.HTMLFormElement
 import org.scalajs.dom.html.Input
-import replayuploader.ReplayUploader
+import replayuploader.GenericReplayUploader
 
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 @JSExportTopLevel("Main")
@@ -13,7 +13,7 @@ object Main {
   @JSExport("init")
   def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
 
-    ReplayUploader.init(tournamentID,challongeMatchID,containerID)
+    GenericReplayUploader.initTournament(challongeMatchID, tournamentID,containerID)
 
   }
 
