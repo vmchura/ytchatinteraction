@@ -259,3 +259,76 @@ case class AnalyticalSession(
   val isValid: Boolean =
     players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
   override def finalizeSession(): AnalyticalSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
+
+case class CassualMatchSession(
+    userId: Long,
+    casualMatchId: Long,
+    uploadState: CasualMatchStateShared,
+    hash2StoreInformation: Map[String, CasualMatchFileInfo],
+    lastUpdated: Instant,
+    isFinalized: Boolean=false
+) extends TSessionUploadFile[
+      CassualMatchSession,
+      CasualMatchFileInfo,
+      CasualMatchStateShared
+    ]:
+  override def key: String = s"${userId}_${casualMatchId}"
+  override def fromGenericFileInfo(
+      genericFileInfo: GenericFileInfo
+  ): CasualMatchFileInfo = {
+    genericFileInfo match {
+      case GenericFileInfo(
+            originalFileName,
+            storedFileName,
+            storedPath,
+            size,
+            contentType,
+            storedAt,
+            userId
+          ) =>
+        CasualMatchFileInfo(
+          originalFileName,
+          storedFileName,
+          storedPath,
+          size,
+          contentType,
+          storedAt,
+          userId,
+          casualMatchId
+        )
+    }
+  }
+
+  def withUploadStateShared(
+      uploadStateShared: CasualMatchStateShared
+  ): CassualMatchSession = {
+    copy(uploadState =
+      uploadState.copy(
+        games = uploadState.games ++ uploadStateShared.games.filter {
+          case PendingGame(_) => true
+          case _              => false
+        },
+        winner = uploadStateShared.winner,
+        firstParticipant = uploadState.firstParticipant
+          .copy(smurfs = uploadStateShared.firstParticipant.smurfs),
+        secondParticipant = uploadState.secondParticipant.copy(smurfs =
+          uploadStateShared.secondParticipant.smurfs
+        )
+      )
+    )
+
+  }
+
+  override def withFullCopyStateShared(
+      uploadStateShared: CasualMatchStateShared
+  ): CassualMatchSession =
+    copy(uploadState = uploadStateShared, lastUpdated = java.time.Instant.now())
+
+  override def withNewHash(
+      hash: String,
+      newFile: CasualMatchFileInfo
+  ): CassualMatchSession =
+    copy(hash2StoreInformation = hash2StoreInformation + (hash -> newFile))
+  override def finalizeSession(): CassualMatchSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
+
+

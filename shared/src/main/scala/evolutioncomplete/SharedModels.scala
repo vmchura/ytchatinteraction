@@ -242,6 +242,7 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
     }
   }
 }
+
 case class TournamentUploadStateShared(
     challongeMatchID: Long,
     tournamentID: Long,
@@ -314,3 +315,40 @@ case class PotentialAnalyticalFileShared(
     frames: Int,
     userId: Long
 )
+
+
+case class CasualMatchStateShared(
+    casualMatchId: Long,
+    firstParticipant: ParticipantShared,
+    secondParticipant: ParticipantShared,
+    games: List[GameStateShared],
+    winner: WinnerShared
+) extends TUploadStateShared[CasualMatchStateShared] derives ReadWriter:
+  override def withFirstParticipant(
+      participant: ParticipantShared
+  ): CasualMatchStateShared = copy(firstParticipant = participant)
+  override def withSecondParticipant(
+      participant: ParticipantShared
+  ): CasualMatchStateShared = copy(secondParticipant = participant)
+  override def withGames(
+      games: List[GameStateShared]
+  ): CasualMatchStateShared = copy(games = games)
+  override def withWinner(winner: WinnerShared): CasualMatchStateShared =
+    copy(winner = winner)
+
+object CasualMatchStateShared:
+  def default(): CasualMatchStateShared = CasualMatchStateShared(
+    0,
+    ParticipantShared(0, "Flash", Set.empty[String]),
+    ParticipantShared(0, "Bisu", Set.empty[String]),
+    Nil,
+    Cancelled
+  )
+
+  def errorOne(): CasualMatchStateShared = CasualMatchStateShared(
+    0,
+    ParticipantShared(0, "Error", Set.empty[String]),
+    ParticipantShared(0, "Error", Set.empty[String]),
+    Nil,
+    Cancelled
+  ) 

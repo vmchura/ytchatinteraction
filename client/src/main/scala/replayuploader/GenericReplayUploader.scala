@@ -34,6 +34,12 @@ object GenericReplayUploader {
     val replayUploader = new GenericReplayUploader(metaSession)
     replayUploader.init(containerID)
   }
+
+  def initCasualMatch(casualMatchId: Long, containerID: String): Unit = {
+    val metaSession = CasualMatchMetaSession(casualMatchId)
+    val replayUploader = new GenericReplayUploader(metaSession)
+    replayUploader.init(containerID)
+  }
 }
 class GenericReplayUploader[SS <: TUploadStateShared[SS]](
     metaSession: MetaSessionShared[SS]
