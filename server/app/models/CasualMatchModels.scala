@@ -6,7 +6,7 @@ case class CasualMatch(
     userId: Long,
     rivalUserId: Long,
     createdAt: Instant,
-    status: String
+    status: MatchStatus
 )
 
 case class CasualMatchFile(

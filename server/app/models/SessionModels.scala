@@ -68,6 +68,13 @@ case class MetaTournamentSession(
 ) extends TMetaSession:
   def key = f"${userId}_${matchId}_${tournamentId}"
 
+case class MetaCasualMatchSession(
+    userId: Long,
+    casualMatchId: Long
+) extends TMetaSession:
+  def key = f"${userId}_${casualMatchId}"
+
+
 case class MetaAnalyticalSession(userId: Long, fileResult: FileProcessResult)
     extends TMetaSession:
   def key = f"${userId}"
@@ -260,7 +267,7 @@ case class AnalyticalSession(
     players.nonEmpty && fileResult.sha256Hash.isDefined && frames.isDefined
   override def finalizeSession(): AnalyticalSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
 
-case class CassualMatchSession(
+case class CasualMatchSession(
     userId: Long,
     casualMatchId: Long,
     uploadState: CasualMatchStateShared,
@@ -268,7 +275,7 @@ case class CassualMatchSession(
     lastUpdated: Instant,
     isFinalized: Boolean=false
 ) extends TSessionUploadFile[
-      CassualMatchSession,
+      CasualMatchSession,
       CasualMatchFileInfo,
       CasualMatchStateShared
     ]:
@@ -301,7 +308,7 @@ case class CassualMatchSession(
 
   def withUploadStateShared(
       uploadStateShared: CasualMatchStateShared
-  ): CassualMatchSession = {
+  ): CasualMatchSession = {
     copy(uploadState =
       uploadState.copy(
         games = uploadState.games ++ uploadStateShared.games.filter {
@@ -321,14 +328,14 @@ case class CassualMatchSession(
 
   override def withFullCopyStateShared(
       uploadStateShared: CasualMatchStateShared
-  ): CassualMatchSession =
+  ): CasualMatchSession =
     copy(uploadState = uploadStateShared, lastUpdated = java.time.Instant.now())
 
   override def withNewHash(
       hash: String,
       newFile: CasualMatchFileInfo
-  ): CassualMatchSession =
+  ): CasualMatchSession =
     copy(hash2StoreInformation = hash2StoreInformation + (hash -> newFile))
-  override def finalizeSession(): CassualMatchSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
+  override def finalizeSession(): CasualMatchSession = copy(isFinalized=true, lastUpdated=java.time.Instant.now())
 
 

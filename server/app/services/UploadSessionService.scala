@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import play.api.Logger
 import models.TournamentMatch
-import models.repository.UserRepository
+import models.repository._
 import models.StarCraftModels.ReplayParsed
 import java.util.UUID
 
@@ -35,7 +35,6 @@ class AnalyticalUploadSessionService @Inject() (
       MetaAnalyticalSession
     ](
       uploadedFileRepository,
-      tournamentService,
       userRepository,
       fileStorageService
     ) {
@@ -158,7 +157,6 @@ class TournamentUploadSessionService @Inject() (
       MetaTournamentSession
     ](
       uploadedFileRepository,
-      tournamentService,
       userRepository,
       fileStorageService
     ) {
@@ -194,6 +192,77 @@ class TournamentUploadSessionService @Inject() (
                   uploadState = TournamentUploadStateShared(
                     challongeMatchID = newSession.matchId,
                     tournamentID = newSession.tournamentId,
+                    firstParticipant = ParticipantShared(
+                      firstUser.userId,
+                      firstUser.userName,
+                      Set.empty[String]
+                    ),
+                    secondParticipant = ParticipantShared(
+                      secondUser.userId,
+                      secondUser.userName,
+                      Set.empty[String]
+                    ),
+                    games = Nil,
+                    winner = Cancelled
+                  ),
+                  hash2StoreInformation = Map.empty,
+                  lastUpdated = Instant.now()
+                )
+                persistState(session)
+              }
+
+            }
+          case _ => Future.successful(None)
+        }
+
+    futSession
+  }
+}
+
+@Singleton
+class CasualMatchUploadSessionService @Inject() (
+    uploadedFileRepository: models.repository.UploadedFileRepository,
+    casualMatchRepository: CasualMatchRepository,
+    userRepository: UserRepository,
+    fileStorageService: FileStorageService
+)(implicit ec: ExecutionContext)
+    extends TUploadSessionService[
+      CasualMatchFileInfo,
+      CasualMatchStateShared,
+      CasualMatchSession,
+      MetaCasualMatchSession
+    ](
+      uploadedFileRepository,
+      userRepository,
+      fileStorageService
+    ) {
+
+  override def startSession(
+      newSession: MetaCasualMatchSession
+  ): Future[Option[CasualMatchSession]] = {
+    val futSession =
+      casualMatchRepository
+        .findById(newSession.casualMatchId)
+        .flatMap {
+          case Some(
+                CasualMatch(
+                  casualMatchId,
+                  userId,
+                  rivalUserId,
+                  createdAt,
+                  MatchStatus.Pending | MatchStatus.InProgress
+                )
+              ) =>
+            for {
+              firstUserOpt <- userRepository.getById(userId)
+              secondUserOpt <- userRepository.getById(rivalUserId)
+            } yield {
+              firstUserOpt.zip(secondUserOpt).map { (firstUser, secondUser) =>
+                val session = CasualMatchSession(
+                  userId = newSession.userId,
+                  casualMatchId = casualMatchId,
+                  uploadState = CasualMatchStateShared(
+                    casualMatchId = casualMatchId,
                     firstParticipant = ParticipantShared(
                       firstUser.userId,
                       firstUser.userName,

@@ -7,6 +7,8 @@ import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import models.StarCraftModels._
+import models.MatchStatus
 
 trait CasualMatchRepository {
   def create(casualMatch: CasualMatch): Future[CasualMatch]
@@ -14,8 +16,8 @@ trait CasualMatchRepository {
   def findByUserId(userId: Long): Future[Seq[CasualMatch]]
   def findByRivalUserId(rivalUserId: Long): Future[Seq[CasualMatch]]
   def findByUserAndRival(userId: Long, rivalUserId: Long): Future[Seq[CasualMatch]]
-  def findByStatus(userId: Long, status: String): Future[Seq[CasualMatch]]
-  def updateStatus(id: Long, status: String): Future[Int]
+  def findByStatus(userId: Long, status: MatchStatus): Future[Seq[CasualMatch]]
+  def updateStatus(id: Long, status: MatchStatus): Future[Int]
   def deleteById(id: Long): Future[Int]
 }
 
@@ -53,11 +55,11 @@ class CasualMatchRepositoryImpl @Inject()(
     db.run(casualMatchesTable.filter(m => m.userId === userId && m.rivalUserId === rivalUserId).sortBy(_.createdAt.desc).result)
   }
 
-  override def findByStatus(userId: Long, status: String): Future[Seq[CasualMatch]] = {
+  override def findByStatus(userId: Long, status: MatchStatus): Future[Seq[CasualMatch]] = {
     db.run(casualMatchesTable.filter(m => m.userId === userId && m.status === status).sortBy(_.createdAt.desc).result)
   }
 
-  override def updateStatus(id: Long, status: String): Future[Int] = {
+  override def updateStatus(id: Long, status: MatchStatus): Future[Int] = {
     db.run(casualMatchesTable.filter(_.id === id).map(_.status).update(status))
   }
 

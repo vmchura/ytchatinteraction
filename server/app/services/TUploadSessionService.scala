@@ -13,7 +13,6 @@ import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import play.api.Logger
-import models.TournamentMatch
 import models.repository.UserRepository
 import models.StarCraftModels.ReplayParsed
 
@@ -23,7 +22,6 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   SS
 ], US <: TSessionUploadFile[US, F, SS], M <: TMetaSession](
     uploadedFileRepository: models.repository.UploadedFileRepository,
-    tournamentService: TournamentService,
     userRepository: UserRepository,
     fileStorageService: FileStorageService
 )(implicit ec: ExecutionContext) {

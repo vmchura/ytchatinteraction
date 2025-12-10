@@ -12,18 +12,7 @@ trait TournamentMatchComponent {
   import profile.api.*
 
   // Custom column type for MatchStatus
-  given BaseColumnType[MatchStatus] =
-    MappedColumnType.base[MatchStatus, String](
-      _.toString,
-      {
-        case "Pending" => MatchStatus.Pending
-        case "InProgress" => MatchStatus.InProgress
-        case "Completed" => MatchStatus.Completed
-        case "Disputed" => MatchStatus.Disputed
-        case "Cancelled" => MatchStatus.Cancelled
-        case other => throw new IllegalArgumentException(s"Unknown match status: $other")
-      }
-    )
+  given BaseColumnType[MatchStatus] = MatchStatus.columnType
 
   // Custom column type for Instant
   given BaseColumnType[Instant] =
