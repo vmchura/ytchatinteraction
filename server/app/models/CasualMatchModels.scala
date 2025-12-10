@@ -5,6 +5,7 @@ case class CasualMatch(
     id: Long = 0L,
     userId: Long,
     rivalUserId: Long,
+    winnerUserId: Option[Long],
     createdAt: Instant,
     status: MatchStatus
 )

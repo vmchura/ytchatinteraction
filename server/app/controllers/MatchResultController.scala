@@ -38,7 +38,7 @@ class MatchResultController @Inject() (
       tournamentMatch: TournamentMatch,
       firstParticipantSmurfs: Set[String],
       secondParticipantSmurfs: Set[String]
-  ): Future[Seq[UserSmurf]] = {
+  ): Future[Seq[TournamentUserSmurf]] = {
     userSmurfService.recordMatchSmurfs(
       tournamentMatch.matchId,
       tournamentMatch.tournamentId,

@@ -249,6 +249,7 @@ class CasualMatchUploadSessionService @Inject() (
                   casualMatchId,
                   userId,
                   rivalUserId,
+                  None,
                   createdAt,
                   MatchStatus.Pending | MatchStatus.InProgress
                 )

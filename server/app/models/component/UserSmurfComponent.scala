@@ -18,15 +18,15 @@ trait UserSmurfComponent {
 
   class UserSmurfsTable(tag: Tag) extends Table[UserSmurf](tag, "user_smurfs") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def matchId = column[Long]("match_id")
-    def tournamentId = column[Long]("tournament_id")
+    def matchId = column[Option[Long]]("match_id")
+    def tournamentId = column[Option[Long]]("tournament_id")
     def userId = column[Long]("user_id")
     def smurf = column[String]("smurf")
     def createdAt = column[Instant]("created_at")
+    def casualMatchId = column[Option[Long]]("casual_match_id")
 
-    def * = (id, matchId, tournamentId, userId, smurf, createdAt) <> ((UserSmurf.apply _).tupled, UserSmurf.unapply)
+    def * = (id, matchId, tournamentId, casualMatchId, userId, smurf, createdAt) <> ((UserSmurf.apply _).tupled, UserSmurf.unapply)
 
-    // Note: Foreign key constraints are defined in the database evolution script
   }
 
   val userSmurfsTable = TableQuery[UserSmurfsTable]

@@ -1,7 +1,7 @@
 package services
 
 import evolutioncomplete.ParticipantShared
-import models.UserSmurf
+import models._
 import models.repository.UserSmurfRepository
 import play.api.Logging
 
@@ -19,21 +19,21 @@ class UserSmurfService @Inject()(
     tournamentId: Long,
     firstParticipant: ParticipantShared,
     secondParticipant: ParticipantShared
-  ): Future[Seq[UserSmurf]] = {
+  ): Future[Seq[TournamentUserSmurf]] = {
     
     val now = Instant.now()
-    val smurfs = firstParticipant.smurfs.toList.map(s => UserSmurf(0L, matchId, tournamentId, firstParticipant.userID, s, now)) ++
-      secondParticipant.smurfs.toList.map(s => UserSmurf(0L, matchId, tournamentId, secondParticipant.userID, s, now))
+    val smurfs = firstParticipant.smurfs.toList.map(s => TournamentUserSmurf(0L, matchId, tournamentId, firstParticipant.userID, s, now)) ++
+      secondParticipant.smurfs.toList.map(s => TournamentUserSmurf(0L, matchId, tournamentId, secondParticipant.userID, s, now))
     
 
-    userSmurfRepository.createBatch(smurfs)
+    userSmurfRepository.createBatch(smurfs.map(_.toUserSmurf)).map(_.flatten)
   }
 
   /**
    * Gets all smurfs used by a user in a specific tournament.
    */
-  def getUserSmurfsInTournament(userId: Long, tournamentId: Long): Future[List[UserSmurf]] = {
-    userSmurfRepository.findByTournamentIdAndUserId(tournamentId, userId)
+  def getUserSmurfsInTournament(userId: Long, tournamentId: Long): Future[List[TournamentUserSmurf]] = {
+    userSmurfRepository.findByTournamentIdAndUserId(tournamentId, userId).map(_.flatten)
   }
 
   /**
@@ -46,15 +46,18 @@ class UserSmurfService @Inject()(
   /**
    * Gets all smurfs used in a specific match.
    */
-  def getMatchSmurfs(matchId: Long): Future[List[UserSmurf]] = {
-    userSmurfRepository.findByMatchId(matchId)
+  def getMatchSmurfs(matchId: Long): Future[List[TournamentUserSmurf]] = {
+    userSmurfRepository.findByMatchId(matchId).map(_.flatten)
   }
 
   /**
    * Gets the smurf used by a specific user in a specific match.
    */
-  def getUserSmurfInMatch(matchId: Long, userId: Long): Future[Option[UserSmurf]] = {
-    userSmurfRepository.findByMatchIdAndUserId(matchId, userId)
+  def getUserSmurfInMatch(matchId: Long, userId: Long): Future[Option[TournamentUserSmurf]] = {
+    userSmurfRepository.findByMatchIdAndUserId(matchId, userId).map{
+      case Some(us) => us
+      case None => None
+    }
   }
 
   /**
@@ -62,20 +65,21 @@ class UserSmurfService @Inject()(
    */
   def getAllTournamentSmurfs(tournamentId: Long): Future[List[String]] = {
     userSmurfRepository.getUniqueSmurfsByTournament(tournamentId)
+
   }
 
   /**
    * Gets all smurf records for a tournament.
    */
-  def getTournamentSmurfRecords(tournamentId: Long): Future[List[UserSmurf]] = {
-    userSmurfRepository.findByTournamentId(tournamentId)
+  def getTournamentSmurfRecords(tournamentId: Long): Future[List[TournamentUserSmurf]] = {
+    userSmurfRepository.findByTournamentId(tournamentId).map(_.flatten)
   }
 
   /**
    * Gets all smurf records for a user across all tournaments.
    */
-  def getUserSmurfs(userId: Long): Future[List[UserSmurf]] = {
-    userSmurfRepository.findByUserId(userId)
+  def getUserSmurfs(userId: Long): Future[List[TournamentUserSmurf]] = {
+    userSmurfRepository.findByUserId(userId).map(_.flatten)
   }
 
   /**

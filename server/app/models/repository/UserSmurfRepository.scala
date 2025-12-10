@@ -32,10 +32,10 @@ class UserSmurfRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(im
    * Creates a new user smurf record (DBIO action).
    */
   def createAction(userSmurf: UserSmurf): DBIO[UserSmurf] = {
-    (userSmurfsTable.map(us => (us.matchId, us.tournamentId, us.userId, us.smurf, us.createdAt))
+    (userSmurfsTable.map(us => (us.matchId, us.tournamentId, us.casualMatchId, us.userId, us.smurf, us.createdAt))
       returning userSmurfsTable.map(_.id)
-      into ((fields, id) => UserSmurf(id, fields._1, fields._2, fields._3, fields._4, fields._5))
-    ) += (userSmurf.matchId, userSmurf.tournamentId, userSmurf.userId, userSmurf.smurf, userSmurf.createdAt)
+      into ((fields, id) => UserSmurf(id, fields._1, fields._2, fields._3, fields._4, fields._5, fields._6))
+    ) += (userSmurf.matchId, userSmurf.tournamentId, userSmurf.casualMatchId, userSmurf.userId, userSmurf.smurf, userSmurf.createdAt)
   }
 
   /**
