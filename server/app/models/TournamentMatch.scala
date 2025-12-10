@@ -33,7 +33,6 @@ object MatchStatus {
   case object Completed extends MatchStatus
   case object Disputed extends MatchStatus
   case object Cancelled extends MatchStatus
-// A method that creates the given using a profile
   def columnType(using profile: JdbcProfile): profile.api.BaseColumnType[MatchStatus] =
     import profile.api.*
 

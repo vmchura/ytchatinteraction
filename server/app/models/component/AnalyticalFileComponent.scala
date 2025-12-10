@@ -9,19 +9,7 @@ trait AnalyticalFileComponent {
 
   import profile.api._
 
-  given BaseColumnType[StarCraftModels.SCRace] =
-    MappedColumnType.base[StarCraftModels.SCRace, String](
-      {
-        case StarCraftModels.Zerg => "Zerg"
-        case StarCraftModels.Terran => "Terran"
-        case StarCraftModels.Protoss => "Protoss"
-      },
-      {
-        case "Zerg" => StarCraftModels.Zerg
-        case "Terran" => StarCraftModels.Terran
-        case "Protoss" => StarCraftModels.Protoss
-      }
-    )
+  given BaseColumnType[StarCraftModels.SCRace] = StarCraftModels.SCRace.columnType
 
   class AnalyticalFilesTable(tag: Tag) extends Table[AnalyticalFile](tag, "analytical_files") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

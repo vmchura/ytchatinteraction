@@ -82,7 +82,12 @@ class AnalyticalUploadSessionService @Inject() (
               ),
               games = List(
                 ValidGame(
-                  smurfs = teams.flatMap(_.participants.map(_.name)),
+                  smurfs = teams
+                    .flatMap(
+                      _.participants
+                        .map(scplayer => scplayer.name -> scplayer.id)
+                    )
+                    .toMap,
                   mapName = mapName,
                   playedAt = LocalDateTime.now(),
                   hash = sha256Hash,

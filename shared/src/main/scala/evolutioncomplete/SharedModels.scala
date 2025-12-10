@@ -21,12 +21,16 @@ sealed trait GameStateShared {
 
 object GameStateShared {
   case class ValidGame(
-      smurfs: List[String],
+      smurfs: Map[String, Int],
       mapName: String,
       playedAt: LocalDateTime,
       hash: String,
       sessionID: UUID
-  ) extends GameStateShared derives ReadWriter
+  ) extends GameStateShared derives ReadWriter {
+    def slotBySmurf(potentialSmurfs: Iterable[String]): Option[Int] = {
+      potentialSmurfs.flatMap(smurfs.get).headOption
+    }
+  }
 
   case class PendingGame(sessionID: UUID) extends GameStateShared
       derives ReadWriter
@@ -76,20 +80,26 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
 
   def getGameDescription(game: GameStateShared): (String, String) = {
     game match {
-      case ValidGame(smurf1 :: smurf2 :: _, _, _, _, _) =>
-        (
-          firstParticipant.smurfs.contains(smurf1),
-          firstParticipant.smurfs.contains(smurf2),
-          secondParticipant.smurfs.contains(smurf1),
-          secondParticipant.smurfs.contains(smurf2)
-        ) match {
-          case (true, false, false, true)  => (s"$smurf1", s"$smurf2")
-          case (true, false, false, false) => (s"$smurf1", s"[$smurf2]?")
-          case (false, true, true, false)  => (s"$smurf2", s"$smurf1")
-          case (false, true, false, false) => (s"$smurf2", s"[$smurf1]?")
-          case (false, false, true, false) => (s"[$smurf2]?", s"$smurf1")
-          case (false, false, false, true) => (s"[$smurf1]?", s"$smurf2")
-          case (_, _, _, _)                => (s"[$smurf1]?", s"[$smurf2]?")
+      case ValidGame(mapSmurfs, _, _, _, _) if mapSmurfs.size >= 2 =>
+        val smurfKeys = mapSmurfs.keySet.toList
+        smurfKeys match {
+          case smurf1 :: smurf2 :: _ =>
+            (
+              firstParticipant.smurfs.contains(smurf1),
+              firstParticipant.smurfs.contains(smurf2),
+              secondParticipant.smurfs.contains(smurf1),
+              secondParticipant.smurfs.contains(smurf2)
+            ) match {
+              case (true, false, false, true)  => (s"$smurf1", s"$smurf2")
+              case (true, false, false, false) => (s"$smurf1", s"[$smurf2]?")
+              case (false, true, true, false)  => (s"$smurf2", s"$smurf1")
+              case (false, true, false, false) => (s"$smurf2", s"[$smurf1]?")
+              case (false, false, true, false) => (s"[$smurf2]?", s"$smurf1")
+              case (false, false, false, true) => (s"[$smurf1]?", s"$smurf2")
+              case (_, _, _, _)                => (s"[$smurf1]?", s"[$smurf2]?")
+            }
+          case _ =>
+            throw new IllegalStateException("Description of less than 2 smurfs")
         }
       case _ => throw new IllegalStateException("Description of invalid")
     }
@@ -149,7 +159,7 @@ trait TUploadStateShared[SS <: TUploadStateShared[SS]] { this: SS =>
 
   def getSmurfs: List[SmurfSelection] = {
     val allSmurfs = games.flatMap {
-      case ValidGame(smurfs, _, _, _, _) => smurfs
+      case ValidGame(smurfs, _, _, _, _) => smurfs.keys.toList
       case _                             => Nil
     }.distinct
     allSmurfs.zipWithIndex.map { case (singleSmurf, i) =>
@@ -316,7 +326,6 @@ case class PotentialAnalyticalFileShared(
     userId: Long
 )
 
-
 case class CasualMatchStateShared(
     casualMatchId: Long,
     firstParticipant: ParticipantShared,
@@ -351,4 +360,4 @@ object CasualMatchStateShared:
     ParticipantShared(0, "Error", Set.empty[String]),
     Nil,
     Cancelled
-  ) 
+  )

@@ -1,6 +1,7 @@
 package models
 
 import play.api.libs.json.*
+import slick.jdbc.JdbcProfile
 
 import javax.json.JsonArray
 
@@ -41,6 +42,24 @@ object StarCraftModels {
       case "Protoss" => JsSuccess(Protoss)
       case other => JsError(s"Unknown race: $other")
     }
+  }
+
+  object SCRace {
+    def columnType(using profile: JdbcProfile): profile.api.BaseColumnType[SCRace] =
+      import profile.api.*
+
+      MappedColumnType.base[StarCraftModels.SCRace, String](
+        {
+          case StarCraftModels.Zerg => "Zerg"
+          case StarCraftModels.Terran => "Terran"
+          case StarCraftModels.Protoss => "Protoss"
+        },
+        {
+          case "Zerg" => StarCraftModels.Zerg
+          case "Terran" => StarCraftModels.Terran
+          case "Protoss" => StarCraftModels.Protoss
+        }
+      )
   }
 
   /**

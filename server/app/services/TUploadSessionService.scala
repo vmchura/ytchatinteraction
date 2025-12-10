@@ -170,7 +170,10 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
                     currentSession.uploadState
                       .updateOnePendingTo(uuid =>
                         ValidGame(
-                          teams.flatMap(_.participants.map(_.name)),
+                          teams.flatMap(
+                            _.participants
+                              .map(scplayer => scplayer.name -> scplayer.id)
+                          ).toMap,
                           mapName,
                           LocalDateTime.now(),
                           sha256Hash,

@@ -1,16 +1,32 @@
 package controllers
 
-import scala.concurrent.ExecutionException
+import evolutioncomplete._
+import GameStateShared._
 import play.api.mvc._
 import javax.inject._
 import services.CasualMatchUploadSessionService
 import models._
+import java.util.UUID
+import java.nio.file.Files
+import play.api.mvc.*
+import play.api.Logger
+import upickle.default._
+import play.api.libs.json._
+import play.api.libs.Files.TemporaryFile
+import scala.concurrent.{ExecutionContext, Future}
+import services.FileStorageService
+import scala.util.Try
+import services.ParseReplayFileService
+import services.UserSmurfService
 
 @Singleton
 class CasualMatchController @Inject() (
     components: DefaultSilhouetteControllerComponents,
-    uploadSessionService: CasualMatchUploadSessionService
-)(implicit ec: ExecutionException)
+    uploadSessionService: CasualMatchUploadSessionService,
+    fileStorageService: FileStorageService,
+    parseReplayFileService: ParseReplayFileService,
+    userSmurfService: UserSmurfService
+)(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
   private val logger = Logger(getClass)
 
@@ -44,7 +60,7 @@ class CasualMatchController @Inject() (
       session: CasualMatchSession,
       fileResult: services.FileProcessResult,
       fileBytes: Array[Byte]
-  ): Either[String, StoredFileInfo] = {
+  ): Either[String, CasualMatchFileInfo] = {
     if (
       fileResult.success && fileBytes.nonEmpty && fileResult.sha256Hash.isDefined
     ) {
@@ -65,7 +81,7 @@ class CasualMatchController @Inject() (
     }
   }
   def fetchState(
-      casualMatchId: Long,
+      casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     uploadSessionService
       .getOrCreateSession(
@@ -169,14 +185,14 @@ class CasualMatchController @Inject() (
       secondParticipantSmurfs: Set[String]
   ): Future[Seq[CasualUserSmurf]] = {
     userSmurfService.recordCasualMatchSmurfs(
-      casualMatch.casualMatchId,
+      casualMatch.id,
       ParticipantShared(
-        casualMatch.firstUserId,
+        casualMatch.userId,
         "",
         firstParticipantSmurfs
       ),
       ParticipantShared(
-        casualMatch.secondUserId,
+        casualMatch.rivalUserId,
         "",
         secondParticipantSmurfs
       )
@@ -184,42 +200,55 @@ class CasualMatchController @Inject() (
   }
 
   private def persistMetaDataSessionFiles(
-      session: CasualMatchSession
+      session: CasualMatchSession,
+      smurfsFirstParticipant: Set[String],
+      smurfsSecondParticipant: Set[String]
   ): Future[Int] = {
     Future
       .sequence(
         session.uploadState.games
           .filter {
-            case ValidGame(_, _, _, _, _) => true
-            case _                        => false
+            case vg @ ValidGame(smurfs, _, _, _, _) =>
+
+              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
+              val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
+
+              (firstPlayerSlot, secondPlayerSlot) match {
+                case (Some(s1), Some(s2)) => s1 != s2
+                case _                    => false
+              }
+            case _ => false
+          }
+          .collect { case v: ValidGame =>
+            v
           }
           .flatMap {
-            case ValidGame(_, _, _, hash, _) => Some(hash)
-            case _                           => None
-          }
-          .flatMap(hash =>
-            session.hash2StoreInformation.get(hash).map((hash, _)).map {
-              case (hash, storedInfo) =>
-                val uploadedFile = models.UploadedFile(
-                  userId = session.userId,
-                  tournamentId = session.tournamentId,
-                  matchId = session.matchId,
-                  sha256Hash = hash,
-                  originalName = storedInfo.originalFileName,
-                  relativeDirectoryPath = storedInfo.storedPath,
-                  savedFileName = storedInfo.storedFileName,
-                  uploadedAt = storedInfo.storedAt
-                )
+            case vg @ ValidGame(smurfs, mapName, playedAt, hash, sessionID) =>
+              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
+              val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
 
-                uploadedFileRepository.create(uploadedFile).map { createdFile =>
-                  logger.info(
-                    s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}"
+              session.hash2StoreInformation.get(hash).map((hash, _, firstPlayerSlot, secondPlayerSlot)).map {
+                case (hash, storedInfo, Some(userSlot), Some(rivalSlot)) =>
+                  val uploadedFile = models.CasualMatchFile(
+                    casualMatchId = session.casualMatchId,
+                    sha256Hash = hash,
+                    originalName = storedInfo.originalFileName,
+                    relativeDirectoryPath = storedInfo.storedPath,
+                    savedFileName = storedInfo.storedFileName,
+                    uploadedAt = storedInfo.storedAt,
+                    slotPlayerId = userSlot
                   )
-                  1
-                }
 
-            }
-          )
+                  uploadedFileRepository.create(uploadedFile).map {
+                    createdFile =>
+                      logger.info(
+                        s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}"
+                      )
+                      1
+                  }
+
+              }
+          }
       )
       .map(_.sum)
   }
@@ -268,12 +297,18 @@ class CasualMatchController @Inject() (
             }
             result <- tournamentService
               .submitMatchResult(casualMatch, winnerData.winner)
+            firstParticipantSmurfs = winnerData.smurfsFirstParticipant.toSet
+            secondParticipantSmurfs = winnerData.smurfsSecondParticipant.toSet
             _ <- recordMatchSmurfs(
               casualMatch,
-              firstParticipantSmurfs = winnerData.smurfsFirstParticipant.toSet,
-              secondParticipantSmurfs = winnerData.smurfsSecondParticipant.toSet
+              firstParticipantSmurfs = firstParticipantSmurfs,
+              secondParticipantSmurfs = secondParticipantSmurfs
             )
-            _ <- persistMetaDataSessionFiles(currentSession)
+            _ <- persistMetaDataSessionFiles(
+              currentSession,
+              firstParticipantSmurfs,
+              secondParticipantSmurfs
+            )
             _ = uploadSessionService.finalizeSession(currentSession)
           } yield {
             analyticalReplayService

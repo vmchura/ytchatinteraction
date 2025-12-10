@@ -9,19 +9,7 @@ trait CasualMatchFileComponent {
   
   import profile.api._
 
-  implicit val scRaceMapper: BaseColumnType[StarCraftModels.SCRace] = 
-    MappedColumnType.base[StarCraftModels.SCRace, String](
-      {
-        case StarCraftModels.Zerg => "Zerg"
-        case StarCraftModels.Terran => "Terran"
-        case StarCraftModels.Protoss => "Protoss"
-      },
-      {
-        case "Zerg" => StarCraftModels.Zerg
-        case "Terran" => StarCraftModels.Terran
-        case "Protoss" => StarCraftModels.Protoss
-      }
-    )
+  given BaseColumnType[StarCraftModels.SCRace] = StarCraftModels.SCRace.columnType
 
   class CasualMatchFilesTable(tag: Tag) extends Table[CasualMatchFile](tag, "casual_match_files") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
