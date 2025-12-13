@@ -3,23 +3,38 @@
 @import helper._
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
-@(user: User, allAlias: Seq[UserAliasHistory])(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: User, allAlias: List[(UserAliasHistory, List[UserAliasHistory])])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("casual.match.find.player"), Some(user)) {
 <table>
     <thead>
     <tr>
-        <th scope="col">Rival</th>
+        <th scope="col">Escoge VS Rival</th>
     </tr>
     </thead>
     <tbody>
-    @for(alias <- allAlias) {
+    @for((currentAlias, previousAliases) <- allAlias) {
     <tr>
         <td>
-            <form method="post" action="@routes.CasualMatchController.createCasualMatch(alias.userId)">
+            <form method="post" action="@routes.CasualMatchController.createCasualMatch(currentAlias.userId)">
                 @helper.CSRF.formField
-                <input type="submit" value="@{alias.alias}" />
+                <button type="submit" class="contrast" >
+		@currentAlias.alias
+		</button>
             </form>
+	    @if(previousAliases.nonEmpty) {
+	    	<details open>
+		<ul>
+		@for(oldAlias <- previousAliases) {
+			<li>
+			<small class="secondary">
+			@oldAlias.alias
+			</small>
+			</li>
+		}
+		</ul>
+		</details>
+	    }
         </td>
     </tr>
     }

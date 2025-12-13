@@ -186,10 +186,19 @@ class CasualMatchController @Inject() (
 
   def viewFindUser(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     userAliasRepository.list().map { allUserAlias =>
+      val mapUserAlias = allUserAlias.groupBy(_.userId).map{case (userId, list) => {
+      val sortedList = list.toList.sortBy(_.assignedAt).reverse
+      if(sortedList.tail.isEmpty)
+      (sortedList.head, Nil)
+      else {
+      (sortedList.head, sortedList.tail.dropRight(1))
+      }}}.toList
+
+
       Ok(
         views.html.viewNewCasualMatch(
           request.identity,
-          allUserAlias.filter(_.userId != request.identity.userId)
+          mapUserAlias.filter(_._1.userId != request.identity.userId)
         )
       )
     }
