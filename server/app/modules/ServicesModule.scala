@@ -27,5 +27,6 @@ class ServicesModule extends SimpleModule(
   bind[AnalyticalResultRepository].to[AnalyticalResultRepositoryImpl],
   bind[EloRepository].to[EloRepositoryImpl],
   bind[CasualMatchRepository].to[CasualMatchRepositoryImpl],
-  bind[CasualMatchFileRepository].to[CasualMatchFileRepositoryImpl]
+  bind[CasualMatchFileRepository].to[CasualMatchFileRepositoryImpl],
+  bind[MatchHistoryService].toSelf
 )

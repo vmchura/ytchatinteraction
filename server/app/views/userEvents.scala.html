@@ -23,6 +23,9 @@
     </div>
   }
 
+  <article>
+      <a href="@routes.CasualMatchController.viewFindUser()" role="button">@messages("casual.upload")</a>
+  </article>
   @* Tournament Matches Section *@
   @partials.matchTable(viewData.user, viewData.matches)
 

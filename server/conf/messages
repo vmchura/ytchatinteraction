@@ -212,3 +212,13 @@ elo.global.player=Jugador
 elo.global.matchup=Enfrentamiento
 elo.global.scpower=SCPower
 elo.global.updated=Última Actualización
+
+# Recent matches
+match.recent.history.title=Partidas recientes
+match.recent.no.history=Sin partidas
+match.recent.firstUser=Player
+match.recent.secondUser=Player
+match.recent.winner=Ganador
+match.recent.arena=Evento
+
+casual.upload=Sube tu VS

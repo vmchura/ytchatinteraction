@@ -1,15 +1,19 @@
 package controllers
 
 import models.repository.{EloRepository, UserAliasRepository}
-import javax.inject._
-import play.api.mvc._
+
+import javax.inject.*
+import play.api.mvc.*
+import services.MatchHistoryService
+
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class EloStatsController @Inject() (
     components: DefaultSilhouetteControllerComponents,
     eloRepository: EloRepository,
-    userAliasRepository: UserAliasRepository
+    userAliasRepository: UserAliasRepository,
+    matchHistoryService: MatchHistoryService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
 
@@ -19,6 +23,7 @@ class EloStatsController @Inject() (
         currentElos <- eloRepository.getAllElosByUserId(userId)
         eloLogs <- eloRepository.getAllLogsByUserId(userId)
         userAliasOpt <- userAliasRepository.getCurrentAlias(userId)
+        recentMatches <- matchHistoryService.recentMatches(userId)
       } yield {
         Ok(
           views.html.eloStats(
@@ -26,7 +31,8 @@ class EloStatsController @Inject() (
             userId,
             userAliasOpt.getOrElse("Unknown"),
             currentElos,
-            eloLogs
+            eloLogs,
+            recentMatches
           )
         )
       }

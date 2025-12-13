@@ -1,7 +1,8 @@
 package models.component
 
-import models.{EloUser, EloUserLog, StarCraftModels}
+import models.{EloUser, EloUserLog, ServerStarCraftModels, StarCraftModels}
 import slick.jdbc.JdbcProfile
+
 import java.time.Instant
 
 trait EloComponent extends UserComponent {
@@ -9,19 +10,7 @@ trait EloComponent extends UserComponent {
 
   import profile.api._
 
-  given BaseColumnType[StarCraftModels.SCRace] =
-    MappedColumnType.base[StarCraftModels.SCRace, String](
-      {
-        case StarCraftModels.Zerg    => "Zerg"
-        case StarCraftModels.Terran  => "Terran"
-        case StarCraftModels.Protoss => "Protoss"
-      },
-      {
-        case "Zerg"    => StarCraftModels.Zerg
-        case "Terran"  => StarCraftModels.Terran
-        case "Protoss" => StarCraftModels.Protoss
-      }
-    )
+  given BaseColumnType[StarCraftModels.SCRace] = ServerStarCraftModels.scRaceColumnType
 
   class EloUsersTable(tag: Tag) extends Table[EloUser](tag, "elo_users") {
     def userId = column[Long]("user_id")

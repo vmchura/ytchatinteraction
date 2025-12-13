@@ -1,5 +1,6 @@
 package models.repository
 
+import evolutioncomplete.WinnerShared
 import models.CasualMatch
 import models.component.CasualMatchComponent
 import play.api.db.slick.DatabaseConfigProvider
@@ -7,7 +8,7 @@ import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-import models.StarCraftModels._
+import models.StarCraftModels.*
 import models.MatchStatus
 
 trait CasualMatchRepository {
@@ -19,6 +20,7 @@ trait CasualMatchRepository {
   def findByStatus(userId: Long, status: MatchStatus): Future[Seq[CasualMatch]]
   def updateStatus(id: Long, status: MatchStatus): Future[Int]
   def deleteById(id: Long): Future[Int]
+  def setWinner(casualMatch: CasualMatch): Future[Int]
 }
 
 @Singleton
@@ -65,5 +67,8 @@ class CasualMatchRepositoryImpl @Inject()(
 
   override def deleteById(id: Long): Future[Int] = {
     db.run(casualMatchesTable.filter(_.id === id).delete)
+  }
+  override def setWinner(casualMatch: CasualMatch): Future[Int] = {
+    db.run(casualMatchesTable.filter(_.id === casualMatch.id).map(cm => (cm.winnerUserId, cm.status)).update((casualMatch.winnerUserId, MatchStatus.Completed)))
   }
 }

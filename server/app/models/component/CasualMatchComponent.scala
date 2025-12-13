@@ -4,11 +4,10 @@ import models.{CasualMatch, MatchStatus}
 import slick.jdbc.JdbcProfile
 import java.time.Instant
 
-trait CasualMatchComponent {
+trait CasualMatchComponent extends MatchStatusColumnComponent{
   protected val profile: JdbcProfile
   
   import profile.api._
-  given BaseColumnType[MatchStatus] = MatchStatus.columnType
 
   class CasualMatchesTable(tag: Tag) extends Table[CasualMatch](tag, "casual_match") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

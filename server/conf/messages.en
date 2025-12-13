@@ -211,3 +211,13 @@ elo.global.player=Player
 elo.global.matchup=Matchup
 elo.global.scpower=SCPower
 elo.global.updated=Last Updated
+
+# Recent matches
+match.recent.history.title=Recent matches
+match.recent.no.history=No matches
+match.recent.firstUser=Player
+match.recent.secondUser=Player
+match.recent.winner=Winner
+match.recent.arena=Event
+
+casual.upload=Upload your VS

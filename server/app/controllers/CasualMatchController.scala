@@ -350,7 +350,7 @@ class CasualMatchController @Inject() (
               secondParticipantSmurfs
             )
             _ = uploadSessionService.finalizeSession(currentSession)
-
+            _ <- casualMatchRepository.setWinner(casualMatch.withWinner(winnerData.winner))
             resultAnalytical <- analyticalReplayService
               .analyticalProcessCasualMatch(casualMatchId)
 

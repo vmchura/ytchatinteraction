@@ -4,7 +4,7 @@
 @import helper._
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
-@(user: User, targetUserId: Long, targetUserAlias: String, currentElos: Seq[EloUser], eloLogs: Seq[EloUserLogWithRivalName])(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: User, targetUserId: Long, targetUserAlias: String, currentElos: Seq[EloUser], eloLogs: Seq[EloUserLogWithRivalName], recentMatches: Seq[(String, String, String, String)])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("elo.stats.title", targetUserAlias), Some(user)) {
 <h1>@messages("elo.stats.header", targetUserAlias)</h1>
@@ -65,6 +65,35 @@
                 case change => change.toString
                 }}
             </td>
+        </tr>
+        }
+        </tbody>
+    </table>
+    }
+</section>
+
+
+<section>
+    <h2>@messages("match.recent.history.title")</h2>
+    @if(recentMatches.isEmpty) {
+    <p>@messages("match.recent.no.history")</p>
+    } else {
+    <table>
+        <thead>
+        <tr>
+            <th>@messages("match.recent.firstUser")</th>
+            <th>@messages("match.recent.secondUser")</th>
+            <th>@messages("match.recent.winner")</th>
+            <th>@messages("match.recent.arena")</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for(singleMatch <- recentMatches) {
+        <tr>
+            <td>@singleMatch._1</td>
+            <td>@singleMatch._2</td>
+            <td>@singleMatch._3</td>
+            <td>@singleMatch._4</td>
         </tr>
         }
         </tbody>

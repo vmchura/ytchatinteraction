@@ -7,12 +7,9 @@ import slick.lifted.TableQuery
 
 import java.time.Instant
 
-trait TournamentMatchComponent {
+trait TournamentMatchComponent extends MatchStatusColumnComponent{
   protected val profile: JdbcProfile
   import profile.api.*
-
-  // Custom column type for MatchStatus
-  given BaseColumnType[MatchStatus] = MatchStatus.columnType
 
   // Custom column type for Instant
   given BaseColumnType[Instant] =
