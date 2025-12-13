@@ -43,42 +43,42 @@ case class CasualUserSmurf(
     UserSmurf(id, None, None, Some(casualMatchId), userId, smurf, createdAt)
 
 object UserSmurf:
-  given Conversion[UserSmurf, TournamentUserSmurf] = _ match {
+  given Conversion[UserSmurf, TournamentUserSmurf] = {
     case UserSmurf(
-          id,
-          Some(matchId),
-          Some(tournamentId),
-          None,
-          userId,
-          smurf,
-          createdAt
-        ) =>
-        TournamentUserSmurf(
-          id,
-          matchId,
-          tournamentId,
-          userId,
-          smurf,
-          createdAt
+    id,
+    Some(matchId),
+    Some(tournamentId),
+    None,
+    userId,
+    smurf,
+    createdAt
+    ) =>
+      TournamentUserSmurf(
+        id,
+        matchId,
+        tournamentId,
+        userId,
+        smurf,
+        createdAt
       )
     case _ => throw new IllegalStateException("can not convert to TournamentUserSmurf")
   }
-  given Conversion[UserSmurf, CasualUserSmurf] = _ match {
+  given Conversion[UserSmurf, CasualUserSmurf] = {
     case UserSmurf(
-          id,
-          None,
-          None,
-          Some(casualMatchId),
-          userId,
-          smurf,
-          createdAt
-        ) =>
-        CasualUserSmurf(
-          id,
-          casualMatchId,
-          userId,
-          smurf,
-          createdAt
+    id,
+    None,
+    None,
+    Some(casualMatchId),
+    userId,
+    smurf,
+    createdAt
+    ) =>
+      CasualUserSmurf(
+        id,
+        casualMatchId,
+        userId,
+        smurf,
+        createdAt
       )
     case _ => throw new IllegalStateException("can not convert to Casual User Smurf")
   }

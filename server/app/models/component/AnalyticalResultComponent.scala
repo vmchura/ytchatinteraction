@@ -1,7 +1,8 @@
 package models.component
 
-import models.{AnalyticalResult, StarCraftModels}
+import models.{AnalyticalResult, ServerStarCraftModels, StarCraftModels}
 import slick.jdbc.JdbcProfile
+
 import java.time.Instant
 
 trait AnalyticalResultComponent {
@@ -9,26 +10,14 @@ trait AnalyticalResultComponent {
 
   import profile.api._
 
-  given BaseColumnType[StarCraftModels.SCRace] =
-    MappedColumnType.base[StarCraftModels.SCRace, String](
-      {
-        case StarCraftModels.Zerg => "Zerg"
-        case StarCraftModels.Terran => "Terran"
-        case StarCraftModels.Protoss => "Protoss"
-      },
-      {
-        case "Zerg" => StarCraftModels.Zerg
-        case "Terran" => StarCraftModels.Terran
-        case "Protoss" => StarCraftModels.Protoss
-      }
-    )
+  given BaseColumnType[StarCraftModels.SCRace] = ServerStarCraftModels.scRaceColumnType
 
   class AnalyticalResultsTable(tag: Tag) extends Table[AnalyticalResult](tag, "analytical_result") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
 
     def userId = column[Long]("user_id")
 
-    def matchId = column[Long]("match_id")
+    def matchId = column[Option[Long]]("match_id")
 
     def userRace = column[StarCraftModels.SCRace]("userrace")
 
@@ -44,7 +33,9 @@ trait AnalyticalResultComponent {
 
     def result = column[Option[Boolean]]("result")
 
-    def * = (id, userId, matchId, userRace, rivalRace, originalFileName, analysisStartedAt, analysisFinishedAt, algorithmVersion, result).mapTo[AnalyticalResult]
+    def casualMatchID = column[Option[Long]]("casual_match_id")
+
+    def * = (id, userId, matchId, userRace, rivalRace, originalFileName, analysisStartedAt, analysisFinishedAt, algorithmVersion, result, casualMatchID).mapTo[AnalyticalResult]
 
     def userIdIndex = index("idx_analytical_result_user_id", userId)
 

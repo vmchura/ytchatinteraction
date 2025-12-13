@@ -1,17 +1,23 @@
 package models.repository
 
-import models.{AnalyticalResult, StarCraftModels}
+import models.{AnalyticalResult, CasualMatchAnalyticalResult, StarCraftModels, TournamentAnalyticalResult}
 import models.component.AnalyticalResultComponent
 import play.api.db.slick.DatabaseConfigProvider
 import slick.jdbc.JdbcProfile
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
-
-trait AnalyticalResultRepository {
+import AnalyticalResult.given
+trait AnalyticalResultRepository(using ec: ExecutionContext) {
   def create(analyticalResult: AnalyticalResult): Future[AnalyticalResult]
 
   def findByMatchId(matchId: Long): Future[Seq[AnalyticalResult]]
+//
+//  def create(analyticalResult: TournamentAnalyticalResult): Future[TournamentAnalyticalResult] =
+//    create(analyticalResult.toAnalyticalResult).map(summon[Conversion[AnalyticalResult, TournamentAnalyticalResult]].apply)
+//    
+//  def create(analyticalResult: CasualMatchAnalyticalResult): Future[CasualMatchAnalyticalResult] =
+//    create(analyticalResult.toAnalyticalResult).map(summon[Conversion[AnalyticalResult, CasualMatchAnalyticalResult]].apply)
 }
 
 @Singleton

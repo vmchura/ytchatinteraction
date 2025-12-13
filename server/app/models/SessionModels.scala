@@ -5,6 +5,7 @@ import StarCraftModels._
 import GameStateShared._
 import services.FileProcessResult
 import java.util.UUID
+import ServerStarCraftModels._
 
 trait BasicFileInfo:
   def originalFileName: String

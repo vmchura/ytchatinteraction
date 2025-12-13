@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters.*
 import play.api.Logger
 import models.TournamentMatch
 import models.repository._
-import models.StarCraftModels.ReplayParsed
+import models.ServerStarCraftModels.ReplayParsed
 import java.util.UUID
 
 import java.nio.file.Files
@@ -67,7 +67,7 @@ class AnalyticalUploadSessionService @Inject() (
                     _,
                     teams,
                     _,
-                    _,
+                    Some(frames),
                     _
                   )
                 ),
@@ -85,13 +85,14 @@ class AnalyticalUploadSessionService @Inject() (
                   smurfs = teams
                     .flatMap(
                       _.participants
-                        .map(scplayer => scplayer.name -> scplayer.id)
+                        .map(scplayer => scplayer.name -> scplayer)
                     )
                     .toMap,
                   mapName = mapName,
                   playedAt = LocalDateTime.now(),
                   hash = sha256Hash,
-                  sessionID = UUID.randomUUID()
+                  sessionID = UUID.randomUUID(),
+                  frames=frames
                 )
               )
             )

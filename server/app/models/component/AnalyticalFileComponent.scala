@@ -1,7 +1,8 @@
 package models.component
 
-import models.{AnalyticalFile, StarCraftModels}
+import models.{AnalyticalFile, ServerStarCraftModels, StarCraftModels}
 import slick.jdbc.JdbcProfile
+
 import java.time.Instant
 
 trait AnalyticalFileComponent {
@@ -9,7 +10,7 @@ trait AnalyticalFileComponent {
 
   import profile.api._
 
-  given BaseColumnType[StarCraftModels.SCRace] = StarCraftModels.SCRace.columnType
+  given BaseColumnType[StarCraftModels.SCRace] = ServerStarCraftModels.scRaceColumnType
 
   class AnalyticalFilesTable(tag: Tag) extends Table[AnalyticalFile](tag, "analytical_files") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

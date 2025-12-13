@@ -25,7 +25,7 @@ import java.nio.file.Path
 import scala.util.Try
 import java.time.LocalDateTime
 import java.util.UUID
-import models.StarCraftModels.ReplayParsed
+import models.ServerStarCraftModels.ReplayParsed
 import models.StarCraftModels.SCRace
 @Singleton
 class AnalyticalCopyController @Inject() (

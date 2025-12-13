@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import play.api.Logger
 import models.repository.UserRepository
-import models.StarCraftModels.ReplayParsed
+import models.ServerStarCraftModels.ReplayParsed
 
 import java.nio.file.Files
 
@@ -121,7 +121,7 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
             )
           case FileProcessResult(_, _, _, _, _, _, _, Some(sha256Hash), _)
               if currentSession.uploadState.games.exists {
-                case ValidGame(_, _, _, hash, _) if hash.equals(sha256Hash) =>
+                case ValidGame(_, _, _, hash, _, _) if hash.equals(sha256Hash) =>
                   true
                 case _ => false
               } =>
@@ -144,7 +144,7 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
                     _,
                     teams,
                     _,
-                    _,
+                    Some(frames),
                     _
                   )
                 ),
@@ -172,12 +172,13 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
                         ValidGame(
                           teams.flatMap(
                             _.participants
-                              .map(scplayer => scplayer.name -> scplayer.id)
+                              .map(scplayer => scplayer.name -> scplayer)
                           ).toMap,
                           mapName,
                           LocalDateTime.now(),
                           sha256Hash,
-                          uuid
+                          uuid,
+                         frames 
                         )
                       )
                       .calculateWinner()

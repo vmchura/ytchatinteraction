@@ -4,48 +4,14 @@ import play.api.libs.json.*
 import slick.jdbc.JdbcProfile
 
 import javax.json.JsonArray
+import StarCraftModels._
 
 /**
  * StarCraft related models for replay parsing
  */
-object StarCraftModels {
+object ServerStarCraftModels {
 
-  /**
-   * StarCraft races
-   */
-  sealed trait SCRace {
-    def shortLabel: Char
-  }
-
-  case object Zerg extends SCRace {
-    val shortLabel = 'Z'
-  }
-
-  case object Terran extends SCRace {
-    val shortLabel = 'T'
-  }
-
-  case object Protoss extends SCRace {
-    val shortLabel = 'P'
-  }
-
-  implicit val scRaceWrites: Writes[SCRace] = {
-    case Zerg => JsString("Zerg")
-    case Terran => JsString("Terran")
-    case Protoss => JsString("Protoss")
-  }
-
-  implicit val scRaceReads: Reads[SCRace] = (json: JsValue) => {
-    json.validate[String].flatMap {
-      case "Zerg" => JsSuccess(Zerg)
-      case "Terran" => JsSuccess(Terran)
-      case "Protoss" => JsSuccess(Protoss)
-      case other => JsError(s"Unknown race: $other")
-    }
-  }
-
-  object SCRace {
-    def columnType(using profile: JdbcProfile): profile.api.BaseColumnType[SCRace] =
+  def scRaceColumnType(using profile: JdbcProfile): profile.api.BaseColumnType[SCRace] =
       import profile.api.*
 
       MappedColumnType.base[StarCraftModels.SCRace, String](
@@ -60,62 +26,7 @@ object StarCraftModels {
           case "Protoss" => StarCraftModels.Protoss
         }
       )
-  }
 
-  /**
-   * StarCraft match modes
-   */
-  sealed trait SCMatchMode
-
-  case object TopVsBottom extends SCMatchMode
-
-  case object Melee extends SCMatchMode
-
-  case object OneVsOneMode extends SCMatchMode
-
-  case object DangerMode extends SCMatchMode
-
-  case object UnknownMode extends SCMatchMode
-
-  implicit val scMatchModeWrites: Writes[SCMatchMode] = {
-    case TopVsBottom => JsString("TopVsBottom")
-    case Melee => JsString("Melee")
-    case OneVsOneMode => JsString("OneVsOne")
-    case DangerMode => JsString("DangerMode")
-    case UnknownMode => JsString("UnknownMode")
-  }
-
-  implicit val scMatchModeReads: Reads[SCMatchMode] = (json: JsValue) => {
-    json.validate[String].flatMap {
-      case "TopVsBottom" | "TvB" => JsSuccess(TopVsBottom)
-      case "Melee" => JsSuccess(Melee)
-      case "OneVsOne" | "1v1" => JsSuccess(OneVsOneMode)
-      case "DangerMode" | "FFA" | "UMS" => JsSuccess(DangerMode)
-      case _ => JsSuccess(UnknownMode)
-    }
-  }
-
-  /**
-   * StarCraft player
-   */
-  case class SCPlayer(name: String, race: SCRace, id: Int)
-
-  object SCPlayer {
-    implicit val scPlayerFormat: Format[SCPlayer] = Json.format[SCPlayer]
-  }
-
-  /**
-   * Team in a match
-   */
-  case class Team(index: Int, participants: List[SCPlayer])
-
-  object Team {
-    implicit val teamFormat: Format[Team] = Json.format[Team]
-  }
-
-  /**
-   * Game information parsed from replay
-   */
   sealed trait GameInfo
 
   case class ReplayParsed(
@@ -131,6 +42,41 @@ object StarCraftModels {
   case object ImpossibleToParse extends GameInfo
 
   object GameInfo {
+    given Writes[SCRace] = {
+      case Zerg => JsString("Zerg")
+      case Terran => JsString("Terran")
+      case Protoss => JsString("Protoss")
+    }
+
+    given Reads[SCRace] = (json: JsValue) => {
+      json.validate[String].flatMap {
+        case "Zerg" => JsSuccess(Zerg)
+        case "Terran" => JsSuccess(Terran)
+        case "Protoss" => JsSuccess(Protoss)
+        case other => JsError(s"Unknown race: $other")
+      }
+    }
+    
+    given Format[SCPlayer] = Json.format[SCPlayer]
+    given Format[Team] = Json.format[Team]
+
+    given Writes[SCMatchMode] = {
+      case TopVsBottom => JsString("TopVsBottom")
+      case Melee => JsString("Melee")
+      case OneVsOneMode => JsString("OneVsOne")
+      case DangerMode => JsString("DangerMode")
+      case UnknownMode => JsString("UnknownMode")
+    }
+
+    given Reads[SCMatchMode] = (json: JsValue) => {
+      json.validate[String].flatMap {
+        case "TopVsBottom" | "TvB" => JsSuccess(TopVsBottom)
+        case "Melee" => JsSuccess(Melee)
+        case "OneVsOne" | "1v1" => JsSuccess(OneVsOneMode)
+        case "DangerMode" | "FFA" | "UMS" => JsSuccess(DangerMode)
+        case _ => JsSuccess(UnknownMode)
+      }
+    }
     implicit val replayParsedFormat: Format[ReplayParsed] = Json.format[ReplayParsed]
 
     implicit val gameInfoWrites: Writes[GameInfo] = {

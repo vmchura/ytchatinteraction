@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import java.nio.file.{Files, Path}
 import java.util.Base64
 import java.security.MessageDigest
-import models.StarCraftModels.{GameInfo, ReplayParsed}
+import models.ServerStarCraftModels.{GameInfo, ReplayParsed}
 
 case class FileProcessResult(
                               fileName: String,

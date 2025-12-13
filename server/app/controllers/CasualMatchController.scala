@@ -1,23 +1,27 @@
 package controllers
 
-import evolutioncomplete._
-import GameStateShared._
-import play.api.mvc._
-import javax.inject._
-import services.CasualMatchUploadSessionService
-import models._
+import evolutioncomplete.*
+import GameStateShared.*
+import play.api.mvc.*
+
+import javax.inject.*
+import services.{AnalyticalReplayService, CasualMatchUploadSessionService, FileStorageService, ParseReplayFileService, UserSmurfService}
+import models.*
+
 import java.util.UUID
 import java.nio.file.Files
 import play.api.mvc.*
 import play.api.Logger
-import upickle.default._
-import play.api.libs.json._
+import upickle.default.*
+import play.api.libs.json.*
 import play.api.libs.Files.TemporaryFile
+
 import scala.concurrent.{ExecutionContext, Future}
-import services.FileStorageService
 import scala.util.Try
-import services.ParseReplayFileService
-import services.UserSmurfService
+import models.repository.CasualMatchFileRepository
+import forms.Forms
+import models.MatchStatus.*
+import models.repository.CasualMatchRepository
 
 @Singleton
 class CasualMatchController @Inject() (
@@ -25,7 +29,10 @@ class CasualMatchController @Inject() (
     uploadSessionService: CasualMatchUploadSessionService,
     fileStorageService: FileStorageService,
     parseReplayFileService: ParseReplayFileService,
-    userSmurfService: UserSmurfService
+    userSmurfService: UserSmurfService,
+    uploadedFileRepository: CasualMatchFileRepository,
+    casualMatchRepository: CasualMatchRepository,
+    analyticalReplayService: AnalyticalReplayService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
   private val logger = Logger(getClass)
@@ -208,13 +215,13 @@ class CasualMatchController @Inject() (
       .sequence(
         session.uploadState.games
           .filter {
-            case vg @ ValidGame(smurfs, _, _, _, _) =>
+            case vg @ ValidGame(smurfs, _, _, _, _, _) =>
 
               val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
               val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
 
               (firstPlayerSlot, secondPlayerSlot) match {
-                case (Some(s1), Some(s2)) => s1 != s2
+                case (Some(s1), Some(s2)) => s1.id != s2.id
                 case _                    => false
               }
             case _ => false
@@ -223,7 +230,7 @@ class CasualMatchController @Inject() (
             v
           }
           .flatMap {
-            case vg @ ValidGame(smurfs, mapName, playedAt, hash, sessionID) =>
+            case vg @ ValidGame(smurfs, mapName, playedAt, hash, sessionID, frames) =>
               val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
               val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
 
@@ -236,7 +243,12 @@ class CasualMatchController @Inject() (
                     relativeDirectoryPath = storedInfo.storedPath,
                     savedFileName = storedInfo.storedFileName,
                     uploadedAt = storedInfo.storedAt,
-                    slotPlayerId = userSlot
+                    slotPlayerId = userSlot.id,
+                    rivalSlotPlayerId = rivalSlot.id,
+                    userRace = userSlot.race,
+                    rivalRace = rivalSlot.race,
+                    gameFrames = frames 
+
                   )
 
                   uploadedFileRepository.create(uploadedFile).map {
@@ -247,6 +259,8 @@ class CasualMatchController @Inject() (
                       1
                   }
 
+                case _ => Future.successful(0)  
+
               }
           }
       )
@@ -254,8 +268,7 @@ class CasualMatchController @Inject() (
   }
 
   def closeMatch(
-      challongeMatchID: Long,
-      tournamentId: Long
+      casualMatchId: Long,
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     Forms.closeMatchForm
       .bindFromRequest()
@@ -265,22 +278,20 @@ class CasualMatchController @Inject() (
         },
         winnerData => {
           for {
-            tournamentMatchOption <- tournamentService
-              .getMatch(tournamentId, challongeMatchID)
-            casualMatch <- tournamentMatchOption match {
+            casualMatchOption <- casualMatchRepository
+              .findById(casualMatchId)
+            casualMatch <- casualMatchOption match {
               case Some(
-                    tm @ TournamentMatch(
+                    cm @ CasualMatch(
                       _,
                       _,
                       _,
                       _,
                       _,
-                      Pending | InProgress,
-                      _,
-                      _
+                      Pending | InProgress
                     )
                   ) =>
-                Future.successful(tm)
+                Future.successful(cm)
               case Some(_) =>
                 Future
                   .failed(new IllegalStateException("Match already resolved"))
@@ -288,15 +299,13 @@ class CasualMatchController @Inject() (
                 Future.failed(new IllegalStateException("Match not found"))
             }
             currentSessionOption = uploadSessionService.getSession(
-              f"${request.identity.userId}_${challongeMatchID}_${tournamentId}"
+              f"${request.identity.userId}_${casualMatchId}"
             )
             currentSession <- currentSessionOption match {
               case Some(session) => Future.successful(session)
               case _             =>
                 Future.failed(new IllegalStateException("No session found"))
             }
-            result <- tournamentService
-              .submitMatchResult(casualMatch, winnerData.winner)
             firstParticipantSmurfs = winnerData.smurfsFirstParticipant.toSet
             secondParticipantSmurfs = winnerData.smurfsSecondParticipant.toSet
             _ <- recordMatchSmurfs(
@@ -310,57 +319,16 @@ class CasualMatchController @Inject() (
               secondParticipantSmurfs
             )
             _ = uploadSessionService.finalizeSession(currentSession)
+
+            resultAnalytical <- analyticalReplayService
+              .analyticalProcessCasualMatch(casualMatchId)
+
           } yield {
-            analyticalReplayService
-              .analyticalProcessMatch(tournamentId, challongeMatchID)
-            Redirect(routes.UserEventsController.userEvents())
+              Redirect(routes.UserEventsController.userEvents())
               .flashing("success" -> s"Resultado actualizado")
           }
         }
       )
   }
 
-  def viewResults(challongeMatchID: Long): Action[AnyContent] =
-    silhouette.SecuredAction.async { implicit request =>
-      for {
-        analyticalResults <- analyticalResultRepository.findByMatchId(
-          challongeMatchID
-        )
-        distinctUsers = analyticalResults.map(_.userId).distinct
-        userAlias <- Future.sequence(
-          distinctUsers.map(userID =>
-            userAliasRepository
-              .getCurrentAlias(userID)
-              .map(r => r.map(v => userID -> v))
-          )
-        )
-        validUserAlias = userAlias.flatten.toMap
-      } yield {
-        Ok(
-          views.html.singleMatchResult(
-            request.identity,
-            analyticalResults
-              .flatMap(ar =>
-                validUserAlias
-                  .get(ar.userId)
-                  .map(alias =>
-                    AnalyticalResultView(
-                      alias,
-                      ar.userRace,
-                      ar.rivalRace,
-                      ar.originalFileName,
-                      ar.analysisStartedAt,
-                      ar.analysisFinishedAt,
-                      ar.algorithmVersion,
-                      ar.result
-                    )
-                  )
-              )
-              .toList
-              .sortBy(_.originalFileName)
-          )
-        )
-      }
-    }
-
-}
+  }

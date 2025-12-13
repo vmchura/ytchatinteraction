@@ -62,11 +62,11 @@ class MatchResultController @Inject() (
       .sequence(
         session.uploadState.games
           .filter {
-            case ValidGame(_, _, _, _, _) => true
+            case ValidGame(_, _, _, _, _, _) => true
             case _                        => false
           }
           .flatMap {
-            case ValidGame(_, _, _, hash, _) => Some(hash)
+            case ValidGame(_, _, _, hash, _, _) => Some(hash)
             case _                           => None
           }
           .flatMap(hash =>

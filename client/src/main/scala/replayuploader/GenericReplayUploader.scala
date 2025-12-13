@@ -166,7 +166,7 @@ class GenericReplayUploader[SS <: TUploadStateShared[SS]](
          <h6>Replays</h6>
         ${for (game <- currentState.bind.games) yield {
         html"""<div class="game-row">${game match {
-            case ValidGame(smurfs, mapName, playedAt, hash, uuid) =>
+            case ValidGame(smurfs, mapName, playedAt, hash, uuid, frames) =>
               html"""<span class="status-icon success">✓</span>
                           <span class="player_left">${currentState.bind
                   .getFirstSmurf(game)}</span>

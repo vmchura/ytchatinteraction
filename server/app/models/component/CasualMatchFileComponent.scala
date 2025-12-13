@@ -1,7 +1,8 @@
 package models.component
 
-import models.{CasualMatchFile, StarCraftModels}
+import models.{CasualMatchFile, ServerStarCraftModels, StarCraftModels}
 import slick.jdbc.JdbcProfile
+
 import java.time.Instant
 
 trait CasualMatchFileComponent {
@@ -9,7 +10,7 @@ trait CasualMatchFileComponent {
   
   import profile.api._
 
-  given BaseColumnType[StarCraftModels.SCRace] = StarCraftModels.SCRace.columnType
+  given BaseColumnType[StarCraftModels.SCRace] = ServerStarCraftModels.scRaceColumnType
 
   class CasualMatchFilesTable(tag: Tag) extends Table[CasualMatchFile](tag, "casual_match_files") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

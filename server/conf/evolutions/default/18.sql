@@ -53,6 +53,20 @@ ALTER TABLE user_smurfs
 ALTER TABLE user_smurfs
     ADD CONSTRAINT user_smurfs_match_or_casual_ck CHECK ((casual_match_id IS NULL AND match_id IS NOT NULL AND tournament_id IS NOT NULL) OR (casual_match_id IS NOT NULL AND match_id IS NULL AND tournament_id IS NULL));
 
+ALTER TABLE analytical_result
+    ADD COLUMN casual_match_id bigint;
+
+ALTER TABLE analytical_result
+    ALTER COLUMN match_id DROP NOT NULL;
+
+ALTER TABLE analytical_result
+    ADD CONSTRAINT analytical_result_casual_match_fk FOREIGN KEY (casual_match_id) REFERENCES casual_match (id) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+ALTER TABLE analytical_result
+    ADD CONSTRAINT analytical_result_match_or_casual_ck CHECK ((casual_match_id IS NULL AND match_id IS NOT NULL ) OR (casual_match_id IS NOT NULL AND match_id IS NULL));
+
+
+
 # --- !Downs
 ALTER TABLE casual_match_files
     DROP CONSTRAINT casual_match_files_match_fk;
@@ -72,6 +86,9 @@ ALTER TABLE casual_match
 ALTER TABLE user_smurfs
     DROP CONSTRAINT IF EXISTS user_smurfs_casual_match_fk;
 
+ALTER TABLE analytical_result
+    DROP CONSTRAINT IF EXISTS analytical_result_casual_match_fk;
+
 DROP TABLE IF EXISTS casual_match_files;
 
 DROP TABLE IF EXISTS casual_match;
@@ -87,4 +104,13 @@ ALTER TABLE user_smurfs
 
 ALTER TABLE user_smurfs
     ALTER COLUMN tournament_id SET NOT NULL;
+
+ALTER TABLE analytical_result
+    DROP CONSTRAINT IF EXISTS analytical_result_match_or_casual_ck;
+
+ALTER TABLE analytical_result
+    DROP COLUMN IF EXISTS casual_match_id;
+
+ALTER TABLE analytical_result
+    ALTER COLUMN match_id SET NOT NULL;
 

@@ -1,11 +1,13 @@
 package modules.gameparser
 
+import models.ServerStarCraftModels._
 import services.ParseReplayFileService
-import models.StarCraftModels._
+import models.StarCraftModels.*
+
 import java.io.File
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import javax.inject._
+import javax.inject.*
 
 /**
  * GameParser service for parsing replay files without actors
