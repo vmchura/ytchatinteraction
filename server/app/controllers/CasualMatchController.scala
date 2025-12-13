@@ -18,7 +18,7 @@ import play.api.libs.Files.TemporaryFile
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import models.repository.{CasualMatchFileRepository, CasualMatchRepository, UserAliasRepository}
+import models.repository._
 import forms.Forms
 import models.MatchStatus.*
 
@@ -32,7 +32,8 @@ class CasualMatchController @Inject() (
     uploadedFileRepository: CasualMatchFileRepository,
     casualMatchRepository: CasualMatchRepository,
     analyticalReplayService: AnalyticalReplayService,
-    userAliasRepository: UserAliasRepository
+    userAliasRepository: UserAliasRepository,
+    analyticalResultRepository: AnalyticalResultRepository
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
   private val logger = Logger(getClass)
@@ -203,7 +204,7 @@ class CasualMatchController @Inject() (
         case Some(_) => Redirect(routes.CasualMatchController.uploadFormForMatch(casualMatch.id))
         case _ => Redirect(routes.CasualMatchController.viewFindUser()).flashing("error" -> "No se pudo crear el VS casual")
       }
-      
+
     }
   }
 
@@ -360,5 +361,48 @@ class CasualMatchController @Inject() (
         }
       )
   }
+
+  def viewResults(casualMatchID: Long): Action[AnyContent] =
+    silhouette.SecuredAction.async { implicit request =>
+      for {
+        analyticalResults <- analyticalResultRepository.findByCasualMatchId(
+          casualMatchID
+        )
+        distinctUsers = analyticalResults.map(_.userId).distinct
+        userAlias <- Future.sequence(
+          distinctUsers.map(userID =>
+            userAliasRepository
+              .getCurrentAlias(userID)
+              .map(r => r.map(v => userID -> v))
+          )
+        )
+        validUserAlias = userAlias.flatten.toMap
+      } yield {
+        Ok(
+          views.html.singleMatchResult(
+            request.identity,
+            analyticalResults
+              .flatMap(ar =>
+                validUserAlias
+                  .get(ar.userId)
+                  .map(alias =>
+                    AnalyticalResultView(
+                      alias,
+                      ar.userRace,
+                      ar.rivalRace,
+                      ar.originalFileName,
+                      ar.analysisStartedAt,
+                      ar.analysisFinishedAt,
+                      ar.algorithmVersion,
+                      ar.result
+                    )
+                  )
+              )
+              .toList
+              .sortBy(_.originalFileName)
+          )
+        )
+      }
+    }
 
 }

@@ -337,36 +337,40 @@ class AnalyticalReplayServiceImpl @Inject (
       gamePlays: Seq[GamePlayBaseUser],
       gameTest: GamePlayUser
   ): Future[Option[(Boolean, String)]] = {
-    val requestPayload = Json.obj(
-      "game_plays" -> JsArray(gamePlays.map(_.gamePlay)),
-      "game_test" -> gameTest.gamePlay
-    )
-    wsClient
-      .url(s"$replayAnalyticalUrl/analyze")
-      .withHttpHeaders("Content-Type" -> "application/json")
-      .post(requestPayload)
-      .map { response =>
-        logger.debug(s"Response analytical")
-        logger.debug(response.toString)
-        if (response.status == 200) {
-          for {
-            isDifferent <- (response.json \ "is_different").asOpt[Boolean]
-            algorithmVersion <- (response.json \ "algorithm_version")
-              .asOpt[String]
-          } yield {
-            (isDifferent, algorithmVersion)
-          }
+    if(gamePlays.length >= 2) {
+      val requestPayload = Json.obj(
+        "game_plays" -> JsArray(gamePlays.map(_.gamePlay)),
+        "game_test" -> gameTest.gamePlay
+      )
+      wsClient
+        .url(s"$replayAnalyticalUrl/analyze")
+        .withHttpHeaders("Content-Type" -> "application/json")
+        .post(requestPayload)
+        .map { response =>
+          logger.debug(s"Response analytical")
+          logger.debug(response.toString)
+          if (response.status == 200) {
+            for {
+              isDifferent <- (response.json \ "is_different").asOpt[Boolean]
+              algorithmVersion <- (response.json \ "algorithm_version")
+                .asOpt[String]
+            } yield {
+              (isDifferent, algorithmVersion)
+            }
 
-        } else {
-          logger.warn(
-            s"Analysis service returned status ${response.status}: ${response.body}"
-          )
+          } else {
+            logger.warn(
+              s"Analysis service returned status ${response.status}: ${response.body}"
+            )
+            None
+          }
+        }
+        .recover { case ex: Exception =>
           None
         }
-      }
-      .recover { case ex: Exception =>
-        None
-      }
+    }else{
+      Future.successful(None)
+    }
   }
 
   def analyticalProcessMatch[AC](

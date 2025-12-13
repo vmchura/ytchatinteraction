@@ -12,12 +12,7 @@ trait AnalyticalResultRepository(using ec: ExecutionContext) {
   def create(analyticalResult: AnalyticalResult): Future[AnalyticalResult]
 
   def findByMatchId(matchId: Long): Future[Seq[AnalyticalResult]]
-//
-//  def create(analyticalResult: TournamentAnalyticalResult): Future[TournamentAnalyticalResult] =
-//    create(analyticalResult.toAnalyticalResult).map(summon[Conversion[AnalyticalResult, TournamentAnalyticalResult]].apply)
-//    
-//  def create(analyticalResult: CasualMatchAnalyticalResult): Future[CasualMatchAnalyticalResult] =
-//    create(analyticalResult.toAnalyticalResult).map(summon[Conversion[AnalyticalResult, CasualMatchAnalyticalResult]].apply)
+  def findByCasualMatchId(casualMatchId: Long): Future[Seq[AnalyticalResult]]
 }
 
 @Singleton
@@ -43,4 +38,7 @@ class AnalyticalResultRepositoryImpl @Inject()(
     db.run(analyticalResultsTable.filter(_.matchId === matchId).sortBy(_.analysisFinishedAt.desc).result)
   }
 
+  override def findByCasualMatchId(casualMatchId: Long): Future[Seq[AnalyticalResult]] = {
+    db.run(analyticalResultsTable.filter(_.casualMatchID === casualMatchId).sortBy(_.analysisFinishedAt.desc).result)
+  }
 }

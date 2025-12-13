@@ -97,6 +97,7 @@ GET     /casual/match/:casualMatchID      controllers.CasualMatchController.uplo
 GET    /casual/fetchstate/:casualMatchID controllers.CasualMatchController.fetchState(casualMatchID: Long)
 POST   /casual/updatestate controllers.CasualMatchController.updateState()
 POST   /casual/remove/:casualMatchID/:sessionUUID  controllers.CasualMatchController.removeFile(casualMatchID: Long, sessionUUID: java.util.UUID)
+GET     /casual/results/:casualMatchID controllers.CasualMatchController.viewResults(casualMatchID: Long)
 
 # Analytical Routes
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
