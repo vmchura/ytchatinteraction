@@ -4,13 +4,13 @@
 @import models.TournamentSession
 @import models.{Tournament, TournamentMatch}
 @import helper._
-@(user: User, tournamentID: Long, challongeMatchID: Long)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+@(user: User, casualMatchID: Long)(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("upload.title"), Some(user)) {
 <div id="file-upload-container"></div>
-    <form method="post" id="matchUploadForm" action="@routes.MatchResultController.closeMatch(challongeMatchID,tournamentID)">   @helper.CSRF.formField  </form>
+    <form method="post" id="matchUploadForm" action="@routes.CasualMatchController.closeMatch(casualMatchID)">   @helper.CSRF.formField  </form>
     @scalajs.html.scripts("client", routes.Assets.versioned(_).toString, name => getClass.getResource(s"/public/$name") != null)
     <script @{CSPNonce.attr} >
-            Main.init("@tournamentID","@challongeMatchID",'file-upload-container');
+            Main.initCasualMatch("@casualMatchID",'file-upload-container');
     </script>
 }

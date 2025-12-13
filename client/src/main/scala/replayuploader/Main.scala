@@ -11,9 +11,16 @@ object Main {
   def main(args: Array[String]): Unit = {}
 
   @JSExport("init")
-  def init(tournamentID: Int, challongeMatchID: Int, containerID: String): Unit = {
+  def init(tournamentID: String, challongeMatchID: String, containerID: String): Unit = {
 
-    GenericReplayUploader.initTournament(challongeMatchID, tournamentID,containerID)
+    GenericReplayUploader.initTournament(challongeMatchID.toLong, tournamentID.toLong,containerID)
+
+  }
+
+  @JSExport("initCasualMatch")
+  def initCasualMatch(casualMatchID: String, containerID: String): Unit = {
+
+    GenericReplayUploader.initCasualMatch(casualMatchID.toLong, containerID)
 
   }
 

@@ -39,8 +39,11 @@ case class CasualUserSmurf(
     smurf: String,
     createdAt: Instant = Instant.now()
 ) extends GenericUserSmurf:
-  override def toUserSmurf: UserSmurf =
-    UserSmurf(id, None, None, Some(casualMatchId), userId, smurf, createdAt)
+  override def toUserSmurf: UserSmurf = {
+    val us = UserSmurf(id, None, None, Some(casualMatchId), userId, smurf, createdAt)
+    println(us)
+    us
+  }
 
 object UserSmurf:
   given Conversion[UserSmurf, TournamentUserSmurf] = {

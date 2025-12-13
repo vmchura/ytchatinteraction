@@ -18,10 +18,9 @@ import play.api.libs.Files.TemporaryFile
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
-import models.repository.CasualMatchFileRepository
+import models.repository.{CasualMatchFileRepository, CasualMatchRepository, UserAliasRepository}
 import forms.Forms
 import models.MatchStatus.*
-import models.repository.CasualMatchRepository
 
 @Singleton
 class CasualMatchController @Inject() (
@@ -32,7 +31,8 @@ class CasualMatchController @Inject() (
     userSmurfService: UserSmurfService,
     uploadedFileRepository: CasualMatchFileRepository,
     casualMatchRepository: CasualMatchRepository,
-    analyticalReplayService: AnalyticalReplayService
+    analyticalReplayService: AnalyticalReplayService,
+    userAliasRepository: UserAliasRepository
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
   private val logger = Logger(getClass)
@@ -173,17 +173,38 @@ class CasualMatchController @Inject() (
     }
 
   def uploadFormForMatch(
-      tournamentId: Long,
-      challengeMatchId: Long
+      casualMatchID: Long
   ): Action[AnyContent] = silhouette.SecuredAction { implicit request =>
     Ok(
-      views.html.fileUpload(
+      views.html.fileUploadCasualMatch(
         request.identity,
-        tournamentId,
-        challengeMatchId
+        casualMatchID
       )
     )
+  }
 
+  def viewFindUser(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    userAliasRepository.list().map { allUserAlias =>
+      Ok(
+        views.html.viewNewCasualMatch(
+          request.identity,
+          allUserAlias.filter(_.userId != request.identity.userId)
+        )
+      )
+    }
+  }
+
+  def createCasualMatch(rivalID: Long): Action[AnyContent] = silhouette.SecuredAction.async{ implicit request =>
+    for{
+      casualMatch <- casualMatchRepository.create(CasualMatch(0, request.identity.userId, rivalID, None, java.time.Instant.now(), Pending))
+      sessionCreated <- uploadSessionService.startSession(MetaCasualMatchSession(rivalID, casualMatch.id))
+    }yield{
+      sessionCreated match {
+        case Some(_) => Redirect(routes.CasualMatchController.uploadFormForMatch(casualMatch.id))
+        case _ => Redirect(routes.CasualMatchController.viewFindUser()).flashing("error" -> "No se pudo crear el VS casual")
+      }
+      
+    }
   }
 
   private def recordMatchSmurfs(
@@ -217,7 +238,7 @@ class CasualMatchController @Inject() (
           .filter {
             case vg @ ValidGame(smurfs, _, _, _, _, _) =>
 
-              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
+              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant)
               val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
 
               (firstPlayerSlot, secondPlayerSlot) match {
@@ -230,45 +251,54 @@ class CasualMatchController @Inject() (
             v
           }
           .flatMap {
-            case vg @ ValidGame(smurfs, mapName, playedAt, hash, sessionID, frames) =>
-              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant) 
+            case vg @ ValidGame(
+                  smurfs,
+                  mapName,
+                  playedAt,
+                  hash,
+                  sessionID,
+                  frames
+                ) =>
+              val firstPlayerSlot = vg.slotBySmurf(smurfsFirstParticipant)
               val secondPlayerSlot = vg.slotBySmurf(smurfsSecondParticipant)
 
-              session.hash2StoreInformation.get(hash).map((hash, _, firstPlayerSlot, secondPlayerSlot)).map {
-                case (hash, storedInfo, Some(userSlot), Some(rivalSlot)) =>
-                  val uploadedFile = models.CasualMatchFile(
-                    casualMatchId = session.casualMatchId,
-                    sha256Hash = hash,
-                    originalName = storedInfo.originalFileName,
-                    relativeDirectoryPath = storedInfo.storedPath,
-                    savedFileName = storedInfo.storedFileName,
-                    uploadedAt = storedInfo.storedAt,
-                    slotPlayerId = userSlot.id,
-                    rivalSlotPlayerId = rivalSlot.id,
-                    userRace = userSlot.race,
-                    rivalRace = rivalSlot.race,
-                    gameFrames = frames 
+              session.hash2StoreInformation
+                .get(hash)
+                .map((hash, _, firstPlayerSlot, secondPlayerSlot))
+                .map {
+                  case (hash, storedInfo, Some(userSlot), Some(rivalSlot)) =>
+                    val uploadedFile = models.CasualMatchFile(
+                      casualMatchId = session.casualMatchId,
+                      sha256Hash = hash,
+                      originalName = storedInfo.originalFileName,
+                      relativeDirectoryPath = storedInfo.storedPath,
+                      savedFileName = storedInfo.storedFileName,
+                      uploadedAt = storedInfo.storedAt,
+                      slotPlayerId = userSlot.id,
+                      rivalSlotPlayerId = rivalSlot.id,
+                      userRace = userSlot.race,
+                      rivalRace = rivalSlot.race,
+                      gameFrames = frames
+                    )
 
-                  )
+                    uploadedFileRepository.create(uploadedFile).map {
+                      createdFile =>
+                        logger.info(
+                          s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}"
+                        )
+                        1
+                    }
 
-                  uploadedFileRepository.create(uploadedFile).map {
-                    createdFile =>
-                      logger.info(
-                        s"Saved file record to database: ID ${createdFile.id}, SHA256: ${createdFile.sha256Hash}"
-                      )
-                      1
-                  }
+                  case _ => Future.successful(0)
 
-                case _ => Future.successful(0)  
-
-              }
+                }
           }
       )
       .map(_.sum)
   }
 
   def closeMatch(
-      casualMatchId: Long,
+      casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     Forms.closeMatchForm
       .bindFromRequest()
@@ -324,11 +354,11 @@ class CasualMatchController @Inject() (
               .analyticalProcessCasualMatch(casualMatchId)
 
           } yield {
-              Redirect(routes.UserEventsController.userEvents())
+            Redirect(routes.UserEventsController.userEvents())
               .flashing("success" -> s"Resultado actualizado")
           }
         }
       )
   }
 
-  }
+}

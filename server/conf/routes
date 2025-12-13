@@ -89,6 +89,15 @@ POST   /remove/:tournamentId/:challongeMatchID/:sessionUUID  controllers.FileUpl
 POST   /close/:tournamentId/:challongeMatchID  controllers.MatchResultController.closeMatch(tournamentId: Long, challongeMatchID: Long)
 GET     /results/match/:challongeMatchID controllers.MatchResultController.viewResults(challongeMatchID: Long)
 
+# CasualMatches
+POST   /casual/close/:casualMatchID  controllers.CasualMatchController.closeMatch(casualMatchID: Long)
+GET     /casual controllers.CasualMatchController.viewFindUser()
+POST     /casual/create/:rivalID controllers.CasualMatchController.createCasualMatch(rivalID: Long)
+GET     /casual/match/:casualMatchID      controllers.CasualMatchController.uploadFormForMatch(casualMatchID: Long)
+GET    /casual/fetchstate/:casualMatchID controllers.CasualMatchController.fetchState(casualMatchID: Long)
+POST   /casual/updatestate controllers.CasualMatchController.updateState()
+POST   /casual/remove/:casualMatchID/:sessionUUID  controllers.CasualMatchController.removeFile(casualMatchID: Long, sessionUUID: java.util.UUID)
+
 # Analytical Routes
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
 POST /analytical/upload controllers.AnalyticalUploadController.updateState()

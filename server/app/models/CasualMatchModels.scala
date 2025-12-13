@@ -23,4 +23,4 @@ case class CasualMatchFile(
     userRace: SCRace,
     rivalRace: SCRace,
     gameFrames: Int
-)
+) extends GenericUploadedFile

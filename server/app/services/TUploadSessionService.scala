@@ -4,7 +4,7 @@ import evolutioncomplete.GameStateShared.*
 import evolutioncomplete.WinnerShared.Cancelled
 import evolutioncomplete.{ParticipantShared, TUploadStateShared}
 import models.StarCraftModels.{SCMatchMode, Team}
-import models._
+import models.*
 
 import javax.inject.*
 import java.util.concurrent.ConcurrentHashMap
@@ -13,7 +13,7 @@ import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.*
 import play.api.Logger
-import models.repository.UserRepository
+import models.repository.{AnalyticalFileRepository, CasualMatchFileRepository, UserRepository}
 import models.ServerStarCraftModels.ReplayParsed
 
 import java.nio.file.Files
@@ -23,7 +23,9 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
 ], US <: TSessionUploadFile[US, F, SS], M <: TMetaSession](
     uploadedFileRepository: models.repository.UploadedFileRepository,
     userRepository: UserRepository,
-    fileStorageService: FileStorageService
+    fileStorageService: FileStorageService,
+    analyticalFileRepository: AnalyticalFileRepository,
+    casualMatchFileRepository: CasualMatchFileRepository
 )(implicit ec: ExecutionContext) {
   private val logger = Logger(getClass)
 
@@ -207,8 +209,13 @@ trait TUploadSessionService[F <: BasicFileInfo, SS <: TUploadStateShared[
   ): Future[Boolean] = {
     fileResult.sha256Hash match {
       case Some(sha256) =>
-        val r = uploadedFileRepository.findBySha256Hash(sha256)
-        r.map(_.isDefined)
+        for {
+          tournament <- uploadedFileRepository.findBySha256Hash(sha256)
+          analytical <- analyticalFileRepository.findBySha256Hash(sha256)
+          casual <- casualMatchFileRepository.findBySha256Hash(sha256)
+        }yield{
+          tournament.isDefined || analytical.isDefined || casual.isDefined
+        }
       case None =>
         Future.successful(false)
     }

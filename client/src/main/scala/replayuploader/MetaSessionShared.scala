@@ -32,10 +32,10 @@ case class TournamentMetaSession(matchId: Long, tournamentId: Long)
 
 case class CasualMatchMetaSession(casualMatchId: Long)
     extends MetaSessionShared[CasualMatchStateShared]:
-  def fetchStateUri: Uri = uri"/fetchcasualstate/$casualMatchId"
-  def updateStateUri: Uri = uri"/updatecasualstate"
+  def fetchStateUri: Uri = uri"/casual/fetchstate/$casualMatchId"
+  def updateStateUri: Uri = uri"/casual/updatestate"
   def removeFileUri(fileUUID: UUID): Uri =
-    uri"/removecasual/${casualMatchId}/${fileUUID.toString}"
+    uri"/casual/remove/${casualMatchId}/${fileUUID.toString}"
   def default(): CasualMatchStateShared =
     CasualMatchStateShared.default()
   def error(): CasualMatchStateShared =

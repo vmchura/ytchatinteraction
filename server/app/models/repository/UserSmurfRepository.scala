@@ -49,9 +49,9 @@ class UserSmurfRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(im
    * Creates multiple user smurf records in a batch (DBIO action).
    */
   def createBatchAction(userSmurfs: Seq[UserSmurf]): DBIO[Seq[UserSmurf]] = {
-    val insertData = userSmurfs.map(us => (us.matchId, us.tournamentId, us.userId, us.smurf, us.createdAt))
+    val insertData = userSmurfs.map(us => (us.matchId, us.tournamentId, us.casualMatchId, us.userId, us.smurf, us.createdAt))
     
-    (userSmurfsTable.map(us => (us.matchId, us.tournamentId, us.userId, us.smurf, us.createdAt))
+    (userSmurfsTable.map(us => (us.matchId, us.tournamentId, us.casualMatchId, us.userId, us.smurf, us.createdAt))
       returning userSmurfsTable.map(_.id)
     ).++=(insertData).map { ids =>
       userSmurfs.zip(ids).map { case (original, id) =>
@@ -79,6 +79,14 @@ class UserSmurfRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(im
    */
   def findByMatchId(matchId: Long): Future[List[UserSmurf]] = db.run {
     findByMatchIdAction(matchId)
+  }
+
+  def findByCasualMatchId(casualMatchId: Long): Future[List[UserSmurf]] = db.run {
+    userSmurfsTable
+      .filter(_.casualMatchId === casualMatchId)
+      .sortBy(_.createdAt.desc)
+      .result
+      .map(_.toList)
   }
 
   /**

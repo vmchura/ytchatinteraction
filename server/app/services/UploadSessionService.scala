@@ -26,7 +26,8 @@ class AnalyticalUploadSessionService @Inject() (
     tournamentService: TournamentService,
     userRepository: UserRepository,
     fileStorageService: FileStorageService,
-    analyticalFileRepository: models.repository.AnalyticalFileRepository
+    analyticalFileRepository: models.repository.AnalyticalFileRepository,
+    casualMatchFileRepository: CasualMatchFileRepository
 )(implicit ec: ExecutionContext)
     extends TUploadSessionService[
       AnalyticalFileInfo,
@@ -36,7 +37,9 @@ class AnalyticalUploadSessionService @Inject() (
     ](
       uploadedFileRepository,
       userRepository,
-      fileStorageService
+      fileStorageService,
+      analyticalFileRepository,
+      casualMatchFileRepository
     ) {
   private val logger = Logger(getClass)
   override def startSession(
@@ -154,7 +157,9 @@ class TournamentUploadSessionService @Inject() (
     uploadedFileRepository: models.repository.UploadedFileRepository,
     tournamentService: TournamentService,
     userRepository: UserRepository,
-    fileStorageService: FileStorageService
+    fileStorageService: FileStorageService,
+    analyticalFileRepository: models.repository.AnalyticalFileRepository,
+    casualMatchFileRepository: CasualMatchFileRepository
 )(implicit ec: ExecutionContext)
     extends TUploadSessionService[
       StoredFileInfo,
@@ -164,7 +169,9 @@ class TournamentUploadSessionService @Inject() (
     ](
       uploadedFileRepository,
       userRepository,
-      fileStorageService
+      fileStorageService,
+      analyticalFileRepository,
+      casualMatchFileRepository
     ) {
 
   override def startSession(
@@ -230,7 +237,9 @@ class CasualMatchUploadSessionService @Inject() (
     uploadedFileRepository: models.repository.UploadedFileRepository,
     casualMatchRepository: CasualMatchRepository,
     userRepository: UserRepository,
-    fileStorageService: FileStorageService
+    fileStorageService: FileStorageService,
+    analyticalFileRepository: AnalyticalFileRepository,
+    casualMatchFileRepository: CasualMatchFileRepository
 )(implicit ec: ExecutionContext)
     extends TUploadSessionService[
       CasualMatchFileInfo,
@@ -240,7 +249,9 @@ class CasualMatchUploadSessionService @Inject() (
     ](
       uploadedFileRepository,
       userRepository,
-      fileStorageService
+      fileStorageService,
+      analyticalFileRepository,
+      casualMatchFileRepository
     ) {
 
   override def startSession(

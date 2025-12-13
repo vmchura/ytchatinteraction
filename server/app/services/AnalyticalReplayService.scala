@@ -16,7 +16,7 @@ import java.nio.file.Path
 import scala.concurrent.{ExecutionContext, Future}
 
 case class RecoverPlaysMatch(
-    uploadedFiles: Seq[UploadedFile],
+    uploadedFiles: Seq[GenericUploadedFile],
     userRequestSmurf: List[String],
     rivalSmurf: List[String]
 )
@@ -38,14 +38,14 @@ case class GamePlayBaseUser(gamePlay: JsArray, frames: Int) {
 }
 trait AnalyticalContext[AC]:
   def getContext: Future[Option[AC]]
-  def getPlaysMatchFirstUser(ac: AC): Future[RecoverPlaysMatch]
-  def getPlaysMatchSecondUser(ac: AC): Future[RecoverPlaysMatch]
   def withGamePlay(userID: Long, gp: GamePlayUser): GenericAnalyticalResult
   def getFirstUserID(ac: AC): Long
   def getSecondUserID(ac: AC): Long
   def getWinnerID(ac: AC): Option[Long]
   def getMatchID(ac: AC): Option[Long]
   def getCasualMatchID(ac: AC): Option[Long]
+  def getMatchesByUserID(userID: Long, ac: AC): Future[RecoverPlaysMatch]
+
 
 
 trait AnalyticalReplayService(futures: Futures)(implicit ec: ExecutionContext):
@@ -70,6 +70,15 @@ trait AnalyticalReplayService(futures: Futures)(implicit ec: ExecutionContext):
 
   def loadFileAndParse(storedPath: Path): Future[Option[ReplayParsed]]
 
+  def processUser[AC](context: AnalyticalContext[AC], ac: AC, userID: Long): Future[Seq[GenericAnalyticalResult]] = {
+    for {
+      gamePlaysFirstUser <- context.getMatchesByUserID(userID, ac)
+      gamesFirstUser <- getGamePlays(userID, gamePlaysFirstUser)
+      resultFirstUser <- analyticalProcess(context, userID, gamesFirstUser).recover(_ => Nil)
+    } yield {
+      resultFirstUser
+    }
+  }
   def getGamePlays(
       userID: Long,
       playsMatch: RecoverPlaysMatch
@@ -117,16 +126,6 @@ trait AnalyticalReplayService(futures: Futures)(implicit ec: ExecutionContext):
       (userGamePlays, gamePlayBase.flatten)
     }
   }
-
-//  def getTournamentGamePlays(userID: Long, matchID: Long): Future[(Seq[GamePlayUser], Seq[GamePlayBaseUser])] = for {
-//    playsMatch <- recoverTournamentReplays(userID, matchID)
-//    gamePlays <- getGames(playsMatch)
-//  } yield gamePlays
-//
-//  def getCasualMatchGamePlays(userID: Long, casualMatchId: Long): Future[(Seq[GamePlayUser], Seq[GamePlayBaseUser])] = for {
-//    playsMatch <- recoverCasualMatchReplays(userID, casualMatchId)
-//    gamePlays <- getGames(playsMatch)}
-//    yield gamePlays
 
   def analyticalProcessByAlgorithm(
       gamePlays: Seq[GamePlayBaseUser],
@@ -187,7 +186,8 @@ class AnalyticalReplayServiceImpl @Inject (
     analyticalResultRepository: AnalyticalResultRepository,
     futures: Futures,
     eloRepository: EloRepository,
-    casualMatchRepository: CasualMatchRepository
+    casualMatchRepository: CasualMatchRepository,
+    casualMatchFileRepository: CasualMatchFileRepository
 )(implicit
     ec: ExecutionContext
 ) extends AnalyticalReplayService(futures) {
@@ -195,9 +195,9 @@ class AnalyticalReplayServiceImpl @Inject (
   private val replayAnalyticalUrl =
     configuration.get[String]("replayanalytical.url")
 
-  case class TournamentAnalyticalContext(tournamentID: Long, matchID: Long) extends AnalyticalContext[TournamentMatch]:
+  private case class TournamentAnalyticalContext(tournamentID: Long, matchID: Long) extends AnalyticalContext[TournamentMatch]:
     def getContext: Future[Option[TournamentMatch]] = tournamentService.getMatch(tournamentID, matchID)
-    private def recoverReplays(userID: Long, matchID: Long): Future[RecoverPlaysMatch] = {
+    private def recoverReplays(userID: Long): Future[RecoverPlaysMatch] = {
 
       for {
         uploadedFiles <- uploadedFileRepository.findByMatchId(matchID)
@@ -210,8 +210,6 @@ class AnalyticalReplayServiceImpl @Inject (
         )
       }
     }
-    override def getPlaysMatchFirstUser(ac: TournamentMatch): Future[RecoverPlaysMatch] = recoverReplays(ac.firstUserId, ac.matchId)
-    override def getPlaysMatchSecondUser(ac: TournamentMatch): Future[RecoverPlaysMatch] = recoverReplays(ac.secondUserId, ac.matchId)
 
     override def withGamePlay(userID: Long, gp: GamePlayUser): GenericAnalyticalResult = TournamentAnalyticalResult(
       0,
@@ -231,6 +229,50 @@ class AnalyticalReplayServiceImpl @Inject (
     override def getSecondUserID(ac: models.TournamentMatch): Long = ac.secondUserId
     override def getWinnerID(ac: models.TournamentMatch): Option[Long] = ac.winnerUserId
 
+    override def getMatchesByUserID(userID: Long, ac: models.TournamentMatch): Future[RecoverPlaysMatch] = recoverReplays(userID)
+
+  private case class CasualMatchAnalyticalContext(casualMatchID: Long) extends AnalyticalContext[CasualMatch]:
+
+    override def getContext: Future[Option[CasualMatch]] = casualMatchRepository.findById(casualMatchID)
+
+    private def recoverReplays(userID: Long): Future[RecoverPlaysMatch] = {
+
+      for {
+        uploadedFiles <- casualMatchFileRepository.findByCasualMatchId(casualMatchID)
+        smurfsMatch <- userSmurfRepository.findByCasualMatchId(casualMatchID)
+      } yield {
+        RecoverPlaysMatch(
+          uploadedFiles,
+          userRequestSmurf = smurfsMatch.filter(_.userId == userID).map(_.smurf),
+          rivalSmurf = smurfsMatch.filter(_.userId != userID).map(_.smurf)
+        )
+      }
+    }
+
+    override def withGamePlay(userID: Long, gp: GamePlayUser): GenericAnalyticalResult = CasualMatchAnalyticalResult(
+      id=0,
+      userId=userID,
+      userRace=gp.userRace,
+      rivalRace=gp.rivalRace,
+      originalFileName=gp.originalFileName,
+      analysisStartedAt = java.time.Instant.now(),
+      analysisFinishedAt = None,
+      algorithmVersion = None,
+      result = None,
+      casualMatchId=casualMatchID
+    )
+
+    override def getFirstUserID(ac: CasualMatch): Long = ac.userId
+
+    override def getSecondUserID(ac: CasualMatch): Long = ac.rivalUserId
+
+    override def getWinnerID(ac: CasualMatch): Option[Long] = ac.winnerUserId
+
+    override def getMatchID(ac: CasualMatch): Option[Long] = None
+
+    override def getCasualMatchID(ac: CasualMatch): Option[Long] = Some(ac.id)
+
+    override def getMatchesByUserID(userID: Long, ac: CasualMatch): Future[RecoverPlaysMatch] = recoverReplays(userID)
 
   def filterGamePlay(
       liveReplay: ReplayParsed,
@@ -335,33 +377,30 @@ class AnalyticalReplayServiceImpl @Inject (
       singleMatch <- singleMatchOption.fold(Future.failed(new IllegalStateException("No match registered")))(ac => Future.successful(ac))
 
       firstUserID = analyticalContext.getFirstUserID(singleMatch)
-      gamePlaysFirstUser <- analyticalContext.getPlaysMatchFirstUser(singleMatch)
-      gamesFirstUser <- getGamePlays(analyticalContext.getFirstUserID(singleMatch), gamePlaysFirstUser)
-      resultFirstUser <- analyticalProcess(analyticalContext, firstUserID, gamesFirstUser).recover(_ => Nil)
-      firstUserRace = resultFirstUser.map(_.userRace).toSet
-
       secondUserID = analyticalContext.getSecondUserID(singleMatch)
-      gamePlaysSecondUser <- analyticalContext.getPlaysMatchSecondUser(singleMatch)
-      gamesSecondUser <- getGamePlays(analyticalContext.getSecondUserID(singleMatch), gamePlaysSecondUser)
-      resultSecondUser <- analyticalProcess(analyticalContext, secondUserID, gamesSecondUser).recover(_ => Nil)
+
+      resultFirstUser <- processUser(analyticalContext, singleMatch, firstUserID)
+      resultSecondUser <- processUser(analyticalContext, singleMatch, secondUserID)
+
+      firstUserRace = resultFirstUser.map(_.userRace).toSet
       secondUserRace = resultSecondUser.map(_.userRace).toSet
 
       _ = Option.when((firstUserRace.size == 1) && (secondUserRace.size == 1)) {
-        if(analyticalContext.getWinnerID(singleMatch).contains(analyticalContext.getFirstUserID(singleMatch))){
+        if(analyticalContext.getWinnerID(singleMatch).contains(firstUserID)){
           eloRepository.apply_first_user_win(
-            analyticalContext.getFirstUserID(singleMatch),
+            firstUserID,
             firstUserRace.head,
-            analyticalContext.getSecondUserID(singleMatch),
+            secondUserID,
             secondUserRace.head,
             analyticalContext.getMatchID(singleMatch),
             analyticalContext.getCasualMatchID(singleMatch)
           )
         }else {
-          if (analyticalContext.getWinnerID(singleMatch).contains(analyticalContext.getSecondUserID(singleMatch))) {
+          if (analyticalContext.getWinnerID(singleMatch).contains(secondUserID)) {
             eloRepository.apply_first_user_win(
-              analyticalContext.getSecondUserID(singleMatch),
+              secondUserID,
               secondUserRace.head,
-              analyticalContext.getFirstUserID(singleMatch),
+              firstUserID,
               firstUserRace.head,
               analyticalContext.getMatchID(singleMatch),
               analyticalContext.getCasualMatchID(singleMatch)
@@ -379,7 +418,7 @@ class AnalyticalReplayServiceImpl @Inject (
     }
   }
 
-  override def analyticalProcessCasualMatch(casualMatchId: Long): Future[Boolean] = ???
+  override def analyticalProcessCasualMatch(casualMatchId: Long): Future[Boolean] = analyticalProcessMatch(CasualMatchAnalyticalContext(casualMatchId))
 
   override def analyticalProcessMatch(tournamentId: Long, challongeMatchID: Long): Future[Boolean] = analyticalProcessMatch(TournamentAnalyticalContext(tournamentId, challongeMatchID))
 

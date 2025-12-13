@@ -130,4 +130,6 @@ class UserAliasRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)
     db.run(action.transactionally)
   }
 
+  def list(): Future[Seq[UserAliasHistory]] = db.run(userAliasHistoryTable.result)
+
 }
