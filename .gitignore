@@ -32,3 +32,4 @@ uploads/
 /uploads/
 .metals/
 .bloop/
+.sbtopts
