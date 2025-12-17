@@ -3,7 +3,7 @@ import play.core.PlayVersion.pekkoVersion
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 
-ThisBuild / scalaVersion := "3.3.6"
+ThisBuild / scalaVersion := "3.3.7"
 ThisBuild / version := "1.0-SNAPSHOT"
 ThisBuild / organization := "your.organization"
 
@@ -38,20 +38,20 @@ lazy val server = (project in file("server"))
       "com.h2database" % "h2" % "2.3.232",
       "org.webjars" %% "webjars-play" % "3.0.2",
       "org.webjars.npm" % "picocss__pico" % "2.1.1",
-      "net.logstash.logback" % "logstash-logback-encoder" % "7.3",
-      "org.jsoup" % "jsoup" % "1.18.1",
-      "ch.qos.logback" % "logback-classic" % "1.5.8",
+      "net.logstash.logback" % "logstash-logback-encoder" % "9.0",
+      "org.jsoup" % "jsoup" % "1.21.2",
+      "ch.qos.logback" % "logback-classic" % "1.5.22",
       "org.apache.pekko" %% "pekko-slf4j" % pekkoVersion,
       "org.apache.pekko" %% "pekko-testkit" % pekkoVersion % Test,
       "org.apache.pekko" %% "pekko-stream-testkit" % pekkoVersion % Test,
       "org.apache.pekko" %% "pekko-actor-testkit-typed" % pekkoVersion % Test,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
+      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test,
       specs2 % Test,
       "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9",
       "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models-spanish",
       "edu.stanford.nlp" % "stanford-corenlp" % "4.5.9" classifier "models",
-      "com.github.tminglei" %% "slick-pg" % "0.23.0",
-      "com.github.tminglei" %% "slick-pg_play-json" % "0.23.0",
+      "com.github.tminglei" %% "slick-pg" % "0.23.1",
+      "com.github.tminglei" %% "slick-pg_play-json" % "0.23.1",
       "io.cequence" %% "openai-scala-client" % "1.2.0",
       "com.vmunier" %% "scalajs-scripts" % "1.3.0"
     ),
@@ -69,9 +69,9 @@ lazy val client = (project in file("client"))
   .settings(
     scalaJSUseMainModuleInitializer := true,
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "2.2.0",
-      "com.lihaoyi" %%% "utest" % "0.9.0" % "test",
-      "com.softwaremill.sttp.client4" %%% "core" % "4.0.9",
+      "org.scala-js" %%% "scalajs-dom" % "2.8.1",
+      "com.lihaoyi" %%% "utest" % "0.9.4" % "test",
+      "com.softwaremill.sttp.client4" %%% "core" % "4.0.13",
       "com.yang-bo" %%% "html" % "3.0.3",
       "com.thoughtworks.binding" %%% "binding" % "12.2.0",
       "com.thoughtworks.binding" %%% "bindable" % "3.0.0",
