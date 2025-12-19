@@ -1,48 +1,59 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-
-<!-- https://www.playframework.com/documentation/latest/SettingsLogger -->
-
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE configuration>
-
 <configuration>
-    <import class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"/>
-    <import class="ch.qos.logback.classic.AsyncAppender"/>
-    <import class="ch.qos.logback.core.FileAppender"/>
-    <import class="ch.qos.logback.core.ConsoleAppender"/>
-
-    <appender name="FILE" class="FileAppender">
-        <file>${application.home:-.}/logs/application.log</file>
-        <encoder class="PatternLayoutEncoder">
-            <pattern>%date [%level] from %logger in %thread - %message%n%xException</pattern>
-        </encoder>
-    </appender>
-
-    <appender name="STDOUT" class="ConsoleAppender">
-        <encoder class="PatternLayoutEncoder">
-            <pattern>%highlight(%-5level) %logger{15} - %message%n%xException{10}</pattern>
-        </encoder>
-    </appender>
-
-    <appender name="ASYNCFILE" class="AsyncAppender">
-        <appender-ref ref="FILE"/>
-    </appender>
-
-    <appender name="ASYNCSTDOUT" class="AsyncAppender">
-        <appender-ref ref="STDOUT"/>
-    </appender>
-
-    <logger name="play" level="INFO"/>
-    <logger name="application" level="DEBUG"/>
-
-    <!-- Off these ones as they are annoying, and anyway we manage configuration ourselves -->
-    <logger name="com.avaje.ebean.config.PropertyMapLoader" level="OFF"/>
-    <logger name="com.avaje.ebeaninternal.server.core.XmlConfigLoader" level="OFF"/>
-    <logger name="com.avaje.ebeaninternal.server.lib.BackgroundThread" level="OFF"/>
-    <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF"/>
-
-    <root level="WARN">
-        <appender-ref ref="ASYNCFILE"/>
-        <appender-ref ref="ASYNCSTDOUT"/>
-    </root>
-
+  <import class="ch.qos.logback.classic.encoder.PatternLayoutEncoder"></import>
+  <import class="ch.qos.logback.core.ConsoleAppender"></import>
+  <import class="ch.qos.logback.core.rolling.RollingFileAppender"></import>
+  <import class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"></import>
+  <import class="net.logstash.logback.encoder.LogstashEncoder"></import>
+  <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="JSON_FILE">
+    <file>${LOG_PATH:-logs}/application.json</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_PATH:-logs}/application.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>1GB</totalSizeCap>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeContext>true</includeContext>
+      <includeMdc>true</includeMdc>
+      <includeStructuredArguments>true</includeStructuredArguments>
+    </encoder>
+  </appender>
+  <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="USER_ACTIVITY">
+    <file>${LOG_PATH:-logs}/user-activity.json</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_PATH:-logs}/user-activity.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <maxHistory>90</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder"></encoder>
+  </appender>
+  <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="ACCESS_LOG">
+    <file>${LOG_PATH:-logs}/access.json</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>${LOG_PATH:-logs}/access.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <maxHistory>30</maxHistory>
+    </rollingPolicy>
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder"></encoder>
+  </appender>
+  <appender class="ch.qos.logback.core.ConsoleAppender" name="STDOUT">
+    <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+      <pattern>%d{ISO8601} %-5level [%logger{36}] - %msg%n</pattern>
+    </encoder>
+  </appender>
+  <logger additivity="false" level="INFO" name="user.activity">
+    <appender-ref ref="USER_ACTIVITY"></appender-ref>
+  </logger>
+  <logger additivity="false" level="INFO" name="access">
+    <appender-ref ref="ACCESS_LOG"></appender-ref>
+  </logger>
+  <logger level="INFO" name="play"></logger>
+  <logger level="INFO" name="application"></logger>
+  <logger level="OFF" name="com.avaje.ebean.config.PropertyMapLoader"></logger>
+  <logger level="OFF" name="com.avaje.ebeaninternal.server.core.XmlConfigLoader"></logger>
+  <logger level="OFF" name="com.avaje.ebeaninternal.server.lib.BackgroundThread"></logger>
+  <logger level="OFF" name="com.gargoylesoftware.htmlunit.javascript"></logger>
+  <root level="INFO">
+    <appender-ref ref="JSON_FILE"></appender-ref>
+    <appender-ref ref="STDOUT"></appender-ref>
+  </root>
 </configuration>
