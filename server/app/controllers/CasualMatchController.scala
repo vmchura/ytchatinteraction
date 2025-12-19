@@ -5,7 +5,7 @@ import GameStateShared.*
 import play.api.mvc.*
 
 import javax.inject.*
-import services.{AnalyticalReplayService, CasualMatchUploadSessionService, FileStorageService, ParseReplayFileService, UserSmurfService}
+import services._
 import models.*
 
 import java.util.UUID
@@ -33,7 +33,8 @@ class CasualMatchController @Inject() (
     casualMatchRepository: CasualMatchRepository,
     analyticalReplayService: AnalyticalReplayService,
     userAliasRepository: UserAliasRepository,
-    analyticalResultRepository: AnalyticalResultRepository
+    analyticalResultRepository: AnalyticalResultRepository,
+    userActivityService: UserActivityService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
   private val logger = Logger(getClass)
@@ -42,6 +43,7 @@ class CasualMatchController @Inject() (
       casualMatchId: Long,
       sessionUUID: UUID
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    given User = request.identity
     uploadSessionService
       .getOrCreateSession(
         MetaCasualMatchSession(request.identity.userId, casualMatchId)
@@ -50,6 +52,9 @@ class CasualMatchController @Inject() (
         case Some(session) =>
           val newState = uploadSessionService.persistState(
             uploadSessionService.removeFileFromSession(session, sessionUUID)
+          )
+          userActivityService.trackResponseServer(
+            newState.uploadState
           )
           Ok(write(newState.uploadState))
 
@@ -91,6 +96,7 @@ class CasualMatchController @Inject() (
   def fetchState(
       casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    given User = request.identity
     uploadSessionService
       .getOrCreateSession(
         MetaCasualMatchSession(
@@ -99,8 +105,13 @@ class CasualMatchController @Inject() (
         )
       )
       .map {
-        case Some(session) => Ok(write(session.uploadState))
-        case None          =>
+        case Some(session) =>
+
+          userActivityService.trackResponseServer(
+            session.uploadState
+          )
+          Ok(write(session.uploadState))
+        case None =>
           BadRequest(
             Json.toJson(
               Map(
@@ -114,6 +125,7 @@ class CasualMatchController @Inject() (
   def updateState(): Action[MultipartFormData[TemporaryFile]] =
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
+        given User = request.identity
         val session = request.body.files
           .find(_.key == "state")
           .flatMap { part =>
@@ -124,6 +136,7 @@ class CasualMatchController @Inject() (
             ).toOption
           } match {
           case Some(value) =>
+            userActivityService.trackUploadUser(value)
             uploadSessionService
               .getOrCreateSession(
                 MetaCasualMatchSession(
@@ -166,9 +179,12 @@ class CasualMatchController @Inject() (
                 uploadSessionService.persistState(session)
               }
 
-            newSession.map(sessionUpdated =>
+            newSession.map(sessionUpdated => {
+              userActivityService.trackResponseServer(
+                sessionUpdated.uploadState
+              )
               Ok(write[CasualMatchStateShared](sessionUpdated.uploadState))
-            )
+            })
 
         }
     }
@@ -184,38 +200,65 @@ class CasualMatchController @Inject() (
     )
   }
 
-  def viewFindUser(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    userAliasRepository.list().map { allUserAlias =>
-      val mapUserAlias = allUserAlias.groupBy(_.userId).map{case (userId, list) => {
-      val sortedList = list.toList.sortBy(_.assignedAt).reverse
-      if(sortedList.tail.isEmpty)
-      (sortedList.head, Nil)
-      else {
-      (sortedList.head, sortedList.tail.dropRight(1))
-      }}}.toList
+  def viewFindUser(): Action[AnyContent] = silhouette.SecuredAction.async {
+    implicit request =>
+      userAliasRepository.list().map { allUserAlias =>
+        val mapUserAlias = allUserAlias
+          .groupBy(_.userId)
+          .map {
+            case (userId, list) => {
+              val sortedList = list.toList.sortBy(_.assignedAt).reverse
+              if (sortedList.tail.isEmpty)
+                (sortedList.head, Nil)
+              else {
+                (sortedList.head, sortedList.tail.dropRight(1))
+              }
+            }
+          }
+          .toList
 
-
-      Ok(
-        views.html.viewNewCasualMatch(
-          request.identity,
-          mapUserAlias.filter(_._1.userId != request.identity.userId)
+        Ok(
+          views.html.viewNewCasualMatch(
+            request.identity,
+            mapUserAlias.filter(_._1.userId != request.identity.userId)
+          )
         )
-      )
-    }
-  }
-
-  def createCasualMatch(rivalID: Long): Action[AnyContent] = silhouette.SecuredAction.async{ implicit request =>
-    for{
-      casualMatch <- casualMatchRepository.create(CasualMatch(0, request.identity.userId, rivalID, None, java.time.Instant.now(), Pending))
-      sessionCreated <- uploadSessionService.startSession(MetaCasualMatchSession(rivalID, casualMatch.id))
-    }yield{
-      sessionCreated match {
-        case Some(_) => Redirect(routes.CasualMatchController.uploadFormForMatch(casualMatch.id))
-        case _ => Redirect(routes.CasualMatchController.viewFindUser()).flashing("error" -> "No se pudo crear el VS casual")
       }
-
-    }
   }
+
+  def createCasualMatch(rivalID: Long): Action[AnyContent] =
+    silhouette.SecuredAction.async { implicit request =>
+      given User = request.identity
+      for {
+        casualMatch <- casualMatchRepository.create(
+          CasualMatch(
+            0,
+            request.identity.userId,
+            rivalID,
+            None,
+            java.time.Instant.now(),
+            Pending
+          )
+        )
+        sessionCreated <- uploadSessionService.startSession(
+          MetaCasualMatchSession(rivalID, casualMatch.id)
+        )
+      } yield {
+        sessionCreated match {
+          case Some(session) =>
+            userActivityService.trackResponseServer(
+              session.uploadState
+            )
+            Redirect(
+              routes.CasualMatchController.uploadFormForMatch(casualMatch.id)
+            )
+          case _ =>
+            Redirect(routes.CasualMatchController.viewFindUser())
+              .flashing("error" -> "No se pudo crear el VS casual")
+        }
+
+      }
+    }
 
   private def recordMatchSmurfs(
       casualMatch: CasualMatch,
@@ -310,6 +353,7 @@ class CasualMatchController @Inject() (
   def closeMatch(
       casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    given User = request.identity
     Forms.closeMatchForm
       .bindFromRequest()
       .fold(
@@ -317,6 +361,7 @@ class CasualMatchController @Inject() (
           Future.successful(Redirect(routes.UserEventsController.userEvents()))
         },
         winnerData => {
+          userActivityService.trackFormSubmit("casual_close", winnerData)
           for {
             casualMatchOption <- casualMatchRepository
               .findById(casualMatchId)
@@ -359,7 +404,8 @@ class CasualMatchController @Inject() (
               secondParticipantSmurfs
             )
             _ = uploadSessionService.finalizeSession(currentSession)
-            _ <- casualMatchRepository.setWinner(casualMatch.withWinner(winnerData.winner))
+            _ <- casualMatchRepository
+              .setWinner(casualMatch.withWinner(winnerData.winner))
             resultAnalytical <- analyticalReplayService
               .analyticalProcessCasualMatch(casualMatchId)
 

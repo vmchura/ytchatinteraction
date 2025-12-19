@@ -29,7 +29,8 @@ class FileUploadController @Inject() (
     fileStorageService: FileStorageService,
     uploadedFileRepository: models.repository.UploadedFileRepository,
     tournamentService: services.TournamentService,
-    userRepository: models.repository.UserRepository
+    userRepository: models.repository.UserRepository,
+    userActivityService: UserActivityService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
 
@@ -117,6 +118,7 @@ class FileUploadController @Inject() (
   def updateState(): Action[MultipartFormData[TemporaryFile]] =
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
+        given User = request.identity
         val session = request.body.files
           .find(_.key == "state")
           .flatMap { part =>
@@ -127,6 +129,8 @@ class FileUploadController @Inject() (
             ).toOption
           } match {
           case Some(value) =>
+
+            userActivityService.trackUploadUser(value)
             uploadSessionService
               .getOrCreateSession(
                 MetaTournamentSession(
@@ -170,9 +174,12 @@ class FileUploadController @Inject() (
                 uploadSessionService.persistState(session)
               }
 
-            newSession.map(sessionUpdated =>
+            newSession.map(sessionUpdated => {
+              userActivityService.trackResponseServer(
+                sessionUpdated.uploadState
+              )
               Ok(write[TournamentUploadStateShared](sessionUpdated.uploadState))
-            )
+            })
 
         }
     }

@@ -34,7 +34,8 @@ class AnalyticalUploadController @Inject() (
     analyticalFileRepository: AnalyticalFileRepository,
     tournamentService: services.TournamentService,
     userRepository: models.repository.UserRepository,
-    analyticalReplayService: AnalyticalReplayService
+    analyticalReplayService: AnalyticalReplayService,
+    userActivityService: UserActivityService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
 
@@ -62,6 +63,7 @@ class AnalyticalUploadController @Inject() (
   def updateState(): Action[MultipartFormData[TemporaryFile]] =
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
+        given User = request.identity
         val session = request.body.files
           .find(_.key == "analyticalFile") match {
           case Some(part) =>
@@ -83,6 +85,9 @@ class AnalyticalUploadController @Inject() (
               routes.AnalyticalUploadController.uploadAnalyticalFile()
             )
           case Some(session) =>
+            userActivityService.trackResponseServer(
+              session.uploadState
+            )
             Ok(
               views.html.analyticalUploadSmurf(
                 request.identity,
@@ -94,6 +99,7 @@ class AnalyticalUploadController @Inject() (
 
   def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async {
     implicit request =>
+      given User = request.identity
       Forms.analyticalFileDataForm
         .bindFromRequest()
         .fold(
@@ -105,6 +111,11 @@ class AnalyticalUploadController @Inject() (
             )
           },
           analyticalFileData => {
+
+            userActivityService.trackFormSubmit(
+              "finalize_smurf_analytical",
+              analyticalFileData
+            )
             uploadSessionService.getSession(
               f"${request.identity.userId}"
             ) match {

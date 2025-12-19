@@ -26,19 +26,20 @@ class AccessLoggingFilter @Inject() (implicit
       val endTime = System.currentTimeMillis
       val requestTime = endTime - startTime
 
-      accessLogger.info(
-        "HTTP Request",
-        keyValue("method", requestHeader.method),
-        keyValue("path", requestHeader.path),
-        keyValue("status", result.header.status),
-        keyValue("duration_ms", requestTime),
-        keyValue("remote_address", requestHeader.remoteAddress),
-        keyValue(
-          "user_agent",
-          requestHeader.headers.get("User-Agent").getOrElse("unknown")
-        ),
-        keyValue("query_string", requestHeader.rawQueryString)
-      )
+      if (!requestHeader.path.contains("/assets")) {
+        accessLogger.info(
+          "HTTP Request",
+          keyValue("method", requestHeader.method),
+          keyValue("path", requestHeader.path),
+          keyValue("status", result.header.status),
+          keyValue("duration_ms", requestTime),
+          keyValue(
+            "user_agent",
+            requestHeader.headers.get("User-Agent").getOrElse("unknown")
+          ),
+          keyValue("query_string", requestHeader.rawQueryString)
+        )
+      }
 
       result
     }

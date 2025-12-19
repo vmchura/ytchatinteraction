@@ -30,7 +30,8 @@ class MatchResultController @Inject() (
     uploadedFileRepository: UploadedFileRepository,
     analyticalReplayService: AnalyticalReplayService,
     analyticalResultRepository: AnalyticalResultRepository,
-    userAliasRepository: UserAliasRepository
+    userAliasRepository: UserAliasRepository,
+    userActivityService: UserActivityService
 )(implicit ec: ExecutionContext)
     extends SilhouetteController(components) {
 
@@ -63,11 +64,11 @@ class MatchResultController @Inject() (
         session.uploadState.games
           .filter {
             case ValidGame(_, _, _, _, _, _) => true
-            case _                        => false
+            case _                           => false
           }
           .flatMap {
             case ValidGame(_, _, _, hash, _, _) => Some(hash)
-            case _                           => None
+            case _                              => None
           }
           .flatMap(hash =>
             session.hash2StoreInformation.get(hash).map((hash, _)).map {
@@ -100,6 +101,7 @@ class MatchResultController @Inject() (
       challongeMatchID: Long,
       tournamentId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    given User = request.identity
     Forms.closeMatchForm
       .bindFromRequest()
       .fold(
@@ -107,6 +109,7 @@ class MatchResultController @Inject() (
           Future.successful(Redirect(routes.UserEventsController.userEvents()))
         },
         winnerData => {
+          userActivityService.trackFormSubmit("close_match", winnerData)
           for {
             tournamentMatchOption <- tournamentService
               .getMatch(tournamentId, challongeMatchID)

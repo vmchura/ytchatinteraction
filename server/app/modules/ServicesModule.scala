@@ -28,5 +28,6 @@ class ServicesModule extends SimpleModule(
   bind[EloRepository].to[EloRepositoryImpl],
   bind[CasualMatchRepository].to[CasualMatchRepositoryImpl],
   bind[CasualMatchFileRepository].to[CasualMatchFileRepositoryImpl],
-  bind[MatchHistoryService].toSelf
+  bind[MatchHistoryService].toSelf,
+  bind[UserActivityService].toSelf
 )
