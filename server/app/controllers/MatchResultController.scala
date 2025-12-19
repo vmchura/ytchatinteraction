@@ -102,6 +102,7 @@ class MatchResultController @Inject() (
       tournamentId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     given User = request.identity
+    given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
     Forms.closeMatchForm
       .bindFromRequest()
       .fold(

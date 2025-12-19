@@ -119,6 +119,7 @@ class FileUploadController @Inject() (
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
         given User = request.identity
+        given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
         val session = request.body.files
           .find(_.key == "state")
           .flatMap { part =>

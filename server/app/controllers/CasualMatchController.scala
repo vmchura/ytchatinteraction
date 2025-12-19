@@ -44,6 +44,7 @@ class CasualMatchController @Inject() (
       sessionUUID: UUID
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     given User = request.identity
+    given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
     uploadSessionService
       .getOrCreateSession(
         MetaCasualMatchSession(request.identity.userId, casualMatchId)
@@ -97,6 +98,7 @@ class CasualMatchController @Inject() (
       casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     given User = request.identity
+    given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
     uploadSessionService
       .getOrCreateSession(
         MetaCasualMatchSession(
@@ -126,6 +128,7 @@ class CasualMatchController @Inject() (
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
         given User = request.identity
+        given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
         val session = request.body.files
           .find(_.key == "state")
           .flatMap { part =>
@@ -229,6 +232,7 @@ class CasualMatchController @Inject() (
   def createCasualMatch(rivalID: Long): Action[AnyContent] =
     silhouette.SecuredAction.async { implicit request =>
       given User = request.identity
+      given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
       for {
         casualMatch <- casualMatchRepository.create(
           CasualMatch(
@@ -354,6 +358,7 @@ class CasualMatchController @Inject() (
       casualMatchId: Long
   ): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     given User = request.identity
+    given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
     Forms.closeMatchForm
       .bindFromRequest()
       .fold(

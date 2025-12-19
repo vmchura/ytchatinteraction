@@ -8,6 +8,8 @@ import net.logstash.logback.argument.StructuredArguments._
 import evolutioncomplete.TUploadStateShared
 import upickle.default.Writer
 import models.TSessionUploadFile
+import models.SessionBrowser
+
 @Singleton
 class UserActivityService @Inject() () extends Logging {
 
@@ -25,10 +27,11 @@ class UserActivityService @Inject() () extends Logging {
   private def trackEvent(
       eventType: String,
       eventData: Map[String, Any] = Map.empty
-  )(using user: User): Unit = {
+  )(using user: User, session: SessionBrowser): Unit = {
     val args = Seq(
       keyValue("user_id", user.userId),
-      keyValue("event_type", eventType)
+      keyValue("event_type", eventType),
+      keyValue("session_id", session.id)
     ) ++
       eventData.map { case (k, v) => keyValue(s"data_$k", v) }
 
@@ -38,18 +41,18 @@ class UserActivityService @Inject() () extends Logging {
   private def trackUserAction(
       action: String,
       details: Map[String, String] = Map.empty
-  )(using User): Unit = {
+  )(using User, SessionBrowser): Unit = {
     trackEvent(action, details)
   }
-  def trackFormSubmit(formName: String, data: Product)(using User): Unit =
+  def trackFormSubmit(formName: String, data: Product)(using User, SessionBrowser): Unit =
     trackUserAction(s"form_$formName", caseClassToMap(data))
 
-  def trackLogin(using user: User): Unit = trackUserAction("user_login")
+  def trackLogin(using User, SessionBrowser): Unit = trackUserAction("user_login")
 
   private def trackUpdateStateShared[SS <: TUploadStateShared[SS]](
       originState: String,
       stateShared: SS
-  )(using Writer[SS], User): Unit =
+  )(using Writer[SS], User, SessionBrowser): Unit =
     val jsonState = upickle.default.write(stateShared)
     trackUserAction(
       s"upload_state_$originState",
@@ -60,10 +63,10 @@ class UserActivityService @Inject() () extends Logging {
 
   def trackUploadUser[SS <: TUploadStateShared[SS]](
       stateShared: SS
-  )(using Writer[SS], User): Unit =
+  )(using Writer[SS], User, SessionBrowser): Unit =
     trackUpdateStateShared("by_user", stateShared)
   def trackResponseServer[SS <: TUploadStateShared[SS]](
       stateShared: SS
-  )(using Writer[SS], User): Unit =
+  )(using Writer[SS], User, SessionBrowser): Unit =
     trackUpdateStateShared("server_response", stateShared)
 }

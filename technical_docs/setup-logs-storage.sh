@@ -1,0 +1,17 @@
+#!/bin/bash
+
+DOKKU_SERVER="root@evolutioncomplete.com"
+SSH_KEY="~/.ssh/id_hetzner"
+
+echo "Setting up logs storage on Dokku server..."
+
+ssh -i $SSH_KEY $DOKKU_SERVER "mkdir -p /var/lib/dokku/data/storage/ytchat-logs"
+ssh -i $SSH_KEY $DOKKU_SERVER "chown -R dokku:dokku 
+/var/lib/dokku/data/storage/ytchat-logs"
+ssh -i $SSH_KEY $DOKKU_SERVER "chmod 755 /var/lib/dokku/data/storage/ytchat-logs"
+ssh -i $SSH_KEY $DOKKU_SERVER "dokku storage:mount ytchatinteraction 
+/var/lib/dokku/data/storage/ytchat-logs:/app/logs"
+ssh -i $SSH_KEY $DOKKU_SERVER "dokku ps:restart ytchatinteraction"
+
+echo "Logs storage setup complete"
+

@@ -23,6 +23,7 @@ import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
 import services.{UserService, YoutubeMembershipService}
+import java.util.UUID
 
 /**
  * The authentication controller.
@@ -117,7 +118,7 @@ class AuthController @Inject()(
         oauthInfoInsert <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
         authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
         value <- silhouette.env.authenticatorService.init(authenticator)
-        result <- silhouette.env.authenticatorService.embed(value, Redirect(routes.HomeController.index()))
+        result <- silhouette.env.authenticatorService.embed(value, Redirect(routes.HomeController.index()).withSession("userId" -> user.userId.toString()))
       } yield {
         silhouette.env.eventBus.publish(LoginEvent(user, request))
         result
@@ -135,6 +136,7 @@ class AuthController @Inject()(
   def signOut = silhouette.SecuredAction.async { implicit request =>
     val result = Redirect(routes.AuthController.login)
       .flashing("success" -> "You have been logged out successfully.")
+      .withNewSession
     silhouette.env.eventBus.publish(LogoutEvent(request.identity, request))
     silhouette.env.authenticatorService.discard(request.authenticator, result)
   }

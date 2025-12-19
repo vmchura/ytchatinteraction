@@ -64,6 +64,7 @@ class AnalyticalUploadController @Inject() (
     silhouette.SecuredAction.async(parse.multipartFormData) {
       implicit request =>
         given User = request.identity
+        given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
         val session = request.body.files
           .find(_.key == "analyticalFile") match {
           case Some(part) =>
@@ -100,6 +101,7 @@ class AnalyticalUploadController @Inject() (
   def finalizeSmurf(): Action[AnyContent] = silhouette.SecuredAction.async {
     implicit request =>
       given User = request.identity
+      given SessionBrowser = SessionBrowser(request.session.get("sid").getOrElse("unknown"))
       Forms.analyticalFileDataForm
         .bindFromRequest()
         .fold(
