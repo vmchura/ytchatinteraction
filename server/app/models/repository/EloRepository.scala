@@ -30,6 +30,8 @@ trait EloRepository {
   def getAllLogsByUserId(userId: Long): Future[Seq[EloUserLogWithRivalName]]
 
   def getAllElosWithUserNames(): Future[Seq[EloUserWithName]]
+
+  def getSummarizedElosWithUserNames(): Future[Seq[EloUserRaceSummary]]
 }
 
 @Singleton
@@ -224,5 +226,27 @@ class EloRepositoryImpl @Inject() (
           elo.updatedAt
         )
       })
+  }
+
+  override def getSummarizedElosWithUserNames(): Future[Seq[EloUserRaceSummary]] = {
+    getAllElosWithUserNames().map { allElos =>
+      // Group by (userId, userName, userRace) to aggregate matchups
+      val grouped = allElos.groupBy(elo => (elo.userId, elo.userName, elo.userRace))
+
+      grouped.map { case ((userId, userName, userRace), elos) =>
+        // Calculate average ELO across all matchups for this race
+        val averageElo = (elos.map(_.elo).sum.toDouble / elos.size).round.toInt
+        // Get the most recent update timestamp
+        val maxUpdatedAt = elos.map(_.updatedAt).max
+
+        EloUserRaceSummary(
+          userId = userId,
+          userName = userName,
+          userRace = userRace,
+          averageElo = averageElo,
+          maxUpdatedAt = maxUpdatedAt
+        )
+      }.toSeq
+    }
   }
 }

@@ -46,3 +46,11 @@ case class EloUserWithName(
     elo: Int,
     updatedAt: Instant
 )
+
+case class EloUserRaceSummary(
+    userId: Long,
+    userName: String,
+    userRace: SCRace,
+    averageElo: Int,
+    maxUpdatedAt: Instant
+)

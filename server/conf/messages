@@ -209,7 +209,7 @@ elo.global.header=Clasificación Global SCPower
 elo.global.no.data=Aún no hay datos SCPower disponibles
 elo.global.rank=Posición
 elo.global.player=Jugador
-elo.global.matchup=Enfrentamiento
+elo.global.race=Raza
 elo.global.scpower=SCPower
 elo.global.updated=Última Actualización
 

@@ -40,8 +40,8 @@ class EloStatsController @Inject() (
 
   def globalRankings(): Action[AnyContent] = silhouette.SecuredAction.async {
     implicit request =>
-      eloRepository.getAllElosWithUserNames().map { allElos =>
-        val sortedElos = allElos.sortBy(_.elo)(Ordering[Int].reverse)
+      eloRepository.getSummarizedElosWithUserNames().map { summarizedElos =>
+        val sortedElos = summarizedElos.sortBy(_.averageElo)(Ordering[Int].reverse)
         Ok(views.html.eloGlobalRankings(request.identity, sortedElos))
       }
   }

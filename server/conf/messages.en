@@ -208,7 +208,7 @@ elo.global.header=Global SCPower Rankings
 elo.global.no.data=No SCPower data available yet
 elo.global.rank=Rank
 elo.global.player=Player
-elo.global.matchup=Matchup
+elo.global.race=Race
 elo.global.scpower=SCPower
 elo.global.updated=Last Updated
 
