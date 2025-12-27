@@ -94,6 +94,7 @@ class AnalyticalUploadControllerSpec extends PlaySpec with MockitoSugar with Sca
         when(securedRequest.version).thenReturn(request.version)
         when(securedRequest.queryString).thenReturn(request.queryString)
         when(securedRequest.acceptLanguages).thenReturn(Seq(play.api.i18n.Lang("en")))
+        when(securedRequest.transientLang()).thenReturn(None)
         func(securedRequest)
       }
     }
