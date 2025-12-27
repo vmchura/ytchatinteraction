@@ -16,6 +16,7 @@ import play.api.mvc._
 import play.api.mvc.ActionBuilderImpl
 import play.api.test._
 import play.api.test.Helpers._
+import play.api.test.CSRFTokenHelper._
 import play.silhouette.api.Silhouette
 import play.silhouette.api.actions.SecuredActionBuilder
 import services._
@@ -103,7 +104,7 @@ class CasualMatchControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
 
     when(mockSecuredAction.apply(any[play.silhouette.api.actions.SecuredRequest[DefaultEnv, AnyContent] => Result])).thenAnswer { invocation =>
       val func = invocation.getArgument[play.silhouette.api.actions.SecuredRequest[DefaultEnv, AnyContent] => Result](0)
-      realActionBuilder { request =>
+      realActionBuilder.async { request =>
         val securedRequest = mock[play.silhouette.api.actions.SecuredRequest[DefaultEnv, AnyContent]]
         when(securedRequest.identity).thenReturn(user)
         when(securedRequest.session).thenReturn(request.session)
@@ -121,7 +122,7 @@ class CasualMatchControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
         when(securedRequest.queryString).thenReturn(request.queryString)
         when(securedRequest.acceptLanguages).thenReturn(Seq(play.api.i18n.Lang("en")))
         when(securedRequest.transientLang()).thenReturn(None)
-        func(securedRequest)
+        Future.successful(func(securedRequest))
       }
     }
 
@@ -256,7 +257,7 @@ class CasualMatchControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
         mockUserActivityService
       )
 
-      val request = FakeRequest(GET, "/")
+      val request = CSRFTokenHelper.addCSRFToken(FakeRequest(GET, "/"))
       val result = call(controller.uploadFormForMatch(1L), request)
 
       status(result) mustEqual OK
@@ -299,7 +300,7 @@ class CasualMatchControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
         mockUserActivityService
       )
 
-      val request = FakeRequest(GET, "/")
+      val request = CSRFTokenHelper.addCSRFToken(FakeRequest(GET, "/"))
       val result = call(controller.viewFindUser(), request)
 
       status(result) mustEqual OK
