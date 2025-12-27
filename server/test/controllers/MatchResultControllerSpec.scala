@@ -176,7 +176,7 @@ class MatchResultControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
         originalFileName = "test.rep",
         analysisStartedAt = Instant.now(),
         analysisFinishedAt = Some(Instant.now()),
-        algorithmVersion = "1.0",
+        algorithmVersion = Some("1.0"),
         result = None
       )
 
@@ -280,7 +280,7 @@ class MatchResultControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
 
       val result = call(controller.closeMatch(1L, 100L), request)
 
-      status(result) mustEqual INTERNAL_SERVER_ERROR
+      status(result) mustEqual SEE_OTHER
     }
 
     "redirect when session not found" in {
@@ -334,7 +334,7 @@ class MatchResultControllerSpec extends PlaySpec with MockitoSugar with ScalaFut
 
       val result = call(controller.closeMatch(1L, 100L), request)
 
-      status(result) mustEqual INTERNAL_SERVER_ERROR
+      status(result) mustEqual SEE_OTHER
     }
 
     "redirect with success when match closed successfully" in {
