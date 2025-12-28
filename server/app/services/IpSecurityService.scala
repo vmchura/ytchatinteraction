@@ -29,7 +29,6 @@ class IpSecurityService @Inject() () extends Logging {
     "/actuator",
     "/.git",
     "/config",
-    "/admin",
     "/xmlrpc",
     "/wp-content",
     "/wp-includes",
