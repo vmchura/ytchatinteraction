@@ -1,6 +1,6 @@
 //> using scala 3.3.7
-//> using dep com.lihaoyi::upickle::4.4.1
-//> using dep com.lihaoyi::os-lib::0.11.4
+//> using dep com.lihaoyi::upickle::4.4.2
+//> using dep com.lihaoyi::os-lib::0.11.6
 
 import upickle.default.*
 import java.time.Instant
@@ -38,7 +38,6 @@ val suspiciousPaths = Set(
   "/shell",
   "/eval",
   "/vendor",
-  "/admin",
   "/backup",
   "/.aws",
   "/.ssh",
@@ -111,10 +110,11 @@ def generateBlacklistConf(ips: Set[String]): String =
   s"security.blacklist = [$ipList]"
 
 @main def run(logsDir: String, projectDir: String): Unit =
-  require(os.exists(logsDir), s"Directory not found: $dir")
-  require(os.exists(projectDir), s"Directory not found: $projectDir")
+
   val projectPath = os.Path(projectDir)
   val dir = os.Path(logsDir)
+  require(os.exists(dir), s"Directory not found: $dir")
+  require(os.exists(projectPath), s"Directory not found: $projectDir")
 
   val files = os.list(dir).filter(f => f.ext == "json" || f.ext == "gz")
   println(s"Analyzing ${files.size} files...")

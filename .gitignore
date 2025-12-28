@@ -34,3 +34,4 @@ uploads/
 .bloop/
 .sbtopts
 logs-analysis/
+log-analyzer/.scala-build/
