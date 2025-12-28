@@ -35,6 +35,13 @@ POST    /profile/change-alias       controllers.AliasController.changeAlias()
 GET     /admin                      controllers.AdminController.adminDashboard()
 GET     /rerun/:tournamentId/:challongeMatchID   controllers.AdminController.reRunAnalysis(tournamentId: Long, challongeMatchID: Long)
 
+# Admin Security routes
+GET     /admin/security             controllers.AdminSecurityController.securityDashboard()
+GET     /admin/security/stats       controllers.AdminSecurityController.viewStats()
+GET     /admin/security/blacklist   controllers.AdminSecurityController.viewBlacklist()
+POST    /admin/security/block/:ip   controllers.AdminSecurityController.blockIp(ip: String)
+POST    /admin/security/unblock/:ip controllers.AdminSecurityController.unblockIp(ip: String)
+
 # Content Creator Channel management routes (admin only)
 GET     /admin/content-creators     controllers.ContentCreatorChannelController.index()
 GET     /admin/content-creators/create controllers.ContentCreatorChannelController.create()
