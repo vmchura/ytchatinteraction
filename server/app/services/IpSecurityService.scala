@@ -4,7 +4,7 @@ import javax.inject.{Inject, Singleton}
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
-import play.api.Logging
+import play.api.{Configuration, Logging}
 
 case class IpStats(
     requestCount: Int = 0,
@@ -16,10 +16,17 @@ case class IpStats(
 )
 
 @Singleton
-class IpSecurityService @Inject() () extends Logging {
-
+class IpSecurityService @Inject() (config: Configuration) extends Logging {
   private val ipStats = new ConcurrentHashMap[String, IpStats]()
   private val blacklist = ConcurrentHashMap.newKeySet[String]()
+
+  // Load from config on startup
+  config.getOptional[Seq[String]]("security.blacklist").foreach { ips =>
+    ips.foreach { ip =>
+      blacklist.add(ip)
+      logger.info(s"Loaded blacklisted IP from config: $ip")
+    }
+  }
 
   private val suspiciousPaths = Set(
     "/wp-admin",
@@ -81,9 +88,7 @@ class IpSecurityService @Inject() () extends Logging {
   }
 
   def isBlocked(ip: String): Boolean = blacklist.contains(ip)
-
   def getBlacklist: Set[String] = blacklist.asScala.toSet
-
   def getStats: Map[String, IpStats] = ipStats.asScala.toMap
 
   def manualBlock(ip: String): Unit = {
