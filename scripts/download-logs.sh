@@ -14,12 +14,7 @@ mkdir -p "$LOCAL_DIR"
 
 echo "Creating logs archive inside container..."
 
-ssh -i $SSH_KEY $DOKKU_SERVER <<EOF
-  dokku enter $APP_NAME bash -c '
-    cd /app/logs || exit 1
-    tar -czf /tmp/${ARCHIVE_NAME} *.gz
-  '
-EOF
+ssh -i $SSH_KEY $DOKKU_SERVER "dokku run $APP_NAME tar -czf /tmp/${ARCHIVE_NAME} -C logs/ ."
 
 echo "Downloading logs archive..."
 
