@@ -7,9 +7,9 @@
   <import class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"></import>
   <import class="net.logstash.logback.encoder.LogstashEncoder"></import>
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="JSON_FILE">
-    <file>${LOG_PATH:-logs}/application.json</file>
+    <file>${APP_STORAGE_LOGS_PATH:-logs}/application.json</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${LOG_PATH:-logs}/application.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <fileNamePattern>${APP_STORAGE_LOGS_PATH:-logs}/application.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
       <maxHistory>30</maxHistory>
       <totalSizeCap>1GB</totalSizeCap>
     </rollingPolicy>
@@ -20,17 +20,17 @@
     </encoder>
   </appender>
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="USER_ACTIVITY">
-    <file>${LOG_PATH:-logs}/user-activity.json</file>
+    <file>${APP_STORAGE_LOGS_PATH:-logs}/user-activity.json</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${LOG_PATH:-logs}/user-activity.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <fileNamePattern>${APP_STORAGE_LOGS_PATH:-logs}/user-activity.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
       <maxHistory>90</maxHistory>
     </rollingPolicy>
     <encoder class="net.logstash.logback.encoder.LogstashEncoder"></encoder>
   </appender>
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="ACCESS_LOG">
-    <file>${LOG_PATH:-logs}/access.json</file>
+    <file>${APP_STORAGE_LOGS_PATH:-logs}/access.json</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>${LOG_PATH:-logs}/access.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
+      <fileNamePattern>${APP_STORAGE_LOGS_PATH:-logs}/access.json.%d{yyyy-MM-dd}.gz</fileNamePattern>
       <maxHistory>30</maxHistory>
     </rollingPolicy>
     <encoder class="net.logstash.logback.encoder.LogstashEncoder"></encoder>
