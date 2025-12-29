@@ -8,3 +8,10 @@ case class PotentialAnalyticalFile(
     rivalPlayer: SCPlayer,
     frames: Int
 )
+case class PotentialCasualAnalyticalFile(
+    uploadedFile: CasualMatchFile,
+    userPlayer: SCPlayer,
+    matchId: Long,
+    rivalPlayer: SCPlayer,
+    frames: Int
+)

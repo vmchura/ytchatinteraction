@@ -21,6 +21,7 @@ import scala.util.Try
 import models.repository._
 import forms.Forms
 import models.MatchStatus.*
+import utils.auth.WithAdmin
 
 @Singleton
 class CasualMatchController @Inject() (
@@ -415,11 +416,17 @@ class CasualMatchController @Inject() (
               .analyticalProcessCasualMatch(casualMatchId)
 
           } yield {
-            Redirect(routes.UserEventsController.userEvents())
+            Redirect(routes.CasualMatchController.viewResults(casualMatchId))
               .flashing("success" -> s"Resultado actualizado")
           }
         }
       )
+  }
+
+  def reRunAnalyticalProcess(casualMatchID: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async{ implicit request =>
+    analyticalReplayService.analyticalProcessCasualMatch(casualMatchID).map{ _ =>
+      Redirect(routes.CasualMatchController.viewResults(casualMatchID)).flashing("success" -> "Resultado actualizado")
+    }
   }
 
   def viewResults(casualMatchID: Long): Action[AnyContent] =

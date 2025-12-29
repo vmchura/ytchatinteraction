@@ -134,8 +134,31 @@ class UserSmurfService @Inject() (
   def getUserSmurfs(userId: Long): Future[List[TournamentUserSmurf]] = {
     userSmurfRepository
       .findByUserId(userId)
-      .map(_.map(summon[Conversion[UserSmurf, TournamentUserSmurf]]))
+      .map { listUserSmurf =>
+        listUserSmurf.flatMap { userSmurf =>
+          userSmurf match {
+            case us @ UserSmurf(_, Some(matchId), _, _, _, _, _) =>
+              Some(summon[Conversion[UserSmurf, TournamentUserSmurf]](us))
+            case _ => None
+          }
+        }
 
+      }
+  }
+
+  def getUserCasualSmurfs(userId: Long): Future[List[CasualUserSmurf]] = {
+    userSmurfRepository
+      .findByUserId(userId)
+      .map { listUserSmurf =>
+        listUserSmurf.flatMap { userSmurf =>
+          userSmurf match {
+            case us @ UserSmurf(_, _, _, Some(casualMatchId), _, _, _) =>
+              Some(summon[Conversion[UserSmurf, CasualUserSmurf]](us))
+            case _ => None
+          }
+        }
+
+      }
   }
 
   /** Deletes all smurf records for a match (useful for match resets).

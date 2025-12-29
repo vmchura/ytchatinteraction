@@ -105,6 +105,7 @@ GET    /casual/fetchstate/:casualMatchID controllers.CasualMatchController.fetch
 POST   /casual/updatestate controllers.CasualMatchController.updateState()
 POST   /casual/remove/:casualMatchID/:sessionUUID  controllers.CasualMatchController.removeFile(casualMatchID: Long, sessionUUID: java.util.UUID)
 GET     /casual/results/:casualMatchID controllers.CasualMatchController.viewResults(casualMatchID: Long)
+GET	/admin/casual/rerun/:casualMatchID controllers.CasualMatchController.reRunAnalyticalProcess(casualMatchID: Long)
 
 # Analytical Routes
 GET /analytical/upload controllers.AnalyticalUploadController.uploadAnalyticalFile()
@@ -113,6 +114,8 @@ POST /analytical/setSmurf controllers.AnalyticalUploadController.finalizeSmurf()
 GET /analytical/copy/:userId controllers.AnalyticalCopyController.showUserOptions(userId: Long)
 POST /analytical/copy/ controllers.AnalyticalCopyController.moveTournamentToAnalytical()
 
+GET /analytical/casual/copy/:userId controllers.AnalyticalCopyCasualController.showUserOptions(userId: Long)
+POST /analytical/casual/copy/ controllers.AnalyticalCopyCasualController.moveCasualToAnalytical()
 # Stats
 GET     /stats/:userId              controllers.EloStatsController.viewStats(userId: Long)
 GET     /stats                      controllers.EloStatsController.globalRankings()

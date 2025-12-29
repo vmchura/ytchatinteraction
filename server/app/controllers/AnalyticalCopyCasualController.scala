@@ -1,0 +1,181 @@
+package controllers
+
+import evolutioncomplete.GameStateShared.{InvalidGame, PendingGame, ValidGame}
+import evolutioncomplete.WinnerShared.Draw
+import evolutioncomplete._
+import forms.Forms
+import models.StarCraftModels.Terran
+import models.repository.{AnalyticalFileRepository, UploadedFileRepository}
+import services.UserSmurfService
+import java.nio.file.Files
+import javax.inject.*
+import play.api.mvc.*
+import play.api.libs.json.{JsValue, Json, OWrites, Writes}
+import play.api.libs.Files.TemporaryFile
+import play.api.Logger
+
+import scala.concurrent.{ExecutionContext, Future}
+import services.*
+import models.*
+import play.silhouette.api.actions.SecuredRequest
+import utils.auth.WithAdmin
+import upickle.default.*
+import java.nio.file.Path
+
+import scala.util.Try
+import java.time.LocalDateTime
+import java.util.UUID
+import models.ServerStarCraftModels.ReplayParsed
+import models.StarCraftModels.SCRace
+import models.repository.CasualMatchFileRepository
+@Singleton
+class AnalyticalCopyCasualController @Inject() (
+    components: DefaultSilhouetteControllerComponents,
+    parseReplayFileService: ParseReplayFileService,
+    uploadSessionService: AnalyticalUploadSessionService,
+    fileStorageService: FileStorageService,
+    analyticalFileRepository: AnalyticalFileRepository,
+    uploadedFileRepository: CasualMatchFileRepository,
+    tournamentService: services.TournamentService,
+    userRepository: models.repository.UserRepository,
+    analyticalReplayService: AnalyticalReplayService,
+    userSmurfService: UserSmurfService
+)(implicit ec: ExecutionContext)
+    extends SilhouetteController(components) {
+
+  private val logger = Logger(getClass)
+
+  def showUserOptions(userId: Long): Action[AnyContent] =
+    silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+      for {
+        groupedFiles <- analyticalFileRepository
+          .findByUserId(userId)
+          .map { files =>
+            files
+              .groupBy(_.userRace)
+              .map(u =>
+                (u._1, u._2.groupBy(_.rivalRace).map(r => (r._1, r._2.length)))
+              )
+          }
+        userSmurfs <- userSmurfService.getUserCasualSmurfs(userId)
+        matchSmurfs = userSmurfs.groupBy(_.casualMatchId)
+        matchFiles <- Future.traverse(matchSmurfs)(ms =>
+          uploadedFileRepository
+            .findByCasualMatchId(ms._1)
+            .map(files => (ms._1, files, ms._2))
+        )
+        matchSingleFile = matchFiles.flatMap {
+          case (matchId, files, userSmurfs) =>
+            files.map(f => (matchId, f, userSmurfs))
+        }
+        matchSingleFileParsed <- Future.traverse(matchSingleFile) {
+          case (matchId, f, userSmurfs) =>
+            parseReplayFileService
+              .processSingleFile(
+                Path.of(f.relativeDirectoryPath)
+              )
+              .map(_.map(parsed => (f, matchId, parsed, userSmurfs)))
+
+        }
+        validMatchSingleFile = matchSingleFileParsed.flatMap {
+          case Some(
+                (
+                  singleFile,
+                  matchId,
+                  ReplayParsed(_, _, _, teams, _, Some(frames), _),
+                  userSmurfs
+                )
+              ) =>
+
+            val scPlayers = teams.flatMap(t => t.participants)
+            if (scPlayers.length == 2) {
+              val (user, rival) = scPlayers
+                .partition(sc => userSmurfs.exists(_.smurf.equals(sc.name)))
+              Option.when(user.nonEmpty && rival.nonEmpty) {
+                (singleFile, user.head, matchId, rival.head, frames)
+
+              }
+            } else {
+              None
+            }
+          case _ => None
+        }
+
+      } yield {
+        val potentialAnalyticalFiles = validMatchSingleFile.map {
+          case (singleFile, userPlayer, matchId, rivalPlayer, frames) =>
+            PotentialCasualAnalyticalFile(
+              singleFile,
+              userPlayer,
+              matchId,
+              rivalPlayer,
+              frames
+            )
+        }
+        Ok(
+          views.html.analyticalCopyCasual(
+            request.identity,
+            userId,
+            groupedFiles,
+            potentialAnalyticalFiles.toSeq
+          )
+        )
+
+      }
+
+    }
+
+  def moveCasualToAnalytical(): Action[AnyContent] =
+    silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+      Forms.potentialAnalyticalFileDataForm
+        .bindFromRequest()
+        .fold(
+          formWithErrors => {
+            Future.successful(
+              Redirect(
+                routes.HomeController.index()
+              )
+            )
+          },
+          analyticalFileData => {
+            for {
+              fileUploadedOption <- uploadedFileRepository
+                .findById(analyticalFileData.uploadedFile)
+              fileUploaded <- fileUploadedOption.fold(
+                Future.failed(new IllegalStateException("No file uploaded"))
+              )(Future.successful)
+              analyticalFile = AnalyticalFile(
+                0,
+                analyticalFileData.userId,
+                fileUploaded.sha256Hash,
+                fileUploaded.originalName,
+                fileUploaded.relativeDirectoryPath,
+                fileUploaded.originalName,
+                fileUploaded.uploadedAt,
+                analyticalFileData.userSlotId,
+                analyticalFileData.userRace.head match {
+                  case 'P' => StarCraftModels.Protoss
+                  case 'Z' => StarCraftModels.Zerg
+                  case 'T' => StarCraftModels.Terran
+                },
+                analyticalFileData.rivalRace.head match {
+                  case 'P' => StarCraftModels.Protoss
+                  case 'Z' => StarCraftModels.Zerg
+                  case 'T' => StarCraftModels.Terran
+                },
+                analyticalFileData.frames,
+                Some(request.identity.userId),
+                None
+              )
+              f = println(analyticalFile)
+              moveAnalytica <- analyticalFileRepository.create(analyticalFile)
+            } yield {
+              Redirect(
+                routes.AnalyticalCopyCasualController.showUserOptions(analyticalFileData.userId)
+              )
+            }
+          }
+        )
+
+    }
+}
