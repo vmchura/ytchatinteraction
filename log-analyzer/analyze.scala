@@ -109,6 +109,14 @@ def generateBlacklistConf(ips: Set[String]): String =
   val ipList = ips.map(ip => s""""$ip"""").mkString(", ")
   s"security.blacklist = [$ipList]"
 
+def readExistingBlacklist(path: os.Path): Set[String] =
+  if !os.exists(path) then Set.empty
+  else
+    val content = os.read(path)
+
+    val IpRegex = "\"([^\"]+)\"".r
+    IpRegex.findAllMatchIn(content).map(_.group(1)).toSet
+
 @main def run(logsDir: String, projectDir: String): Unit =
 
   val projectPath = os.Path(projectDir)
@@ -139,6 +147,7 @@ def generateBlacklistConf(ips: Set[String]): String =
   }
 
   val blocked = allStats.filter((_, stats) => shouldBlock(stats))
+  val newBlockedIps = blocked.keySet
 
   println(s"\n=== Results ===")
   println(s"Total IPs: ${allStats.size}")
@@ -154,7 +163,12 @@ def generateBlacklistConf(ips: Set[String]): String =
         println(s"    paths: ${stats.paths.mkString(", ")}")
     }
 
-    val confContent = generateBlacklistConf(blocked.keySet)
-    val outFile = projectPath / "server"/ "conf" / "blacklist.conf"
+    val existingIps = readExistingBlacklist(outFile)
+    val mergedIps = existingIps ++ newBlockedIps
+    val confContent = generateBlacklistConf(mergedIps)
+    val outFile = projectPath / "server" / "conf" / "blacklist.conf"
     os.write.over(outFile, confContent)
-    println(s"\nGenerated: $outFile")
+    println(s"\nGenerated (merged): $outFile")
+    println(s"Previous IPs: ${existingIps.size}")
+    println(s"New IPs: ${blocked.size}")
+    println(s"Total IPs: ${mergedIps.size}")

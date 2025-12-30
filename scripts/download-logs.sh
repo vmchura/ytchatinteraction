@@ -14,7 +14,14 @@ mkdir -p "$LOCAL_DIR"
 
 echo "Creating logs archive inside container..."
 
-ssh -i $SSH_KEY $DOKKU_SERVER "dokku run $APP_NAME tar -czf /tmp/${ARCHIVE_NAME} -C logs/ ."
+ssh -i "$SSH_KEY" "$DOKKU_SERVER" '
+  cd /var/lib/dokku/data/storage/ytchat-logs &&
+  find . -maxdepth 1 -type f \
+    \( -name "access.json.*.gz" \
+       -o -name "application.json.*.gz" \
+       -o -name "user-activity.json.*.gz" \) \
+  | tar -czf /tmp/'"$ARCHIVE_NAME"' --files-from=-
+'
 
 echo "Downloading logs archive..."
 
