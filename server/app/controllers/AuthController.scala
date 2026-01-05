@@ -22,7 +22,6 @@ import play.api.libs.json.Json
 import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
-import services.{UserService, YoutubeMembershipService}
 import java.util.UUID
 
 /**
@@ -37,8 +36,7 @@ class AuthController @Inject()(
   ytUserRepository: YtUserRepository,
   loginInfoRepository: LoginInfoRepository,
   oauth2InfoRepository: OAuth2InfoRepository,
-  ytStreamerRepository: YtStreamerRepository,
-  youtubeMembershipService: YoutubeMembershipService
+  ytStreamerRepository: YtStreamerRepository
 )(implicit ex: ExecutionContext) extends AbstractController(components) with I18nSupport {
 
   /**
@@ -157,27 +155,4 @@ class AuthController @Inject()(
     }
   }
 
-  /**
-   * Check if user has PAID membership to a specific channel
-   *
-   * @param channelId The target channel ID to check membership for
-   */
-  def isSubscribedToChannel(channelId: String) = silhouette.SecuredAction.async { implicit request =>
-    ytUserRepository.getByUserId(request.identity.userId).flatMap { ytUsers =>
-      ytUsers.headOption match {
-        case Some(ytUser) =>
-          youtubeMembershipService.isSubscribedToChannel(ytUser.userChannelId, channelId).map { hasMembership =>
-            Ok(Json.obj(
-              "channelId" -> channelId,
-              "hasPaidMembership" -> hasMembership
-            ))
-          }
-        case None =>
-          Future.successful(NotFound(Json.obj("error" -> "No YouTube account linked")))
-      }
-    }.recover {
-      case ex: Exception =>
-        BadRequest(Json.obj("error" -> ex.getMessage))
-    }
-  }
 }
