@@ -25,7 +25,6 @@ GET     /api/polls/recent           controllers.EventController.recentPolls()
 GET     /login                      controllers.AuthController.login
 GET     /authenticate/:provider     controllers.AuthController.authenticate(provider)
 GET     /signout                    controllers.AuthController.signOut
-GET     /api/user                   controllers.AuthController.userInfo
 
 # User profile routes
 GET     /profile/change-alias       controllers.AliasController.showChangeAliasForm()

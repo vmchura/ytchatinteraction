@@ -32,7 +32,8 @@ class TournamentChallongeServiceSpec extends PlaySpec with BeforeAndAfterEach wi
     registrationStartAt = Instant.now().minusSeconds(3600),
     registrationEndAt = Instant.now().plusSeconds(3600),
     tournamentStartAt = Some(Instant.now()),
-    status = TournamentStatus.RegistrationOpen
+    status = TournamentStatus.RegistrationOpen,
+    tournamentCode="default"
   )
   
   private val testUsers = List(

@@ -23,6 +23,7 @@ import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
 import java.util.UUID
+import play.silhouette.impl.providers.oauth2.GoogleProvider
 
 /**
  * The authentication controller.
@@ -56,60 +57,16 @@ class AuthController @Inject()(
    * @return The result to display.
    */
   def authenticate(provider: String) = silhouette.UnsecuredAction.async { implicit request =>
-    (socialProviderRegistry.get[YouTubeProvider] match {
+    (socialProviderRegistry.get[GoogleProvider] match {
       case Some(p) => p.authenticate()
       case None => Future.failed(new ProviderException(s"Cannot authenticate with unknown provider $provider"))
     }).flatMap {
       case Left(result) => Future.successful(result)
       case Right(authInfo) => for {
-        profile <- socialProviderRegistry.get[YouTubeProvider].get.retrieveProfile(authInfo)
+        profile <- socialProviderRegistry.get[GoogleProvider].get.retrieveProfile(authInfo)
         user <- loginInfoRepository.findUser(profile.loginInfo) flatMap {
           case Some(existingUser) => Future.successful(existingUser)
           case None => userService.createUserWithAlias()
-        }
-
-        // Check if the channel exists as a YtStreamer
-        existingYtStreamer <- ytStreamerRepository.getByChannelId(profile.loginInfo.providerKey)
-
-        // Handle YtStreamer creation or owner assignment based on cases
-        _ <- existingYtStreamer match {
-          case None =>
-            // Case 1: New user login and channel doesn't exist - create YtStreamer and assign ownership
-            ytStreamerRepository.create(profile.loginInfo.providerKey, Some(user.userId), channelTitle=profile.fullName)
-
-          case Some(streamer) if streamer.ownerUserId.isEmpty =>
-            // Case 2: Channel exists but has no owner - assign ownership to this user
-            ytStreamerRepository.updateOwner(profile.loginInfo.providerKey, Some(user.userId))
-
-          case Some(_) =>
-            // Case 2 (alternate): Channel exists and already has an owner - do nothing
-            Future.successful(())
-        }
-
-        // Continue with YtUser creation/update as before
-        ytUser <- ytUserRepository.getByChannelId(profile.loginInfo.providerKey) flatMap {
-          case Some(existingYtUser) =>
-            // Update YouTube user's profile info if needed
-            ytUserRepository.updateProfile(
-              profile.loginInfo.providerKey,
-              profile.fullName,
-              profile.email,
-              profile.avatarURL
-            ).map(_ => existingYtUser)
-          case None =>
-            // Create new YouTube user
-            val now = Instant.now()
-            val newYtUser = YtUser(
-              userChannelId = profile.loginInfo.providerKey,
-              userId = user.userId,
-              displayName = profile.fullName,
-              email = profile.email,
-              profileImageUrl = profile.avatarURL,
-              activated = true,
-              createdAt = now,
-              updatedAt = now
-            )
-            ytUserRepository.createFull(newYtUser)
         }
 
         loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
@@ -139,20 +96,5 @@ class AuthController @Inject()(
     silhouette.env.authenticatorService.discard(request.authenticator, result)
   }
 
-  /**
-   * Gets the current logged-in user info.
-   * @return The result to display.
-   */
-  def userInfo = silhouette.SecuredAction.async { implicit request =>
-    val user = request.identity
-
-    // Get YouTube accounts for this user
-    ytUserRepository.getByUserId(user.userId).map { ytUsers =>
-      Ok(Json.obj(
-        "user" -> user,
-        "youtubeAccounts" -> ytUsers
-      ))
-    }
-  }
 
 }

@@ -20,12 +20,6 @@ class TournamentMatchService @Inject() (
 
   def getTournamentData(userId: Long): Future[TournamentViewDataForUser] = {
     for {
-      userYtChannelOption <- ytUserRepository
-        .getByUserId(userId)
-        .map(_.headOption)
-      userYtChannel <- userYtChannelOption.fold(
-        throw new IllegalStateException()
-      )(Future.successful)
       openTournaments <- tournamentService.getOpenTournaments
       (registeredTuple, nonRegisteredTuple) <- Future
         .sequence(openTournaments.map { tournament =>

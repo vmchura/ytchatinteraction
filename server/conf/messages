@@ -19,7 +19,7 @@ app.subtitle = Conecta con tu audiencia de YouTube en tiempo real.
 nav.home = Inicio
 nav.my.events = Mis Eventos
 nav.add.history = Tus Partidas Base
-nav.login = Iniciar Sesión con YouTube
+nav.login = Iniciar Sesión con Google
 nav.logout = Cerrar Sesión
 nav.change.alias = Cambiar Alias
 nav.language = Idioma
@@ -31,7 +31,8 @@ home.welcome.title = Bienvenido a Evolution Complete
 home.welcome.subtitle = Conecta con tu audiencia y comunidad.
 home.what.is.title = ¿Qué es Evolution Complete?
 home.what.is.description = Evolution Complete te permite participar en torneos organizados por la comunidad y tu creador de contenido favorito.
-home.get.started = Comenzar con YouTube
+home.get.started = Comenzar con Google
+
 home.features.title = Características
 home.features.realtime = Posibilidad de sólo suscriptores
 home.features.stats = Estadísticas de espectadores y métricas de participación
@@ -41,7 +42,7 @@ home.features.alerts = Alertas y notificaciones personalizadas
 # Página de login
 login.title = Iniciar Sesión
 login.signin.title = Iniciar Sesión
-login.signin.youtube = Iniciar sesión con YouTube
+login.signin.youtube = Iniciar sesión con Google
 
 # Eventos de usuario
 events.title = Mis Eventos

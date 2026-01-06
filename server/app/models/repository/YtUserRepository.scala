@@ -72,31 +72,6 @@ class YtUserRepository @Inject()(
     ytUsersTable.filter(_.userChannelId === channelId).delete
   }
   
-  /**
-   * Find a YouTube user by email
-   */
-  def findByEmail(email: String): Future[Option[YtUser]] = db.run {
-    ytUsersTable.filter(_.email === email).result.headOption
-  }
-  
-  /**
-   * Update a YouTube user's profile
-   */
-  def updateProfile(
-    userChannelId: String, 
-    displayName: Option[String], 
-    email: Option[String], 
-    profileImageUrl: Option[String]
-  ): Future[Int] = {
-    val now = Instant.now()
-    
-    db.run {
-      ytUsersTable
-        .filter(_.userChannelId === userChannelId)
-        .map(u => (u.displayName, u.email, u.profileImageUrl, u.updatedAt))
-        .update((displayName, email, profileImageUrl, now))
-    }
-  }
   
   /**
    * Activate or deactivate a YouTube account

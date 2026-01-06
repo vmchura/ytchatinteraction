@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
+import play.silhouette.impl.providers.oauth2.GoogleProvider
 
 /**
  * The Silhouette module.
@@ -206,11 +207,11 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
    * @return The YouTube provider.
    */
   @Provides
-  def provideYouTubeProvider(
+  def provideGoogleProvider(
     httpLayer: HTTPLayer,
     socialStateHandler: SocialStateHandler,
-    configuration: Configuration): YouTubeProvider = {
-    val config = configuration.get[Configuration]("silhouette.youtube")
+    configuration: Configuration): GoogleProvider = {
+    val config = configuration.get[Configuration]("silhouette.google")
     val settings = OAuth2Settings(
       authorizationURL = Some(config.get[String]("authorizationURL")),
       accessTokenURL = config.get[String]("accessTokenURL"),
@@ -219,7 +220,7 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
       clientSecret = config.get[String]("clientSecret"),
       scope = Some(config.get[String]("scope")),
       authorizationParams = Map("access_type" -> "offline"))
-    new YouTubeProvider(httpLayer, socialStateHandler, settings)
+    new GoogleProvider(httpLayer, socialStateHandler, settings)
   }
   
   /**
@@ -230,9 +231,9 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
    */
   @Provides
   def provideSocialProviderRegistry(
-    youTubeProvider: YouTubeProvider
+    googleProvider: GoogleProvider
   ): SocialProviderRegistry = {
-    SocialProviderRegistry(Seq(youTubeProvider))
+    SocialProviderRegistry(Seq(googleProvider))
   }
 
   @Provides

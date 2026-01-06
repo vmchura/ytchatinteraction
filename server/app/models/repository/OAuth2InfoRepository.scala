@@ -32,7 +32,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    */
   def find(loginInfo: LoginInfo): Future[Option[play.silhouette.impl.providers.OAuth2Info]] = {
     // First, get the YtUser that matches this login info (YouTube provider)
-    if (loginInfo.providerID == "youtube") {
+    if (loginInfo.providerID == "google") {
       val channelId = loginInfo.providerKey
 
       val query = for {
@@ -53,7 +53,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return The added OAuth2 info.
    */
   def add(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
-    if (loginInfo.providerID == "youtube") {
+    if (loginInfo.providerID == "google") {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
 
@@ -67,22 +67,9 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
         updatedAt = now
       )
 
-      val query = for {
-        // Check if the YtUser exists
-        ytUserOpt <- ytUsersTable.filter(_.userChannelId === channelId).result.headOption
-
-        result <- ytUserOpt match {
-          case Some(_) =>
-            // Insert the OAuth2 info and get back only the id
-            (oauth2InfoTable returning oauth2InfoTable.map(_.id))
+      val query = (oauth2InfoTable returning oauth2InfoTable.map(_.id))
               .+=(dbOAuth2Info)
               .map(id => dbOAuth2Info.copy(id = Some(id)).toSilhouetteOAuth2Info)
-
-          case None =>
-            // YtUser not found
-            DBIO.failed(new Exception(s"YtUser with channel ID $channelId not found"))
-        }
-      } yield result
 
       db.run(query)
     } else {
@@ -98,7 +85,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return The updated OAuth2 info.
    */
   def update(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
-    if (loginInfo.providerID == "youtube") {
+    if (loginInfo.providerID == "google") {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
 
@@ -153,7 +140,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return A future to wait for the process to be completed.
    */
   def remove(loginInfo: LoginInfo): Future[Unit] = {
-    if (loginInfo.providerID == "youtube") {
+    if (loginInfo.providerID == "google") {
       val channelId = loginInfo.providerKey
 
       db.run(oauth2InfoTable.filter(_.userChannelId === channelId).delete).map(_ => ())
