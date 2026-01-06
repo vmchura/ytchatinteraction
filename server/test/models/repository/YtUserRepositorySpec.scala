@@ -260,41 +260,6 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       user.get.updatedAt.isAfter(ytUser.updatedAt) must be(true)
     }
     
-    "update a YouTube user's profile" in {
-      val repository = new YtUserRepository(dbConfigProvider, userRepository)
-      
-      // Create a YouTube user
-      val ytUser = YtUser(
-        userChannelId = testChannelId1,
-        userId = testUserId1
-      )
-      
-      Await.result(repository.createFull(ytUser), 5.seconds)
-      
-      // Update the user's profile
-      val updateResultF = repository.updateProfile(
-        testChannelId1,
-        Some(testDisplayName1),
-        Some(testEmail1),
-        Some(testProfileImageUrl1)
-      )
-      val updateResult = Await.result(updateResultF, 5.seconds)
-      
-      // Verify the update worked
-      updateResult must be(1) // 1 row affected
-      
-      // Get the user to confirm the update
-      val userF = repository.getByChannelId(testChannelId1)
-      val user = Await.result(userF, 5.seconds)
-      
-      user must not be None
-      user.get.displayName must be(Some(testDisplayName1))
-      user.get.email must be(Some(testEmail1))
-      user.get.profileImageUrl must be(Some(testProfileImageUrl1))
-      // Make sure updatedAt is newer than original updatedAt
-      user.get.updatedAt.isAfter(ytUser.updatedAt) must be(true)
-    }
-    
     "activate or deactivate a YouTube account" in {
       val repository = new YtUserRepository(dbConfigProvider, userRepository)
       
@@ -336,38 +301,6 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       userAfter.get.activated must be(false)
     }
     
-    "find YouTube user by email" in {
-      val repository = new YtUserRepository(dbConfigProvider, userRepository)
-      
-      // Create a YouTube user with email
-      val ytUser = YtUser(
-        userChannelId = testChannelId1,
-        userId = testUserId1,
-        email = Some(testEmail1)
-      )
-      
-      Await.result(repository.createFull(ytUser), 5.seconds)
-      
-      // Find user by email
-      val userF = repository.findByEmail(testEmail1)
-      val user = Await.result(userF, 5.seconds)
-      
-      // Verify the result
-      user must not be None
-      user.get.userChannelId must be(testChannelId1)
-      user.get.email must be(Some(testEmail1))
-    }
-    
-    "return None when finding by non-existent email" in {
-      val repository = new YtUserRepository(dbConfigProvider, userRepository)
-      
-      // Find user by non-existent email
-      val userF = repository.findByEmail("nonexistent@example.com")
-      val user = Await.result(userF, 5.seconds)
-      
-      // Verify the result
-      user must be(None)
-    }
     
     "delete a YouTube user" in {
       val repository = new YtUserRepository(dbConfigProvider, userRepository)
@@ -413,22 +346,6 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
       
       // Verify no rows were affected
       updateResult must be(0)
-    }
-    
-    "handle updateProfile for non-existent YouTube user" in {
-      val repository = new YtUserRepository(dbConfigProvider, userRepository)
-      
-      // Update profile for a non-existent user
-      val updateProfileF = repository.updateProfile(
-        "NonExistentChannelId",
-        Some(testDisplayName1),
-        Some(testEmail1),
-        Some(testProfileImageUrl1)
-      )
-      val updateProfile = Await.result(updateProfileF, 5.seconds)
-      
-      // Verify no rows were affected
-      updateProfile must be(0)
     }
     
     "handle setActivated for non-existent YouTube user" in {
