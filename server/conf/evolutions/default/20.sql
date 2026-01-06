@@ -1,6 +1,6 @@
 -- !Ups
 
-ALTER TABLE oauth2_tokens DROP CONSTRAINT fk_oauth2_tokens_yt_users;
+ALTER TABLE oauth2_tokens DROP CONSTRAINT IF EXISTS fk_oauth2_tokens_yt_users;
 
 -- !Downs
 
