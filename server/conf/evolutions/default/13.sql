@@ -19,7 +19,7 @@ CREATE INDEX idx_tournaments_content_creator_channel_id ON tournaments (content_
 
 -- !Downs
 
-DROP INDEX IF EXISTS idx_tournaments_content_creator_channel_id;
 ALTER TABLE tournaments DROP CONSTRAINT IF EXISTS fk_tournaments_content_creator_channels;
+DROP INDEX IF EXISTS idx_tournaments_content_creator_channel_id;
 ALTER TABLE tournaments DROP COLUMN IF EXISTS content_creator_channel_id;
 ALTER TABLE tournaments DROP COLUMN IF EXISTS challonge_url;

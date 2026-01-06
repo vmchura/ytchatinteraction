@@ -24,8 +24,7 @@ trait OAuth2InfoComponent {
     def createdAt = column[Instant]("created_at")
     def updatedAt = column[Instant]("updated_at")
     
-    def ytUserFk = foreignKey("fk_oauth2_tokens_yt_users", userChannelId, ytUsersTable)(_.userChannelId, onUpdate = ForeignKeyAction.Cascade, onDelete = ForeignKeyAction.Cascade)
-    
+
     def * = (
       id.?, 
       userChannelId, 

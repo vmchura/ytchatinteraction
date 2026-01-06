@@ -66,7 +66,7 @@ class YtUserRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          20,
+          200,
           """
           --- !Ups
           

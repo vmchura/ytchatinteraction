@@ -14,7 +14,6 @@ import play.silhouette.api.repositories.AuthInfoRepository
 import play.silhouette.api.{Environment, EventBus, LoginEvent, LoginInfo, Silhouette, SilhouetteEvent}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService}
 import play.silhouette.impl.providers.{CommonSocialProfile, OAuth2Info, SocialProviderRegistry}
-import providers.YouTubeProvider
 import services.UserService
 import modules.DefaultEnv
 import play.silhouette.api.exceptions.ProviderException
@@ -26,6 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import java.time.Instant
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
+import play.silhouette.impl.providers.oauth2.GoogleProvider
 
 class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
   
@@ -42,18 +42,17 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       val mockYtUserRepository = mock[YtUserRepository]
       val mockLoginInfoRepository = mock[LoginInfoRepository]
       val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
-      val mockYouTubeProvider = mock[YouTubeProvider]
+      val mockGoogleProvider = mock[GoogleProvider]
       val ytStreamerRepository = mock[YtStreamerRepository]
 
       // Create a fake request
       val fakeRequest = FakeRequest()
       
-      // Mock the YouTube provider to return a redirect result with the request
       val redirectResult = Results.Redirect("https://accounts.google.com/o/oauth2/auth")
-      when(mockYouTubeProvider.authenticate()(any())).thenReturn(Future.successful(Left(redirectResult)))
+      when(mockGoogleProvider.authenticate()(any())).thenReturn(Future.successful(Left(redirectResult)))
       
       // Mock the social provider registry
-      when(mockSocialProviderRegistry.get[YouTubeProvider]).thenReturn(Some(mockYouTubeProvider))
+      when(mockSocialProviderRegistry.get[GoogleProvider]).thenReturn(Some(mockGoogleProvider))
       when(ytStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
 
       // Mock the UnsecuredAction to execute the function directly  
@@ -82,14 +81,14 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       )
       
       // Execute the test - call the actual controller method
-      val result = call(controller.authenticate("youtube"), fakeRequest)
+      val result = call(controller.authenticate("google"), fakeRequest)
       
       // Verify the redirect
       status(result) mustEqual SEE_OTHER
       redirectLocation(result) mustEqual Some("https://accounts.google.com/o/oauth2/auth")
       
       // Verify that the provider was called
-      verify(mockYouTubeProvider).authenticate()(any())
+      verify(mockGoogleProvider).authenticate()(any())
     }
     
     "handle authentication error gracefully" in {
@@ -101,18 +100,17 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       val mockYtUserRepository = mock[YtUserRepository]
       val mockLoginInfoRepository = mock[LoginInfoRepository]
       val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
-      val mockYouTubeProvider = mock[YouTubeProvider]
+      val mockGoogleProvider = mock[GoogleProvider]
       val mockYtStreamerRepository = mock[YtStreamerRepository]
 
       // Mock the social provider registry
-      when(mockSocialProviderRegistry.get[YouTubeProvider]).thenReturn(Some(mockYouTubeProvider))
+      when(mockSocialProviderRegistry.get[GoogleProvider]).thenReturn(Some(mockGoogleProvider))
       when(mockYtStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
       
       // Create a fake request
       val fakeRequest = FakeRequest()
       
-      // Mock the YouTube provider to throw an exception
-      when(mockYouTubeProvider.authenticate()(any()))
+      when(mockGoogleProvider.authenticate()(any()))
         .thenReturn(Future.failed(new ProviderException("Authentication failed")))
 
       // Mock the UnsecuredAction to execute the function directly  
@@ -141,14 +139,14 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       )
       
       // Execute the test - call the actual controller method
-      val result = call(controller.authenticate("youtube"), fakeRequest)
+      val result = call(controller.authenticate("google"), fakeRequest)
       
       // Verify the error response
       status(result) mustEqual BAD_REQUEST
       contentAsString(result) must include("Authentication error")
       
       // Verify that the provider was called
-      verify(mockYouTubeProvider).authenticate()(any())
+      verify(mockGoogleProvider).authenticate()(any())
     }
   }
 }

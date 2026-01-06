@@ -76,7 +76,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          20,
+          200,
           """
           --- !Ups
           
@@ -91,6 +91,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
           --- Remove test data
           DELETE FROM yt_users WHERE user_channel_id = 'UCTestChannelId';
           DELETE FROM users WHERE user_id = 1;
+          DELETE FROM oauth2_tokens where 1 = 1;
           """
         )
       )
@@ -112,7 +113,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
       
       // Create test data
-      val loginInfo = LoginInfo("youtube", testChannelId)
+      val loginInfo = LoginInfo("google", testChannelId)
       val oAuth2Info = new OAuth2Info(
         accessToken = "test-access-token",
         tokenType = Some("Bearer"),
@@ -143,7 +144,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
       
       // Create test data
-      val loginInfo = LoginInfo("youtube", testChannelId)
+      val loginInfo = LoginInfo("google", testChannelId)
       val oAuth2Info1 = new OAuth2Info(
         accessToken = "initial-access-token",
         tokenType = Some("Bearer"),
@@ -182,7 +183,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
       
       // Create test data
-      val loginInfo = LoginInfo("youtube", testChannelId)
+      val loginInfo = LoginInfo("google", testChannelId)
       val oAuth2Info = new OAuth2Info(
         accessToken = "save-test-token",
         tokenType = Some("Bearer"),
@@ -215,7 +216,7 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
       
       // Create test data
-      val loginInfo = LoginInfo("youtube", testChannelId)
+      val loginInfo = LoginInfo("google", testChannelId)
       val oAuth2Info = new OAuth2Info(
         accessToken = "to-be-removed",
         tokenType = Some("Bearer"),

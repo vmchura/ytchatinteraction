@@ -66,7 +66,7 @@ class PollOptionRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          20,
+          200,
           """
           --- !Ups
           

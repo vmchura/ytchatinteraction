@@ -47,7 +47,7 @@ class UserSmurfServiceSpec extends PlaySpec with GuiceOneAppPerSuite with Inject
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          21,
+          201,
           """
             --- !Ups
 

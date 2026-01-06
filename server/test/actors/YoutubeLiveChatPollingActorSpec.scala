@@ -109,7 +109,7 @@ class YoutubeLiveChatPollingActorSpec extends PlaySpec
     Evolutions.applyEvolutions(db,
       SimpleEvolutionsReader.forDefault(
         Evolution(
-          20,
+          200,
           """
           --- !Ups
 
