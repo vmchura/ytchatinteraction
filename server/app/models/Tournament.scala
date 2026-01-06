@@ -12,6 +12,7 @@ case class Tournament(
   maxParticipants: Int,
   registrationStartAt: Instant,
   registrationEndAt: Instant,
+  tournamentCode: String,
   tournamentStartAt: Option[Instant] = None,
   tournamentEndAt: Option[Instant] = None,
   challongeTournamentId: Option[Long] = None, // Nullable Challonge tournament ID
@@ -22,9 +23,6 @@ case class Tournament(
   updatedAt: Instant = Instant.now()
 )
 
-/**
- * Status of a tournament
- */
 sealed trait TournamentStatus
 
 object TournamentStatus {

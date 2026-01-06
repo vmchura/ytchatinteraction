@@ -70,6 +70,7 @@ case class StreamerToUserCurrencyForm(
 // Form for creating a new tournament
 case class TournamentCreateForm(
     name: String,
+    code: String,
     contentCreatorChannelId: Option[Long] = None
 )
 
@@ -93,8 +94,12 @@ case class CloseMatchData(
 )
 
 case class AnalyticalFileData(playerID: Int, fileHash: String)
+case class RegisterToTournamentData(code: String)
 
 object Forms:
+
+  val registerToTournamentForm = Form(mapping("tournamentcode" -> nonEmptyText)(RegisterToTournamentData.apply)(nn =>Some(nn.code)))
+
   val closeMatchForm = Form(
     mapping(
       "winner" -> of[WinnerShared],
@@ -187,9 +192,10 @@ object Forms:
   val tournamentCreateForm = Form(
     mapping(
       "name" -> nonEmptyText.verifying("Name cannot be empty", _.trim.nonEmpty),
+      "code" -> nonEmptyText.verifying("Code cannot be empty", _.trim.nonEmpty),
       "contentCreatorChannelId" -> optional(longNumber)
     )(TournamentCreateForm.apply)(nn =>
-      Some(nn.name, nn.contentCreatorChannelId)
+      Some(nn.name, nn.code, nn.contentCreatorChannelId)
     )
   )
 

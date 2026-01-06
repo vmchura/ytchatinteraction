@@ -245,6 +245,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
           maxParticipants = 16,
           registrationStartAt = now,
           registrationEndAt = now.plusSeconds(7 * 24 * 3600),
+          tournamentCode = tournamentData.code,
           tournamentStartAt = None,
           tournamentEndAt = None,
           challongeTournamentId = None,

@@ -65,6 +65,23 @@
                     </label>
                 </fieldset>
 
+                <fieldset>
+                    <label for="code">
+                        Tournament Code Registration *
+                        <input type="text" 
+                               id="code" 
+                               name="code" 
+                               value="@tournamentForm("code").value.getOrElse("")" 
+                               placeholder="Enter code registration"
+                               @if(tournamentForm("code").hasErrors) {aria-invalid="true"}
+                               required>
+                        @if(tournamentForm("code").hasErrors) {
+                            <small>@tournamentForm("code").errors.map(_.message).mkString(", ")</small>
+                        } else {
+                            <small>Enter a code for registration.</small>
+                        }
+                    </label>
+                </fieldset>
                 <article>
                     <header>
                         <h3>Default Settings</h3>

@@ -19,7 +19,18 @@
             case Unregistered => {
                 <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST">
                     @helper.CSRF.formField
-                    <button type="submit" class="contrast">@messages("partials.tournament.register")</button>
+                    <fieldset class="grid">
+                        <input
+                                name="tournamentcode"
+                                placeholder="Code"
+                                aria-label="Code"
+                                autocomplete="Code"
+                        />
+                        <input
+                                type="submit"
+                                value=@messages("partials.tournament.register")
+                        />
+                    </fieldset>
                 </form>
             }
             case NotAbleToRegister => {
