@@ -151,7 +151,8 @@ class TournamentChallongeServiceImpl @Inject() (
 
   // Configuration values
   private val challongeApiKey = configuration.get[String]("challonge.api.key")
-  private val challongeBaseUrl = configuration.get[String]("challonge.api.baseUrl")
+  private val challongeBaseUrl =
+    configuration.get[String]("challonge.api.baseUrl")
 
   // Common headers for Challonge API requests
   private def commonHeaders = Map(
@@ -435,7 +436,6 @@ class TournamentChallongeServiceImpl @Inject() (
     val request = wsClient
       .url(s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches.json")
       .addHttpHeaders(commonHeaders.toSeq: _*)
-      .addQueryStringParameters("api_key" -> challongeApiKey)
 
     request
       .get()
@@ -443,19 +443,25 @@ class TournamentChallongeServiceImpl @Inject() (
         response.status match {
           case 200 =>
             try {
-              val matchesJson = response.json.as[List[JsObject]]
+              val matchesJson = (response.json \ "data").as[List[JsObject]]
               val matches = matchesJson.map { matchObj =>
-                val matchData = (matchObj \ "match").as[JsObject]
+                val matchData = matchObj \ "attributes"
                 ChallongeMatch(
-                  id = (matchData \ "id").as[Long],
+                  id = (matchObj \ "id").as[String].toLong,
                   state = (matchData \ "state").as[String],
-                  player1Id = (matchData \ "player1_id").asOpt[Long],
-                  player2Id = (matchData \ "player2_id").asOpt[Long],
+                  player1Id =
+                    (matchObj \ "relationships" \ "player1" \ "data" \ "id")
+                      .asOpt[String]
+                      .flatMap(_.toLongOption),
+                  player2Id =
+                    (matchObj \ "relationships" \ "player2" \ "data" \ "id")
+                      .asOpt[String]
+                      .flatMap(_.toLongOption),
                   winnerId = (matchData \ "winner_id").asOpt[Long],
                   loserId = (matchData \ "loser_id").asOpt[Long],
                   scheduledTime = (matchData \ "scheduled_time").asOpt[String],
                   opponent = "Unknown",
-                  scores_csv = (matchData \ "scores_csv").asOpt[String],
+                  scores_csv = (matchData \ "scores").asOpt[String],
                   winner = None
                 )
               }
@@ -554,13 +560,11 @@ class TournamentChallongeServiceImpl @Inject() (
         response.status match {
           case 200 =>
             try {
-              val participantsJson = response.json.as[List[JsObject]]
+              val participantsJson = (response.json \ "data").as[List[JsObject]]
               val participants = participantsJson.map { participantObj =>
-                val participantData =
-                  (participantObj \ "participant").as[JsObject]
                 ChallongeParticipant(
-                  id = (participantData \ "id").as[Long],
-                  name = (participantData \ "name").as[String]
+                  id = (participantObj \ "id").as[String].toLong,
+                  name = (participantObj \ "attributes" \ "name").as[String]
                 )
               }
               logger.debug(
@@ -606,7 +610,6 @@ class TournamentChallongeServiceImpl @Inject() (
         s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches/$matchId.json"
       )
       .addHttpHeaders(commonHeaders.toSeq: _*)
-      .addQueryStringParameters("api_key" -> challongeApiKey)
 
     request
       .get()
@@ -614,18 +617,24 @@ class TournamentChallongeServiceImpl @Inject() (
         response.status match {
           case 200 =>
             try {
-              val matchObj = response.json.as[JsObject]
-              val matchData = (matchObj \ "match").as[JsObject]
+              val matchObj = response.json.as[JsObject] \ "data"
+              val matchData = (matchObj \ "attributes").as[JsObject]
               val challongeMatch = ChallongeMatch(
-                id = (matchData \ "id").as[Long],
+                id = (matchObj \ "id").as[Long],
                 state = (matchData \ "state").as[String],
-                player1Id = (matchData \ "player1_id").asOpt[Long],
-                player2Id = (matchData \ "player2_id").asOpt[Long],
+                player1Id =
+                  (matchData \ "relationships" \ "player1" \ "data" \ "id")
+                    .asOpt[String]
+                    .flatMap(_.toLongOption),
+                player2Id =
+                  (matchData \ "relationships" \ "player2" \ "data" \ "id")
+                    .asOpt[String]
+                    .flatMap(_.toLongOption),
                 winnerId = (matchData \ "winner_id").asOpt[Long],
                 loserId = (matchData \ "loser_id").asOpt[Long],
                 scheduledTime = (matchData \ "scheduled_time").asOpt[String],
                 opponent = "Unknown",
-                scores_csv = (matchData \ "scores_csv").asOpt[String],
+                scores_csv = (matchData \ "scores").asOpt[String],
                 winner = None
               )
               logger.debug(
@@ -671,32 +680,96 @@ class TournamentChallongeServiceImpl @Inject() (
       winner: WinnerShared
   ): Future[Boolean] = {
 
-    val matchDataWithWinner = winner match {
+    val matchData = winner match {
       case FirstUser =>
-        Json.obj("scores_csv" -> "1-0", "winner_id" -> Json.toJson(player1Id))
+        Json.arr(
+          Json.obj(
+            "participant_id" -> player1Id.toString,
+            "score_set" -> "1",
+            "advancing" -> true
+          ),
+          Json.obj(
+            "participant_id" -> player2Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          )
+        )
       case FirstUserByOnlyPresented =>
-        Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson(player1Id))
+        Json.arr(
+          Json.obj(
+            "participant_id" -> player1Id.toString,
+            "score_set" -> "0",
+            "advancing" -> true
+          ),
+          Json.obj(
+            "participant_id" -> player2Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          )
+        )
       case SecondUser =>
-        Json.obj("scores_csv" -> "0-1", "winner_id" -> Json.toJson(player2Id))
+        Json.arr(
+          Json.obj(
+            "participant_id" -> player1Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          ),
+          Json.obj(
+            "participant_id" -> player2Id.toString,
+            "score_set" -> "1",
+            "advancing" -> true
+          )
+        )
       case SecondUserByOnlyPresented =>
-        Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson(player2Id))
-      case Draw =>
-        Json.obj("scores_csv" -> "1-1", "winner_id" -> Json.toJson("tie"))
-      case Cancelled | Undefined =>
-        Json.obj("scores_csv" -> "0-0", "winner_id" -> Json.toJson("tie"))
+        Json.arr(
+          Json.obj(
+            "participant_id" -> player1Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          ),
+          Json.obj(
+            "participant_id" -> player2Id.toString,
+            "score_set" -> "0",
+            "advancing" -> true
+          )
+        )
+      case Draw | Cancelled | Undefined =>
+        Json.arr(
+          Json.obj(
+            "participant_id" -> player1Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          ),
+          Json.obj(
+            "participant_id" -> player2Id.toString,
+            "score_set" -> "0",
+            "advancing" -> false
+          )
+        )
     }
 
-    val matchData = Json.obj("match" -> matchDataWithWinner)
+    val putData = Json.obj(
+      "data" -> Json.obj(
+        "attributes" -> Json.obj(
+          "match" -> matchData,
+          "tie" -> {
+            winner match {
+              case Draw | Cancelled | Undefined => true
+              case _                            => false
+            }
+          }
+        )
+      )
+    )
 
     val request = wsClient
       .url(
         s"$challongeBaseUrl/tournaments/$challongeTournamentId/matches/$matchId.json"
       )
       .addHttpHeaders(commonHeaders.toSeq: _*)
-      .addQueryStringParameters("api_key" -> challongeApiKey)
 
     request
-      .put(matchData)
+      .put(putData)
       .map { response =>
         response.status match {
           case 200 =>
