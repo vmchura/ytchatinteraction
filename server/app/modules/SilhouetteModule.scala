@@ -178,6 +178,7 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
       cookieDomain = configuration.getOptional[String]("silhouette.csrfStateItemHandler.cookieDomain"),
       secureCookie = configuration.get[Boolean]("silhouette.csrfStateItemHandler.secureCookie"),
       httpOnlyCookie = configuration.get[Boolean]("silhouette.csrfStateItemHandler.httpOnlyCookie"),
+      sameSite = configuration.getOptional[String]("silhouette.csrfStateItemHandler.sameSite").flatMap(Cookie.SameSite.parse),
       expirationTime = configuration.get[FiniteDuration]("silhouette.csrfStateItemHandler.expirationTime")
     )
 
