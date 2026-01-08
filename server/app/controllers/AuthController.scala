@@ -8,6 +8,7 @@ import play.api.i18n.I18nSupport
 import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Cookie, Request, Result}
 import play.silhouette.api.Authenticator.Implicits.*
 import play.silhouette.api.exceptions.ProviderException
+import play.silhouette.impl.exceptions.OAuth2StateException
 import play.silhouette.api.repositories.AuthInfoRepository
 import play.silhouette.api.{LoginEvent, LogoutEvent, Silhouette}
 import play.silhouette.impl.providers.{CommonSocialProfileBuilder, SocialProviderRegistry}
@@ -79,8 +80,12 @@ class AuthController @Inject()(
         result
       }
     }.recover {
+      case e: OAuth2StateException =>
+        Redirect(routes.AuthController.login)
+          .flashing("error" -> "Authentication failed: En esta plataforma se utiliza 'cookies' para la autenticación de usuarios, tienes que habilitarlas en tu navegador.")
       case e: ProviderException =>
-        BadRequest(s"Authentication error: ${e.getMessage}")
+        Redirect(routes.AuthController.login)
+          .flashing("error" -> s"Authentication error: ${e.getMessage}")
     }
   }
 

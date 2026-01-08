@@ -6,11 +6,52 @@
                         <h3 class="text-center">@messages("login.signin.title")</h3>
                     </div>
                     <div class="card-body">
+                        @if(flash.get("error")) {
+                            <div class="alert alert-danger" role="alert">
+                                @flash.get("error")
+                            </div>
+                        }
+                        @if(flash.get("success")) {
+                            <div class="alert alert-success" role="alert">
+                                @flash.get("success")
+                            </div>
+                        }
+                        <div id="cookie-warning" class="alert alert-warning" role="alert" style="display: none;">
+                            <strong>Cookies Required!</strong> This site requires cookies to be enabled for authentication.
+                            Please enable cookies in your browser settings and refresh the page.
+                        </div>
                         <div class="d-grid gap-2">
-                            <a href="@controllers.routes.AuthController.authenticate("youtube")" class="btn btn-danger">
+                            <a href="@controllers.routes.AuthController.authenticate("youtube")" class="btn btn-danger" id="login-btn">
                                 <i class="fa fa-youtube"></i> @messages("login.signin.youtube")
                             </a>
                         </div>
                     </div>
                 </div>
+                <script>
+                    // Check if cookies are enabled
+                    function checkCookiesEnabled() {
+                        try {
+                            document.cookie = "cookietest=1; SameSite=Lax";
+                            var cookiesEnabled = document.cookie.indexOf("cookietest=") !== -1;
+                            document.cookie = "cookietest=1; expires=Thu, 01-Jan-1970 00:00:01 GMT";
+                            return cookiesEnabled;
+                        } catch(e) {
+                            return false;
+                        }
+                    }
+
+                    // Check on page load
+                    if (!checkCookiesEnabled()) {
+                        document.getElementById('cookie-warning').style.display = 'block';
+                        var loginBtn = document.getElementById('login-btn');
+                        loginBtn.classList.add('disabled');
+                        loginBtn.style.opacity = '0.5';
+                        loginBtn.style.cursor = 'not-allowed';
+                        loginBtn.onclick = function(e) {
+                            e.preventDefault();
+                            alert('Please enable cookies in your browser to continue with authentication.');
+                            return false;
+                        };
+                    }
+                </script>
 }
