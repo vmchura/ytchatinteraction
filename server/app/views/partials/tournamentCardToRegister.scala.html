@@ -11,7 +11,6 @@
         <h3>@tournamentViewDataForUser.name</h3>
     </header>
 
-    <footer>
         @tournamentViewDataForUser.userRegistered match {
             case Registered => {
                 <button disabled>@messages("partials.tournament.already.registered")</button>
@@ -19,13 +18,14 @@
             case Unregistered => {
                 <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST">
                     @helper.CSRF.formField
-                    <fieldset class="grid">
+                    <fieldset>
+			<label>
+				Código de registro
                         <input
                                 name="tournamentcode"
-                                placeholder="Code"
                                 aria-label="Code"
-                                autocomplete="Code"
                         />
+			</label>
                         <input
                                 type="submit"
                                 value=@messages("partials.tournament.register")
@@ -44,5 +44,4 @@
                 </div>
             }
         }
-    </footer>
 </article>
