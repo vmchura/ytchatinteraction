@@ -25,6 +25,7 @@ import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
 import java.util.UUID
 import play.silhouette.impl.providers.oauth2.GoogleProvider
+import play.api.Logger
 
 /**
  * The authentication controller.
@@ -40,6 +41,8 @@ class AuthController @Inject()(
   oauth2InfoRepository: OAuth2InfoRepository,
   ytStreamerRepository: YtStreamerRepository
 )(implicit ex: ExecutionContext) extends AbstractController(components) with I18nSupport {
+
+  private val logger = Logger(this.getClass)
 
   /**
    * Displays the login page with YouTube authentication button.
@@ -58,6 +61,21 @@ class AuthController @Inject()(
    * @return The result to display.
    */
   def authenticate(provider: String) = silhouette.UnsecuredAction.async { implicit request =>
+    // Debug logging for OAuth callback
+    logger.info(s"=== OAuth Callback Debug ===")
+    logger.info(s"Request URL: ${request.uri}")
+    logger.info(s"Request secure: ${request.secure}")
+    logger.info(s"Request host: ${request.host}")
+    logger.info(s"Cookies present: ${request.cookies.toSeq.map(c => s"${c.name}").mkString(", ")}")
+    request.cookies.get("OAuth2State").foreach { cookie =>
+      logger.info(s"OAuth2State cookie value (first 50 chars): ${cookie.value.take(50)}")
+      logger.info(s"OAuth2State cookie secure: ${cookie.secure}, httpOnly: ${cookie.httpOnly}, sameSite: ${cookie.sameSite}")
+    }
+    request.queryString.get("state").foreach { stateValues =>
+      logger.info(s"State URL parameter (first 50 chars): ${stateValues.headOption.map(_.take(50)).getOrElse("none")}")
+    }
+    logger.info(s"=== End Debug ===")
+
     (socialProviderRegistry.get[GoogleProvider] match {
       case Some(p) => p.authenticate()
       case None => Future.failed(new ProviderException(s"Cannot authenticate with unknown provider $provider"))
@@ -81,9 +99,14 @@ class AuthController @Inject()(
       }
     }.recover {
       case e: OAuth2StateException =>
+        logger.error(s"OAuth2StateException: ${e.getMessage}")
+        logger.error(s"Exception details: ", e)
         Redirect(routes.AuthController.login)
           .flashing("error" -> "Authentication failed: En esta plataforma se utiliza 'cookies' para la autenticación de usuarios, tienes que habilitarlas en tu navegador.")
       case e: ProviderException =>
+        logger.error(s"ProviderException: ${e.getMessage}")
+        logger.error(s"Exception details: ", e)
+        logger.error(s"Cookies at error time: ${request.cookies.toSeq.map(c => s"${c.name}=${c.value.take(30)}...").mkString(", ")}")
         Redirect(routes.AuthController.login)
           .flashing("error" -> s"Authentication error: ${e.getMessage}")
     }

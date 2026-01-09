@@ -27,6 +27,7 @@ import services.{UserService, UserServiceImpl}
 import utils.auth.{CustomSecuredErrorHandler, CustomUnsecuredErrorHandler}
 import play.silhouette.api.actions.{SecuredErrorHandler, UnsecuredErrorHandler}
 import play.api.i18n.MessagesApi
+import play.api.Logger
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -38,6 +39,8 @@ import play.silhouette.impl.providers.oauth2.GoogleProvider
  * The Silhouette module.
  */
 class SilhouetteModule extends AbstractModule with ScalaModule {
+
+  private val logger = Logger(this.getClass)
 
   /**
    * Configures the module.
@@ -172,13 +175,23 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
     @Named("authenticator-signer") signer: Signer,
     configuration: Configuration
   ): CsrfStateItemHandler = {
+    val sameSiteConfig = configuration.getOptional[String]("silhouette.csrfStateItemHandler.sameSite")
+    val sameSiteParsed = sameSiteConfig.flatMap(Cookie.SameSite.parse)
+
+    logger.info(s"=== CsrfStateItemHandler Configuration ===")
+    logger.info(s"sameSite config value: $sameSiteConfig")
+    logger.info(s"sameSite parsed value: $sameSiteParsed")
+    logger.info(s"secureCookie: ${configuration.get[Boolean]("silhouette.csrfStateItemHandler.secureCookie")}")
+    logger.info(s"cookieDomain: ${configuration.getOptional[String]("silhouette.csrfStateItemHandler.cookieDomain")}")
+    logger.info(s"=== End Configuration ===")
+
     val settings = CsrfStateSettings(
       cookieName = configuration.get[String]("silhouette.csrfStateItemHandler.cookieName"),
       cookiePath = configuration.get[String]("silhouette.csrfStateItemHandler.cookiePath"),
       cookieDomain = configuration.getOptional[String]("silhouette.csrfStateItemHandler.cookieDomain"),
       secureCookie = configuration.get[Boolean]("silhouette.csrfStateItemHandler.secureCookie"),
       httpOnlyCookie = configuration.get[Boolean]("silhouette.csrfStateItemHandler.httpOnlyCookie"),
-      sameSite = configuration.getOptional[String]("silhouette.csrfStateItemHandler.sameSite").flatMap(Cookie.SameSite.parse),
+      sameSite = sameSiteParsed,
       expirationTime = configuration.get[FiniteDuration]("silhouette.csrfStateItemHandler.expirationTime")
     )
 
