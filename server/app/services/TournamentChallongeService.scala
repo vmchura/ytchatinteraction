@@ -450,13 +450,9 @@ class TournamentChallongeServiceImpl @Inject() (
                   id = (matchObj \ "id").as[String].toLong,
                   state = (matchData \ "state").as[String],
                   player1Id =
-                    (matchObj \ "relationships" \ "player1" \ "data" \ "id")
-                      .asOpt[String]
-                      .flatMap(_.toLongOption),
+                    (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(0,_ => None)),
                   player2Id =
-                    (matchObj \ "relationships" \ "player2" \ "data" \ "id")
-                      .asOpt[String]
-                      .flatMap(_.toLongOption),
+                    (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(1,_ => None)),
                   winnerId = (matchData \ "winner_id").asOpt[Long],
                   loserId = (matchData \ "loser_id").asOpt[Long],
                   scheduledTime = (matchData \ "scheduled_time").asOpt[String],
@@ -623,13 +619,9 @@ class TournamentChallongeServiceImpl @Inject() (
                 id = (matchObj \ "id").as[Long],
                 state = (matchData \ "state").as[String],
                 player1Id =
-                  (matchData \ "relationships" \ "player1" \ "data" \ "id")
-                    .asOpt[String]
-                    .flatMap(_.toLongOption),
+                  (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(0,_ => None)),
                 player2Id =
-                  (matchData \ "relationships" \ "player2" \ "data" \ "id")
-                    .asOpt[String]
-                    .flatMap(_.toLongOption),
+                  (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(1,_ => None)),
                 winnerId = (matchData \ "winner_id").asOpt[Long],
                 loserId = (matchData \ "loser_id").asOpt[Long],
                 scheduledTime = (matchData \ "scheduled_time").asOpt[String],
