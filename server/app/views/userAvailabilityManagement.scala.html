@@ -1,0 +1,210 @@
+@import play.api.data.Form
+@import controllers.{UserAvailabilityForm, UserTimezoneForm}
+@import models.{AvailabilityStatus, UserAvailability, UserTimezone, User}
+@import java.time.ZoneId
+@import scala.jdk.CollectionConverters._
+
+@(user: User, 
+  timezoneOpt: Option[UserTimezone], 
+  availabilities: List[UserAvailability],
+  timezoneForm: Form[UserTimezoneForm],
+  availabilityForm: Form[UserAvailabilityForm]
+)(implicit request: RequestHeader, flash: Flash, messages: Messages)
+
+@main("Manage Availability", Some(user)) {
+        <h1>Manage Your Availability</h1>
+
+        @if(flash.get("success").isDefined) {
+            <div role="alert" class="success">
+                @flash.get("success")
+            </div>
+        }
+
+        @if(flash.get("error").isDefined) {
+            <div role="alert" class="error">
+                @flash.get("error")
+            </div>
+        }
+
+        <section>
+            <h2>Tu zona horaria</h2>
+            @timezoneOpt.map { timezone =>
+                <div >
+                    <p><strong>Actual: </strong> @timezone.timezone</p>
+                </div>
+            }
+
+            @helper.form(action = routes.UserAvailabilityController.updateTimezone()) {
+                @helper.CSRF.formField
+		@defining(ZoneId.getAvailableZoneIds.asScala.toSeq.filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe")).sorted) { timezones =>
+                
+			<fieldset role="group">
+				<select id="timezone"
+					name="timezone"
+					required
+					@if(timezoneForm("timezone").hasErrors) {aria-invalid="true"}>
+
+				    <option value="" disabled
+					@if(timezoneForm("timezone").value.isEmpty) {selected}>
+					Selecciona una zona horaria
+				    </option>
+
+				    @for(tz <- timezones) {
+					<option value="@tz"
+					@if(
+					timezoneForm("timezone").value.contains(tz) ||
+					timezoneOpt.exists(_.timezone == tz)
+					) {selected}>
+				        @tz
+					</option>
+				    }
+				</select>
+				<input type="submit" value="Actualizar"/>
+			</fieldset>
+			<small> Ejemplo: America/Lima, America/La_Paz, Europe/Madrid </small>
+		}
+            }
+        </section>
+
+        <section>
+            <h2>Disponibilidad Semanal</h2>
+            
+            @if(availabilities.nonEmpty) {
+                <div class="availability-list">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Días</th>
+                                <th>Horas</th>
+                                <th>Disponibilidad</th>
+                                <th>¿Eliminar?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @availabilities.map { availability =>
+                            <tr>
+                                <td>@dayName(availability.fromWeekDay)@if(availability.fromWeekDay != availability.toWeekDay){ - @dayName(availability.toWeekDay)}</td>
+                                <td>@availability.fromHourInclusive:00 - @availability.toHourExclusive:59</td>
+                                <td>
+                                    <span class="status-badge @statusClass(availability.availabilityStatus)">
+                                        @statusName(availability.availabilityStatus)
+                                    </span>
+                                </td>
+                                <td>
+                                    @helper.form(action = routes.UserAvailabilityController.deleteAvailability(availability.id), Symbol("class") -> "inline-form") {
+                                        @helper.CSRF.formField
+                                        <button type="submit" class="secondary" onclick="return confirm('Are you sure you want to delete this availability?')">Eliminar</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            } else {
+                            }
+
+	<article>
+	<header> Añade tu disponibilidad </header>
+
+	@helper.form(action = routes.UserAvailabilityController.addAvailability()) {
+	    @helper.CSRF.formField
+	    
+	    <fieldset role="group">
+		<label for="fromWeekDay">
+		    De (día)
+		    <select name="fromWeekDay" id="fromWeekDay" required>
+			<option value="1">Lunes</option>
+			<option value="2">Martes</option>
+			<option value="3">Miércoles</option>
+			<option value="4">Jueves</option>
+			<option value="5">Viernes</option>
+			<option value="6">Sábado</option>
+			<option value="7">Domingo</option>
+		    </select>
+		</label>
+
+		<label for="toWeekDay">
+		    a (día)
+		    <select name="toWeekDay" id="toWeekDay" required>
+			<option value="1">Lunes</option>
+			<option value="2">Martes</option>
+			<option value="3">Miércoles</option>
+			<option value="4">Jueves</option>
+			<option value="5">Viernes</option>
+			<option value="6">Sábado</option>
+			<option value="7">Domingo</option>
+		    </select>
+		</label>
+	</fieldset>
+	<fieldset role="group">
+		<label for="fromHourInclusive">
+		    desde (hora)
+		    <select name="fromHourInclusive" id="fromHourInclusive" required>
+			@for(hour <- 0 to 23) {
+			    <option value="@hour">@{String.format("%02d", hour)}:00</option>
+			}
+		    </select>
+		</label>
+
+		<label for="toHourExclusive">
+		    hasta (hora)
+		    <select name="toHourExclusive" id="toHourExclusive" required>
+			@for(hour <- 0 to 23) {
+			    <option value="@hour">@{String.format("%02d", hour)}:59</option>
+			}
+		    </select>
+		</label>
+		</fieldset>
+		<fieldset role="group">
+
+		    <select name="availabilityStatus" id="availabilityStatus" required>
+			<option value="HIGHLY_AVAILABLE">MUY disponible</option>
+			<option value="MAYBE_AVAILABLE">probablemente disponible</option>
+		    </select>
+				<input type="submit" value="Enviar"/>
+
+
+	    </fieldset>
+
+
+	}
+	<div id="message_parse"></div>
+
+	<footer>
+		    <p>Ejemplo: De <strong> Lunes </strong> a <strong> Viernes  </strong> desde las <strong> 18:00 </strong> hasta las <strong> 21:59 </strong> estoy <strong> MUY disponible </strong> </p>
+		    <p>Ejemplo: El <strong> Sábado </strong> </strong> desde las <strong> 18:00 </strong> hasta las <strong> 23:59 </strong> estoy <strong> probablemente disponible </strong> </p>
+
+	</footer>
+	</article>
+        </section>
+
+}
+
+@dayName(dayNum: Int) = @{
+    dayNum match {
+        case 1 => "Lunes"
+        case 2 => "Martes"
+        case 3 => "Miércoles"
+        case 4 => "Jueves"
+        case 5 => "Viernes"
+        case 6 => "Sábado"
+        case 7 => "Domingo"
+    }
+}
+
+@statusClass(status: AvailabilityStatus) = @{
+    status match {
+        case AvailabilityStatus.HighlyAvailable => "status-highly"
+        case AvailabilityStatus.MaybeAvailable => "status-maybe"
+        case AvailabilityStatus.Unavailable => "status-unavailable"
+    }
+}
+
+@statusName(status: AvailabilityStatus) = @{
+    status match {
+        case AvailabilityStatus.HighlyAvailable => "MUY disponible"
+        case AvailabilityStatus.MaybeAvailable => "probablemente disponible"
+        case AvailabilityStatus.Unavailable => "Indisponible"
+    }
+}

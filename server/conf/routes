@@ -30,6 +30,12 @@ GET     /signout                    controllers.AuthController.signOut
 GET     /profile/change-alias       controllers.AliasController.showChangeAliasForm()
 POST    /profile/change-alias       controllers.AliasController.changeAlias()
 
+# User availability routes
+GET     /profile/availability       controllers.UserAvailabilityController.showAvailabilityManagement()
+POST    /profile/availability/timezone  controllers.UserAvailabilityController.updateTimezone()
+POST    /profile/availability/add   controllers.UserAvailabilityController.addAvailability()
+POST    /profile/availability/delete/:id  controllers.UserAvailabilityController.deleteAvailability(id: Long)
+
 # Admin routes (requires admin authorization)
 GET     /admin                      controllers.AdminController.adminDashboard()
 GET     /rerun/:tournamentId/:challongeMatchID   controllers.AdminController.reRunAnalysis(tournamentId: Long, challongeMatchID: Long)
