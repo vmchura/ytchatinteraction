@@ -171,6 +171,80 @@
 	}
 	<div id="message_parse"></div>
 
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		const form = document.querySelector('form[action="@routes.UserAvailabilityController.addAvailability()"]');
+		const messageDiv = document.getElementById('message_parse');
+		const fromWeekDay = document.getElementById('fromWeekDay');
+		const toWeekDay = document.getElementById('toWeekDay');
+		const fromHour = document.getElementById('fromHourInclusive');
+		const toHour = document.getElementById('toHourExclusive');
+		const availabilityStatus = document.getElementById('availabilityStatus');
+
+		function getDayName(dayNum) {
+			const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+			return days[dayNum - 1];
+		}
+
+		function formatHourFrom(hour) {
+			return String(hour).padStart(2, '0') + ':00';
+		}
+		function formatHourTo(hour) {
+			return String(hour).padStart(2, '0') + ':59';
+		}
+
+		function validateAndShowMessage() {
+			const fromDay = parseInt(fromWeekDay.value);
+			const toDay = parseInt(toWeekDay.value);
+			const fromHourVal = parseInt(fromHour.value);
+			const toHourVal = parseInt(toHour.value);
+			const status = availabilityStatus.options[availabilityStatus.selectedIndex].text;
+
+			messageDiv.innerHTML = '';
+			messageDiv.className = '';
+
+			if (toDay < fromDay) {
+				messageDiv.innerHTML = '❌ El día "hasta" debe ser igual o posterior al día "desde"';
+				messageDiv.className = 'error-message';
+				return false;
+			}
+
+			if (toHourVal < fromHourVal) {
+				messageDiv.innerHTML = '❌La hora "hasta" debe ser posterior que la hora "desde"';
+				messageDiv.className = 'error-message';
+				return false;
+			}
+
+			let dayText = '';
+			if (fromDay === toDay) {
+				dayText = 'El ' + getDayName(fromDay);
+			} else {
+				dayText = 'De ' + getDayName(fromDay) + ' a ' + getDayName(toDay);
+			}
+
+			const message = '✅ ' + dayText + ' desde las ' + formatHourFrom(fromHourVal) + ' hasta las ' + formatHourTo(toHourVal) + ' estoy ' + status;
+			messageDiv.innerHTML = message;
+			messageDiv.className = 'success-message';
+			return true;
+		}
+
+		[fromWeekDay, toWeekDay, fromHour, toHour, availabilityStatus].forEach(element => {
+			element.addEventListener('change', validateAndShowMessage);
+		});
+
+		// Prevent form submission if validation fails
+		form.addEventListener('submit', function(e) {
+			if (!validateAndShowMessage()) {
+				e.preventDefault();
+			}
+		});
+
+		// Initial validation
+		validateAndShowMessage();
+	});
+	</script>
+
+	
 	<footer>
 		    <p>Ejemplo: De <strong> Lunes </strong> a <strong> Viernes  </strong> desde las <strong> 18:00 </strong> hasta las <strong> 21:59 </strong> estoy <strong> MUY disponible </strong> </p>
 		    <p>Ejemplo: El <strong> Sábado </strong> </strong> desde las <strong> 18:00 </strong> hasta las <strong> 23:59 </strong> estoy <strong> probablemente disponible </strong> </p>

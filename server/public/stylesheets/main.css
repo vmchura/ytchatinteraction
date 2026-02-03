@@ -187,3 +187,20 @@ small.error {
 input[aria-invalid="true"] {
   border-color: #dc3545;
 }
+
+.error-message {
+	color: #d63031;
+	background-color: #ffeaa7;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+	margin: 0.5rem 0;
+	border: 1px solid #d63031;
+}
+
+.success-message {
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+	margin: 0.5rem 0;
+	border: 1px solid #00b894;
+}
+
