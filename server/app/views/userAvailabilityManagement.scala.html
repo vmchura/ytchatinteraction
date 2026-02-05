@@ -39,6 +39,7 @@
 		@defining(ZoneId.getAvailableZoneIds.asScala.toSeq.filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe")).sorted) { timezones =>
                 
 			<fieldset role="group">
+				<input type="text" id="timezone-search" placeholder="Buscar ciudad o zona horaria..." autocomplete="off"/>
 				<select id="timezone"
 					name="timezone"
 					required
@@ -56,12 +57,12 @@
 					timezoneOpt.exists(_.timezone == tz)
 					) {selected}>
 				        @tz
-					</option>
+				    </option>
 				    }
 				</select>
 				<input type="submit" value="Actualizar"/>
 			</fieldset>
-			<small> Ejemplo: America/Lima, America/La_Paz, Europe/Madrid </small>
+			<small> Ejemplo: Lima, La_Paz, Madrid, New_York </small>
 		}
             }
         </section>
@@ -173,6 +174,109 @@
 
 	<script>
 	document.addEventListener('DOMContentLoaded', function() {
+		// Timezone search functionality
+		const timezoneSearch = document.getElementById('timezone-search');
+		const timezoneSelect = document.getElementById('timezone');
+		
+		if (timezoneSearch && timezoneSelect) {
+			// Cache original options with their properties
+			const originalOptions = Array.from(timezoneSelect.options).map(option => ({
+				value: option.value,
+				text: option.text,
+				disabled: option.disabled,
+				selected: option.selected,
+				element: option.cloneNode(true)
+			}));
+			
+			timezoneSearch.addEventListener('input', function() {
+				const query = this.value.trim();
+				
+				// Clear and rebuild select
+				timezoneSelect.innerHTML = '';
+				
+				// Always add placeholder option first
+				const placeholderOption = originalOptions.find(opt => opt.disabled);
+				if (placeholderOption) {
+					const placeholderClone = placeholderOption.element.cloneNode(true);
+					timezoneSelect.add(placeholderClone);
+				}
+				
+				// If no query, show all options
+				if (!query) {
+					originalOptions.forEach(opt => {
+						if (!opt.disabled) {
+							timezoneSelect.add(opt.element.cloneNode(true));
+						}
+					});
+					return;
+				}
+				
+				// Try regex search first, fallback to text search
+				let matcher = null;
+				let useRegex = false;
+				
+				try {
+					matcher = new RegExp(query, 'i');
+					useRegex = true;
+				} catch {
+					// Invalid regex, will use text search
+					useRegex = false;
+				}
+				
+				// Filter options
+				const matchedOptions = originalOptions.filter(option => {
+					if (option.disabled || !option.value) return false;
+					
+					if (useRegex && matcher) {
+						return matcher.test(option.value);
+					} else {
+						// Text search: case-insensitive partial match
+						const searchText = option.value.toLowerCase();
+						const searchTerms = query.toLowerCase().split(/\s+/);
+						return searchTerms.every(term => searchText.includes(term));
+					}
+				});
+				
+				// Sort matches: prioritize exact matches, then relevance
+				matchedOptions.sort((a, b) => {
+					const aText = a.value.toLowerCase();
+					const bText = b.value.toLowerCase();
+					const queryLower = query.toLowerCase();
+					
+					// Exact matches first
+					if (aText === queryLower) return -1;
+					if (bText === queryLower) return 1;
+					
+					// Prioritize city matches (after last /)
+					const aCity = aText.split('/').pop();
+					const bCity = bText.split('/').pop();
+					const aCityMatch = aCity.includes(queryLower);
+					const bCityMatch = bCity.includes(queryLower);
+					
+					if (aCityMatch && !bCityMatch) return -1;
+					if (!aCityMatch && bCityMatch) return 1;
+					
+					// Then alphabetical
+					return aText.localeCompare(bText);
+				});
+				
+				// Add matched options
+				matchedOptions.forEach(option => {
+					timezoneSelect.add(option.element.cloneNode(true));
+				});
+				
+				// Show no results message if needed
+				if (matchedOptions.length === 0) {
+					const noResultOption = document.createElement('option');
+					noResultOption.value = '';
+					noResultOption.disabled = true;
+					noResultOption.textContent = 'No se encontraron resultados';
+					timezoneSelect.add(noResultOption);
+				}
+			});
+		}
+		
+		// Availability form functionality
 		const form = document.querySelector('form[action="@routes.UserAvailabilityController.addAvailability()"]');
 		const messageDiv = document.getElementById('message_parse');
 		const fromWeekDay = document.getElementById('fromWeekDay');
