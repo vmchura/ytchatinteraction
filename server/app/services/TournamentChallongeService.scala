@@ -10,6 +10,21 @@ import models.{
   User
 }
 
+
+import play.api.libs.ws.WSClient
+import play.api.libs.json.*
+import play.api.Configuration
+import play.api.Logger
+import play.api.libs.ws.JsonBodyWritables.*
+import play.api.libs.ws.DefaultBodyWritables.*
+
+import javax.inject.{Inject, Singleton}
+import scala.concurrent.{ExecutionContext, Future}
+import io.cequence.openaiscala.domain.settings.TranscriptResponseFormatType.json
+
+/** Service to integrate with the Challonge API for tournament management.
+*/
+
 /** Configuration for Challonge tournament creation parameters */
 case class TournamentChallongeConfiguration(
   tournamentType: String = "single elimination",
@@ -35,18 +50,8 @@ object TournamentChallongeConfiguration {
     )
   }
 }
-import play.api.libs.ws.WSClient
-import play.api.libs.json.*
-import play.api.Configuration
-import play.api.Logger
-import play.api.libs.ws.JsonBodyWritables.*
-import play.api.libs.ws.DefaultBodyWritables.*
 
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
-import io.cequence.openaiscala.domain.settings.TranscriptResponseFormatType.json
-
-/** Service to integrate with the Challonge API for tournament management.
+/** Service to integrate with Challonge API for tournament management.
   */
 trait TournamentChallongeService {
 

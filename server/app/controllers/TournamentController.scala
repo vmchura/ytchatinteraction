@@ -5,6 +5,9 @@ import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
 import modules.DefaultEnv
 import services.{ContentCreatorChannelService, TournamentService, TournamentChallongeService}
+import services.{TournamentChallongeConfiguration}
+
+
 import utils.auth.WithAdmin
 import play.api.Logger
 import play.api.i18n.I18nSupport
@@ -59,6 +62,16 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
   }
 
   def startTournament(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    // Bind the configuration form
+    val configForm = Forms.tournamentChallongeConfigForm.bindFromRequest()
+    val config = configForm.fold(
+      errors => {
+        // If form has errors, use default configuration
+        logger.warn(s"Invalid tournament configuration form: ${errors.errors}, using defaults")
+        TournamentChallongeConfiguration()
+      },
+      validConfig => TournamentChallongeConfiguration.fromForm(validConfig)
+    )
     val future = for {
       tournamentOpt <- tournamentService.getTournament(id)
       result <- tournamentOpt match {
@@ -67,7 +80,7 @@ class TournamentController @Inject()(val controllerComponents: ControllerCompone
             registrationsWithUsers <- tournamentService.getTournamentRegistrationsWithUsers(id)
             participants = registrationsWithUsers.map(_._2)
 
-            result <- tournamentChallongeService.createChallongeTournament(tournament, participants).flatMap { case (challongeTournamentId, challongeUrl) =>
+            result <- tournamentChallongeService.createChallongeTournament(tournament, participants, config).flatMap { case (challongeTournamentId, challongeUrl) =>
               logger.info(s"Created Challonge tournament with ID: $challongeTournamentId for tournament: ${tournament.name}")
 
               val updatedTournament = tournament.copy(
