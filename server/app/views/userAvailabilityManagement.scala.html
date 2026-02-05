@@ -375,7 +375,6 @@
     status match {
         case AvailabilityStatus.HighlyAvailable => "status-highly"
         case AvailabilityStatus.MaybeAvailable => "status-maybe"
-        case AvailabilityStatus.Unavailable => "status-unavailable"
     }
 }
 
@@ -383,6 +382,5 @@
     status match {
         case AvailabilityStatus.HighlyAvailable => "MUY disponible"
         case AvailabilityStatus.MaybeAvailable => "probablemente disponible"
-        case AvailabilityStatus.Unavailable => "Indisponible"
     }
 }

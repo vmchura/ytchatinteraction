@@ -12,12 +12,10 @@ trait UserAvailabilityComponent extends UserComponent {
 
   given BaseColumnType[AvailabilityStatus] = MappedColumnType.base[AvailabilityStatus, String](
     {
-      case AvailabilityStatus.Unavailable => "UNAVAILABLE"
       case AvailabilityStatus.MaybeAvailable => "MAYBE_AVAILABLE"
       case AvailabilityStatus.HighlyAvailable => "HIGHLY_AVAILABLE"
     },
     {
-      case "UNAVAILABLE" => AvailabilityStatus.Unavailable
       case "MAYBE_AVAILABLE" => AvailabilityStatus.MaybeAvailable
       case "HIGHLY_AVAILABLE" => AvailabilityStatus.HighlyAvailable
     }

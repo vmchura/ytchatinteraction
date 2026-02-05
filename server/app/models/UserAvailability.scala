@@ -25,7 +25,6 @@ case class UserAvailability(
 sealed trait AvailabilityStatus
 
 object AvailabilityStatus {
-  case object Unavailable extends AvailabilityStatus
   case object MaybeAvailable extends AvailabilityStatus
   case object HighlyAvailable extends AvailabilityStatus
 }
