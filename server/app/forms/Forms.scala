@@ -6,6 +6,50 @@ import play.api.data.Forms.*
 import play.api.data.format.Formatter
 import evolutioncomplete.PotentialAnalyticalFileShared
 
+/** Tournament type options for Challonge */
+sealed trait ChallongeTournamentType
+
+object ChallongeTournamentType {
+  case object SingleElimination extends ChallongeTournamentType
+  case object DoubleElimination extends ChallongeTournamentType
+  case object RoundRobin extends ChallongeTournamentType
+  case object Swiss extends ChallongeTournamentType
+  
+  def fromString(value: String): ChallongeTournamentType = value.toLowerCase match {
+    case "single elimination" | "single" => SingleElimination
+    case "double elimination" | "double" => DoubleElimination
+    case "round robin" | "round-robin" | "roundrobin" => RoundRobin
+    case "swiss" => Swiss
+    case _ => SingleElimination // default
+  }
+  
+  def toString(tournamentType: ChallongeTournamentType): String = tournamentType match {
+    case SingleElimination => "single elimination"
+    case DoubleElimination => "double elimination"
+    case RoundRobin => "round robin"
+    case Swiss => "swiss"
+  }
+}
+
+/** Group stage type options for Challonge */
+sealed trait GroupStageType
+
+object GroupStageType {
+  case object RoundRobin extends GroupStageType
+  case object SingleElimination extends GroupStageType
+  
+  def fromString(value: String): GroupStageType = value.toLowerCase match {
+    case "round robin" | "round-robin" | "roundrobin" => RoundRobin
+    case "single elimination" | "single" => SingleElimination
+    case _ => RoundRobin // default
+  }
+  
+  def toString(groupStageType: GroupStageType): String = groupStageType match {
+    case RoundRobin => "round robin"
+    case SingleElimination => "single elimination"
+  }
+}
+
 given winnerFormatter: Formatter[WinnerShared] with
   def bind(
       key: String,
@@ -72,6 +116,17 @@ case class TournamentCreateForm(
     name: String,
     code: String,
     contentCreatorChannelId: Option[Long] = None
+)
+
+// Form for Challonge tournament configuration
+case class TournamentChallongeConfigForm(
+    tournamentType: String = "single elimination",
+    groupStageEnabled: Boolean = true,
+    groupStageType: String = "round robin",
+    groupSize: Int = 5,
+    participantCountToAdvancePerGroup: Int = 1,
+    holdThirdPlaceMatch: Boolean = false,
+    sequentialPairings: Boolean = true
 )
 
 // Form for voting on polls
@@ -196,6 +251,28 @@ object Forms:
       "contentCreatorChannelId" -> optional(longNumber)
     )(TournamentCreateForm.apply)(nn =>
       Some(nn.name, nn.code, nn.contentCreatorChannelId)
+    )
+  )
+
+  val tournamentChallongeConfigForm = Form(
+    mapping(
+      "tournamentType" -> nonEmptyText.verifying("Tournament type is required", _.trim.nonEmpty),
+      "groupStageEnabled" -> boolean,
+      "groupStageType" -> nonEmptyText.verifying("Group stage type is required", _.trim.nonEmpty),
+      "groupSize" -> number.verifying("Group size must be at least 2", _ >= 2),
+      "participantCountToAdvancePerGroup" -> number.verifying("Advancing participants must be at least 1", _ >= 1),
+      "holdThirdPlaceMatch" -> boolean,
+      "sequentialPairings" -> boolean
+    )(TournamentChallongeConfigForm.apply)(nn =>
+      Some(
+        nn.tournamentType,
+        nn.groupStageEnabled,
+        nn.groupStageType,
+        nn.groupSize,
+        nn.participantCountToAdvancePerGroup,
+        nn.holdThirdPlaceMatch,
+        nn.sequentialPairings
+      )
     )
   )
 

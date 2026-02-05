@@ -9,6 +9,32 @@ import models.{
   Tournament,
   User
 }
+
+/** Configuration for Challonge tournament creation parameters */
+case class TournamentChallongeConfiguration(
+  tournamentType: String = "single elimination",
+  groupStageEnabled: Boolean = true,
+  groupStageType: String = "round robin",
+  groupSize: Int = 5,
+  participantCountToAdvancePerGroup: Int = 1,
+  holdThirdPlaceMatch: Boolean = false,
+  sequentialPairings: Boolean = true
+)
+
+object TournamentChallongeConfiguration {
+  /** Convert from form to service configuration */
+  def fromForm(form: forms.TournamentChallongeConfigForm): TournamentChallongeConfiguration = {
+    TournamentChallongeConfiguration(
+      tournamentType = form.tournamentType,
+      groupStageEnabled = form.groupStageEnabled,
+      groupStageType = form.groupStageType,
+      groupSize = form.groupSize,
+      participantCountToAdvancePerGroup = form.participantCountToAdvancePerGroup,
+      holdThirdPlaceMatch = form.holdThirdPlaceMatch,
+      sequentialPairings = form.sequentialPairings
+    )
+  }
+}
 import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import play.api.Configuration
@@ -31,12 +57,15 @@ trait TournamentChallongeService {
     *   The local tournament
     * @param participants
     *   The list of users registered for the tournament
+    * @param config
+    *   Configuration for tournament type and group stage settings
     * @return
     *   The Challonge tournament ID
     */
   def createChallongeTournament(
       tournament: Tournament,
-      participants: List[User]
+      participants: List[User],
+      config: TournamentChallongeConfiguration = TournamentChallongeConfiguration()
   ): Future[(Long, String)]
 
   /** Updates an existing Challonge tournament.
@@ -164,41 +193,39 @@ class TournamentChallongeServiceImpl @Inject() (
 
   override def createChallongeTournament(
       tournament: Tournament,
-      participants: List[User]
+      participants: List[User],
+      config: TournamentChallongeConfiguration = TournamentChallongeConfiguration()
   ): Future[(Long, String)] = {
     logger.info(
       s"Creating Challonge tournament for: ${tournament.name} with ${participants.length} participants"
     )
 
-    val allParticipants =
-      participants ::: ((0 until (10 - participants.length)).map { i =>
-        User(
-          userId = -(i + 1), // Negative IDs for fake users
-          userName = s"Negative_$i"
-        )
-      }).toList
+    val groupStageOptions = if (config.groupStageEnabled) {
+      Some(Json.obj(
+        "stage_type" -> config.groupStageType,
+        "group_size" -> config.groupSize,
+        "participant_count_to_advance_per_group" -> config.participantCountToAdvancePerGroup
+      ))
+    } else None
+
+    val attributes = Json.obj(
+      "name" -> tournament.name,
+      "url" -> generateTournamentUrl(tournament),
+      "tournament_type" -> config.tournamentType,
+      "game_name" -> "StarCraft Broodwar",
+      "private" -> false,
+      "description" -> tournament.description.getOrElse(
+        s"Tournament created from ${tournament.name}"
+      ),
+      "hold_third_place_match" -> config.holdThirdPlaceMatch,
+      "sequential_pairings" -> config.sequentialPairings
+    ) ++ (if (config.groupStageEnabled) Json.obj("group_stage_enabled" -> config.groupStageEnabled) ++ 
+          Json.obj("group_stage_options" -> groupStageOptions.get) else Json.obj())
 
     val tournamentData = Json.obj(
       "data" -> Json.obj(
         "type" -> "Tournaments",
-        "attributes" -> Json.obj(
-          "name" -> tournament.name,
-          "url" -> generateTournamentUrl(tournament),
-          "tournament_type" -> "single elimination",
-          "game_name" -> "StarCraft Broodwar",
-          "private" -> false,
-          "description" -> tournament.description.getOrElse(
-            s"Tournament created from ${tournament.name}"
-          ),
-          "group_stage_enabled" -> true,
-          "group_stage_options" -> Json.obj(
-            "stage_type" -> "round robin",
-            "group_size" -> 5,
-            "participant_count_to_advance_per_group" -> 1
-          ),
-          "hold_third_place_match" -> false,
-          "sequential_pairings" -> true
-        )
+        "attributes" -> attributes
       )
     )
 
@@ -219,7 +246,7 @@ class TournamentChallongeServiceImpl @Inject() (
             (json_data \ "attributes" \ "url").as[String]
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
-          addAllParticipants(tournamentId, allParticipants, tournament.id).map(
+          addAllParticipants(tournamentId, participants, tournament.id).map(
             _ => (tournamentId, challongeFullURL)
           )
 
