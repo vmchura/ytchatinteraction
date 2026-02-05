@@ -87,8 +87,12 @@ class PotentialMatchService @Inject()(
 )(implicit ec: ExecutionContext, dbConfigProvider: DatabaseConfigProvider) {
   
   private val logger = Logger(getClass)
-  private val dbConfig = dbConfigProvider.get[slick.jdbc.JdbcProfile]
-  import dbConfig.profile.api._
+  val dbConfig = dbConfigProvider.get[JdbcProfile]
+  protected val profile = dbConfig.profile
+
+  import dbConfig._
+  import profile.api._
+
   
   /**
    * Calculates optimal match times for a specific match ID
@@ -104,8 +108,8 @@ class PotentialMatchService @Inject()(
         result <- matchOpt match {
           case Some(matchRecord) => 
             for {
-              firstUserAvailabilities <- userAvailabilityRepository.findByUserIdAction(matchRecord.firstUserId)
-              secondUserAvailabilities <- userAvailabilityRepository.findByUserIdAction(matchRecord.secondUserId)
+              firstUserAvailabilities <- userAvailabilityRepository.getAllAvailabilitiesByUserIdAction(matchRecord.firstUserId)
+              secondUserAvailabilities <- userAvailabilityRepository.getAllAvailabilitiesByUserIdAction(matchRecord.secondUserId)
             } yield {
               findOptimalMatchTimes(matchRecord, firstUserAvailabilities, secondUserAvailabilities, calculationTime)
             }
@@ -114,10 +118,7 @@ class PotentialMatchService @Inject()(
       } yield result
     }
     
-    calculation.andThen { results =>
-      logger.info(s"Calculated ${results.length} optimal match times for matchId $matchId")
-      results
-    }
+    calculation
   }
   
   /**
