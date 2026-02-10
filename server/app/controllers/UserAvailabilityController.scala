@@ -112,7 +112,6 @@ class UserAvailabilityController @Inject()(
       },
       availabilityData => {
         val availabilityStatus = availabilityData.availabilityStatus match {
-          case "UNAVAILABLE" => AvailabilityStatus.Unavailable
           case "MAYBE_AVAILABLE" => AvailabilityStatus.MaybeAvailable
           case "HIGHLY_AVAILABLE" => AvailabilityStatus.HighlyAvailable
         }
