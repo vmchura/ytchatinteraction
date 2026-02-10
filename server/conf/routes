@@ -81,6 +81,7 @@ GET     /tournaments                controllers.TournamentController.showOpenTou
 GET     /tournaments/create         controllers.TournamentController.showCreateForm()
 POST    /tournaments/create         controllers.TournamentController.createTournament()
 GET     /tournaments/:id/manage     controllers.TournamentController.manageTournament(id: Long)
+GET     /tournaments/:tournamentId/matches/:matchId/schedule controllers.TournamentController.showMatchScheduling(tournamentId: Long, matchId: Long)
 POST    /tournaments/:id/start      controllers.TournamentController.startTournament(id: Long)
 POST    /tournaments/:id/complete   controllers.TournamentController.completeTournament(id: Long)
 POST    /tournaments/:id/cancel     controllers.TournamentController.cancelTournament(id: Long)

@@ -1,0 +1,194 @@
+@import play.api.mvc.ControllerHelpers.request2flash
+@import models.viewmodels.MatchSchedulingViewData
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+
+@(viewData: MatchSchedulingViewData)(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
+
+@main(s"Schedule Match: ${viewData.player1.userName} vs ${viewData.player2.userName}") {
+    <div class="container">
+        <header>
+            <h1>Schedule Match</h1>
+            <p>Suggested match times based on player availability.</p>
+        </header>
+
+        @if(request.flash.get("success").isDefined) {
+            <div role="alert">
+                @request.flash.get("success")
+            </div>
+        }
+
+        @if(request.flash.get("error").isDefined) {
+            <div role="alert">
+                @request.flash.get("error")
+            </div>
+        }
+
+        <div class="grid">
+            <!-- Player Information -->
+            <div>
+                <article>
+                    <header>
+                        <h2>Players</h2>
+                    </header>
+
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Player 1</th>
+                                <td><strong>@viewData.player1.userName</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Timezone</th>
+                                <td>@viewData.player1.timezone</td>
+                            </tr>
+                            <tr>
+                                <th>Availability</th>
+                                <td>
+                                    @if(viewData.player1.hasAvailability) {
+                                        <mark style="background-color: var(--pico-green-400);">Configured</mark>
+                                    } else {
+                                        <mark style="background-color: var(--pico-red-400);">Not Set</mark>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table style="margin-top: 1rem;">
+                        <tbody>
+                            <tr>
+                                <th>Player 2</th>
+                                <td><strong>@viewData.player2.userName</strong></td>
+                            </tr>
+                            <tr>
+                                <th>Timezone</th>
+                                <td>@viewData.player2.timezone</td>
+                            </tr>
+                            <tr>
+                                <th>Availability</th>
+                                <td>
+                                    @if(viewData.player2.hasAvailability) {
+                                        <mark style="background-color: var(--pico-green-400);">Configured</mark>
+                                    } else {
+                                        <mark style="background-color: var(--pico-red-400);">Not Set</mark>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </article>
+            </div>
+
+            <!-- Suggested Times -->
+            <div>
+                <article>
+                    <header>
+                        <h2>Suggested Match Times</h2>
+                    </header>
+
+                    @if(viewData.suggestedTimes.isEmpty) {
+                        <p><em>No common availability found in the next 7 days. Players may need to update their availability schedules.</em></p>
+                    } else {
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Option</th>
+                                        <th>@viewData.player1.userName</th>
+                                        <th>@viewData.player2.userName</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for((suggestedTime, index) <- viewData.suggestedTimes.zipWithIndex) {
+                                        @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player1.timezone))) { p1Local =>
+                                            @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player2.timezone))) { p2Local =>
+                                                <tr>
+                                                    <td>Option ${index + 1}</td>
+                                                    <td>
+                                                        @p1Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a"))
+                                                        <br>
+                                                        <small>(@viewData.player1.timezone)</small>
+                                                    </td>
+                                                    <td>
+                                                        @p2Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a"))
+                                                        <br>
+                                                        <small>(@viewData.player2.timezone)</small>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </article>
+            </div>
+        </div>
+
+        <!-- Markdown Message -->
+        @if(viewData.suggestedTimes.nonEmpty) {
+            <article>
+                <header>
+                    <h2>Message for Players</h2>
+                    <p>Copy and paste this message to both players.</p>
+                </header>
+
+                <textarea id="message-text" readonly rows="10" style="width: 100%; font-family: monospace;">
+**Match Scheduling Suggestion**
+
+@for((suggestedTime, index) <- viewData.suggestedTimes.zipWithIndex) {
+@defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player1.timezone))) { p1Local =>
+@defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player2.timezone))) { p2Local =>
+**Option @{index + 1}:**
+**@viewData.player1.userName:** @p1Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")) (@viewData.player1.timezone)
+**@viewData.player2.userName:** @p2Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")) (@viewData.player2.timezone)
+
+}
+}
+}
+
+Please confirm which option works for you, or suggest an alternative time.
+                </textarea>
+
+                <footer>
+                    <button type="button" onclick="copyMessage()" class="secondary">Copy to Clipboard</button>
+                </footer>
+            </article>
+        }
+
+        <footer style="margin-top: 2rem;">
+            <a href="@routes.TournamentController.manageTournament(viewData.tournamentId)" role="button" class="secondary">Back to Tournament</a>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-dismiss flash messages after 5 seconds
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('[role="alert"]');
+            alerts.forEach(function(alert) {
+                alert.style.transition = 'opacity 0.5s';
+                alert.style.opacity = '0';
+                setTimeout(function() {
+                    alert.remove();
+                }, 500);
+            });
+        }, 5000);
+
+        // Copy message to clipboard
+        function copyMessage() {
+            var textarea = document.getElementById('message-text');
+            textarea.select();
+            document.execCommand('copy');
+            
+            // Show feedback
+            var button = document.querySelector('button[onclick="copyMessage()"]');
+            var originalText = button.textContent;
+            button.textContent = 'Copied!';
+            setTimeout(function() {
+                button.textContent = originalText;
+            }, 2000);
+        }
+    </script>
+}

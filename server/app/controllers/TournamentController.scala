@@ -2,9 +2,12 @@ package controllers
 
 import forms.Forms
 import models.{Tournament, TournamentStatus}
-import models.repository.TournamentRepository
-import models.viewmodels.TournamentMatchDisplay
+import models.dao.TournamentChallongeDAO
+import models.repository.{TournamentRepository, UserAvailabilityRepository}
+import models.viewmodels.{MatchSchedulingViewData, PlayerSchedulingInfo, TournamentMatchDisplay}
+import services.PotentialMatchTime
 import modules.DefaultEnv
+import services.PotentialMatchCalculator
 import services.{
   ContentCreatorChannelService,
   TournamentService,
@@ -30,6 +33,8 @@ class TournamentController @Inject() (
     tournamentService: TournamentService,
     tournamentChallongeService: TournamentChallongeService,
     contentCreatorChannelService: ContentCreatorChannelService,
+    tournamentChallongeDAO: TournamentChallongeDAO,
+    userAvailabilityRepository: UserAvailabilityRepository,
     silhouette: Silhouette[DefaultEnv]
 )(implicit ec: ExecutionContext, webJarsUtil: WebJarsUtil)
     extends BaseController
@@ -139,6 +144,116 @@ class TournamentController @Inject() (
           .flashing(
             "error" -> "Error loading tournament details. Please try again."
           )
+      }
+    }
+
+  def showMatchScheduling(tournamentId: Long, matchId: Long): Action[AnyContent] =
+    silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+      val future = for {
+        tournamentOpt <- tournamentService.getTournament(tournamentId)
+        result <- tournamentOpt match {
+          case Some(tournament) if tournament.challongeTournamentId.isDefined =>
+            val challongeTournamentId = tournament.challongeTournamentId.get
+            for {
+              // Fetch match details from Challonge
+              matchOpt <- tournamentChallongeService.getMatch(challongeTournamentId, matchId)
+              result <- matchOpt match {
+                case Some(challongeMatch) if challongeMatch.state == "open" =>
+                  // Map Challonge participant IDs to user IDs
+                  val player1MappingFut = challongeMatch.player1Id match {
+                    case Some(pid) => tournamentChallongeDAO.getTournamentUserByChallongeParticipantId(pid)
+                    case None => Future.successful(None)
+                  }
+                  val player2MappingFut = challongeMatch.player2Id match {
+                    case Some(pid) => tournamentChallongeDAO.getTournamentUserByChallongeParticipantId(pid)
+                    case None => Future.successful(None)
+                  }
+                  
+                  for {
+                    player1Mapping <- player1MappingFut
+                    player2Mapping <- player2MappingFut
+                    result <- (player1Mapping, player2Mapping) match {
+                      case (Some((_, user1)), Some((_, user2))) =>
+                        // Fetch timezones and availabilities for both users
+                        for {
+                          timezone1Opt <- userAvailabilityRepository.getTimezone(user1.userId)
+                          timezone2Opt <- userAvailabilityRepository.getTimezone(user2.userId)
+                          availabilities1 <- userAvailabilityRepository.getAllAvailabilitiesByUserId(user1.userId)
+                          availabilities2 <- userAvailabilityRepository.getAllAvailabilitiesByUserId(user2.userId)
+                        } yield {
+                          (timezone1Opt, timezone2Opt) match {
+                            case (Some(tz1), Some(tz2)) =>
+                              // Calculate optimal match times
+                              val suggestedTimes = PotentialMatchCalculator.findOptimalMatchTimes(
+                                availabilities1,
+                                availabilities2,
+                                tz1.timezone,
+                                tz2.timezone,
+                                Instant.now()
+                              )
+                              
+                              val viewData = MatchSchedulingViewData(
+                                tournamentId = tournamentId,
+                                matchId = matchId,
+                                player1 = PlayerSchedulingInfo(
+                                  userId = user1.userId,
+                                  userName = user1.userName,
+                                  timezone = tz1.timezone,
+                                  hasAvailability = availabilities1.nonEmpty
+                                ),
+                                player2 = PlayerSchedulingInfo(
+                                  userId = user2.userId,
+                                  userName = user2.userName,
+                                  timezone = tz2.timezone,
+                                  hasAvailability = availabilities2.nonEmpty
+                                ),
+                                suggestedTimes = suggestedTimes
+                              )
+                              Ok(views.html.matchScheduling(viewData))
+                            case (None, _) =>
+                              Redirect(routes.TournamentController.manageTournament(tournamentId))
+                                .flashing("error" -> s"Player ${user1.userName} has not set their timezone.")
+                            case (_, None) =>
+                              Redirect(routes.TournamentController.manageTournament(tournamentId))
+                                .flashing("error" -> s"Player ${user2.userName} has not set their timezone.")
+                          }
+                        }
+                      case _ =>
+                        Future.successful(
+                          Redirect(routes.TournamentController.manageTournament(tournamentId))
+                            .flashing("error" -> "Could not find player mappings for this match.")
+                        )
+                    }
+                  } yield result
+                case Some(_) =>
+                  Future.successful(
+                    Redirect(routes.TournamentController.manageTournament(tournamentId))
+                      .flashing("error" -> "Match is not open for scheduling.")
+                  )
+                case None =>
+                  Future.successful(
+                    Redirect(routes.TournamentController.manageTournament(tournamentId))
+                      .flashing("error" -> "Match not found.")
+                  )
+              }
+            } yield result
+          case Some(_) =>
+            Future.successful(
+              Redirect(routes.TournamentController.manageTournament(tournamentId))
+                .flashing("error" -> "Tournament is not linked to Challonge.")
+            )
+          case None =>
+            Future.successful(
+              Redirect(routes.TournamentController.showOpenTournaments())
+                .flashing("error" -> "Tournament not found.")
+            )
+        }
+      } yield result
+      
+      future.recover { case ex =>
+        logger.error(s"Error loading match scheduling for tournament $tournamentId, match $matchId: ${ex.getMessage}", ex)
+        Redirect(routes.TournamentController.manageTournament(tournamentId))
+          .flashing("error" -> "Error loading match scheduling. Please try again.")
       }
     }
 

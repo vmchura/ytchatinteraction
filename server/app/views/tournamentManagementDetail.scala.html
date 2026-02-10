@@ -148,6 +148,7 @@
                                         <th>Player 2</th>
                                         <th>Status</th>
                                         <th>Winner</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -180,6 +181,11 @@
                                                     case None => {
                                                         <em>—</em>
                                                     }
+                                                }
+                                            </td>
+                                            <td>
+                                                @if(matchDisplay.status.toLowerCase == "open") {
+                                                    <a href="@routes.TournamentController.showMatchScheduling(tournament.id, matchDisplay.matchId)" role="button" class="secondary" style="font-size: 0.875rem;">Set Match Time</a>
                                                 }
                                             </td>
                                         </tr>
