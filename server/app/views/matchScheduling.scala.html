@@ -24,7 +24,7 @@
             </div>
         }
 
-        <div class="grid">
+        <div>
             <!-- Player Information -->
             <div>
                 <article>
@@ -80,53 +80,7 @@
                 </article>
             </div>
 
-            <!-- Suggested Times -->
-            <div>
-                <article>
-                    <header>
-                        <h2>Suggested Match Times</h2>
-                    </header>
-
-                    @if(viewData.suggestedTimes.isEmpty) {
-                        <p><em>No common availability found in the next 7 days. Players may need to update their availability schedules.</em></p>
-                    } else {
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Option</th>
-                                        <th>@viewData.player1.userName</th>
-                                        <th>@viewData.player2.userName</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @for((suggestedTime, index) <- viewData.suggestedTimes.zipWithIndex) {
-                                        @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player1.timezone))) { p1Local =>
-                                            @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player2.timezone))) { p2Local =>
-                                                <tr>
-                                                    <td>Option ${index + 1}</td>
-                                                    <td>
-                                                        @p1Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a"))
-                                                        <br>
-                                                        <small>(@viewData.player1.timezone)</small>
-                                                    </td>
-                                                    <td>
-                                                        @p2Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a"))
-                                                        <br>
-                                                        <small>(@viewData.player2.timezone)</small>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        }
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </article>
-            </div>
-        </div>
-
+           
         <!-- Markdown Message -->
         @if(viewData.suggestedTimes.nonEmpty) {
             <article>
@@ -136,20 +90,12 @@
                 </header>
 
                 <textarea id="message-text" readonly rows="10" style="width: 100%; font-family: monospace;">
-**Match Scheduling Suggestion**
-
-@for((suggestedTime, index) <- viewData.suggestedTimes.zipWithIndex) {
-@defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player1.timezone))) { p1Local =>
-@defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player2.timezone))) { p2Local =>
-**Option @{index + 1}:**
+**Sugerencia de fecha y hora**
+@for((suggestedTime, index) <- viewData.suggestedTimes.zipWithIndex) { @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player1.timezone))) { p1Local => @defining(java.time.ZonedDateTime.ofInstant(suggestedTime.startTime, java.time.ZoneId.of(viewData.player2.timezone))) { p2Local => 
+**Opción @{index + 1}:**
 **@viewData.player1.userName:** @p1Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")) (@viewData.player1.timezone)
 **@viewData.player2.userName:** @p2Local.format(DateTimeFormatter.ofPattern("EEEE, MMM d 'at' h:mm a")) (@viewData.player2.timezone)
-
-}
-}
-}
-
-Please confirm which option works for you, or suggest an alternative time.
+}}}
                 </textarea>
 
                 <footer>
