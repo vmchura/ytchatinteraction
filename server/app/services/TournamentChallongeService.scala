@@ -678,7 +678,7 @@ class TournamentChallongeServiceImpl @Inject() (
               val matchObj = response.json.as[JsObject] \ "data"
               val matchData = (matchObj \ "attributes").as[JsObject]
               val challongeMatch = ChallongeMatch(
-                id = (matchObj \ "id").as[Long],
+                id = (matchObj \ "id").as[String].toLong,
                 state = (matchData \ "state").as[String],
                 player1Id = (matchData \ "points_by_participant")
                   .asOpt[List[JsObject]]
