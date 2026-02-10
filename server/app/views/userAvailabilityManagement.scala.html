@@ -239,13 +239,8 @@
         }
         
         .current-timezone {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
             background: var(--pico-primary-focus);
             border-radius: var(--pico-border-radius);
-            font-weight: 500;
         }
     </style>
 
@@ -265,26 +260,29 @@
 
     <article>
         <header>
-            <h2>Your Timezone</h2>
+            <h2>Tu Zona Horaria
+	@timezoneOpt.map { timezone =>
+		    <span class="current-timezone">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+			@timezone.timezone
+		    </span>
+		}
+		</h2>
+
         </header>
         
-        @timezoneOpt.map { timezone =>
-            <p class="current-timezone">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Currently set to: <strong>@timezone.timezone</strong>
-            </p>
-        }
-
+        
         @helper.form(action = routes.UserAvailabilityController.updateTimezone(), Symbol("class") -> "timezone-form") {
             @helper.CSRF.formField
             
             @defining(ZoneId.getAvailableZoneIds.asScala.toSeq.filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe")).sorted) { timezones =>                
+	    <fieldset class="grid">
                 <div class="timezone-autocomplete">
                     <input 
                         type="text" 
                         id="timezone-input" 
                         name="timezone"
-                        placeholder="Type to search timezone (e.g., New York, Madrid, Lima)..."
+                        placeholder="Escribe la zona horaria(e.g., New York, Madrid, Lima)..."
                         autocomplete="off"
                         value="@timezoneForm("timezone").value.getOrElse("")"
                         @if(timezoneForm("timezone").hasErrors) {aria-invalid="true"}
@@ -293,11 +291,8 @@
                     <div id="timezone-dropdown" class="timezone-dropdown"></div>
                 </div>
                 
-                <small>Type a city name and select from the dropdown</small>
-                
-                <footer>
-                    <button type="submit">Update Timezone</button>
-                </footer>
+                    <input type="submit" value="Actualizar Zona Horaria"/>
+		</fieldset>
             }
         }
     </article>
@@ -329,7 +324,7 @@
                         <td>
                             @helper.form(action = routes.UserAvailabilityController.deleteAvailability(availability.id), Symbol("class") -> "inline-form") {
                                 @helper.CSRF.formField
-                                <button type="submit" class="outline secondary" data-tooltip="Delete" onclick="return confirm('Are you sure you want to delete this availability?')">
+                                <button type="submit" class="outline secondary" data-tooltip="Delete">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                                 </button>
                             }
@@ -351,7 +346,7 @@
             
             <div class="availability-grid">
                 <div>
-                    <label>Select Days</label>
+                    <label>Selecciona días disponibles</label>
                     <div class="day-selector" id="day-selector">
                         <div class="day-btn" data-day="1" title="Lunes">Lu</div>
                         <div class="day-btn" data-day="2" title="Martes">Ma</div>
@@ -368,10 +363,10 @@
                 <input type="hidden" name="toWeekDay" id="toWeekDay" required>
 
                 <div class="time-range-container">
-                    <label>Time Range</label>
+                    <label>Rango de horas disponibles</label>
                     <div class="time-display">
-                        <span>From <span class="time-value" id="from-time-display">08:00</span></span>
-                        <span>to <span class="time-value" id="to-time-display">20:00</span></span>
+                        <span>De <span class="time-value" id="from-time-display">08:00</span></span>
+                        <span>a <span class="time-value" id="to-time-display">20:00</span></span>
                     </div>
                     
                     <div class="dual-slider" id="time-slider">
@@ -394,7 +389,7 @@
                 <input type="hidden" name="toHourExclusive" id="toHourExclusive" value="20">
 
                 <div>
-                    <label>Availability Status</label>
+                    <label>Nivel de disponibilidad</label>
                     <div class="status-selector" id="status-selector">
                         <div class="status-option highly" data-status="HIGHLY_AVAILABLE">
                             <strong>MUY disponible</strong>
@@ -412,13 +407,13 @@
                 <div class="availability-preview" id="availability-preview">
                     <h4>Preview</h4>
                     <p class="preview-text" id="preview-text">
-                        Select days and times to see preview
+                       Selecciona días y horas para visualizar el resultado
                     </p>
                 </div>
             </div>
 
             <footer>
-                <button type="submit">Add Availability</button>
+                <button type="submit">Añadir disponibilidad</button>
             </footer>
         }
     </article>
@@ -752,7 +747,7 @@
 
 
             
-            previewText.innerHTML = "Estaré <strong>" + status + "</strong>" + prefixDay +"<strong>" + dayText + "</strong> de <strong>" + formatHour(fromH) + ":00</strong> a <strong>" + formatHour(toH) + ":59</strong>";
+            previewText.innerHTML = "Estaré <strong>" + status + "</strong> " + prefixDay +" <strong>" + dayText + "</strong> de <strong>" + formatHour(fromH) + ":00</strong> a <strong>" + formatHour(toH) + ":59</strong>";
         }
         
         // Form validation
