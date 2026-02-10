@@ -125,3 +125,30 @@ ghbody="Steps to reproduce..."
 ghlabels="bug,critical"
 gh issue create -t "$ghtitle" -b "$ghbody" -l "$ghlabels"
 ```
+
+## Issue Template Structure
+
+For feature development issues, use this structure:
+
+```markdown
+## Problem
+Brief description of the problem or need.
+
+## Proposed Solution
+High-level overview of the solution.
+
+## Technical Architecture
+
+### Phase 1 to N: [Component/Step Name]
+**[Action]:** 
+
+Description of what to implement.
+
+
+Description of integration.
+
+## Acceptance Criteria:
+- [ ] Specific, testable criteria
+- [ ] Each with clear completion state
+
+
