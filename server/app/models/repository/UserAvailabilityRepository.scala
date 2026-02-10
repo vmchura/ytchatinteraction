@@ -36,10 +36,22 @@ class UserAvailabilityRepository @Inject()(dbConfigProvider: DatabaseConfigProvi
     userTimezonesTable.filter(_.userId === userId).result.headOption
   }
 
-  def updateTimezone(userTimezone: UserTimezone): Future[Int] = db.run {
-    userTimezonesTable.filter(_.userId === userTimezone.userId)
-      .map(t => (t.timezone, t.updatedAt))
-      .update((userTimezone.timezone, Instant.now()))
+  def updateTimezone(userTimezone: UserTimezone): Future[Int] = {
+    val action = for {
+      existing <- userTimezonesTable.filter(_.userId === userTimezone.userId).result.headOption
+      result <- existing match {
+        case Some(_) =>
+          // Update existing record
+          userTimezonesTable.filter(_.userId === userTimezone.userId)
+            .map(t => (t.timezone, t.updatedAt))
+            .update((userTimezone.timezone, Instant.now()))
+        case None =>
+          // Insert new record
+          userTimezonesTable += userTimezone
+      }
+    } yield result
+    
+    db.run(action.transactionally)
   }
 
   def updateTimezoneAction(userTimezone: UserTimezone): DBIO[Int] = {
