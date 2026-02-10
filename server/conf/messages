@@ -25,6 +25,8 @@ nav.change.alias = Cambiar Alias
 nav.language = Idioma
 nav.subscribed.channels = Mis Canales de SC
 nav.my.options=Mis Opciones
+nav.availability=Disponibilidad
+nav.admin=Admin
 
 # Página principal
 home.welcome.title = Bienvenido a Evolution Complete
