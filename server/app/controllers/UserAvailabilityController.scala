@@ -30,9 +30,19 @@ class UserAvailabilityController @Inject()(
 )(implicit ec: ExecutionContext)
   extends BaseController with I18nSupport {
 
+  private def isValidTimezone(timezone: String): Boolean = {
+    try {
+      java.time.ZoneId.of(timezone)
+      true
+    } catch {
+      case _: java.time.DateTimeException => false
+    }
+  }
+
   val userTimezoneForm: Form[UserTimezoneForm] = Form(
     mapping(
       "timezone" -> nonEmptyText(minLength = 1, maxLength = 50)
+        .verifying("Invalid timezone. Please select a valid timezone from the list.", isValidTimezone)
     )(UserTimezoneForm.apply)(u => Some(u.timezone))
   )
 
