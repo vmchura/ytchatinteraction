@@ -55,6 +55,8 @@ CREATE INDEX idx_potential_matches_status ON potential_matches (status);
 CREATE INDEX idx_potential_matches_match_time ON potential_matches (match_start_time);
 
 # --- !Downs
+DROP TABLE IF EXISTS potential_matches;
+
 DROP TABLE IF EXISTS user_availability;
 
 DROP TABLE IF EXISTS user_timezones;

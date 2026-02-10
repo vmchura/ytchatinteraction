@@ -141,9 +141,9 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       // Execute the test - call the actual controller method
       val result = call(controller.authenticate("google"), fakeRequest)
       
-      // Verify the error response
-      status(result) mustEqual BAD_REQUEST
-      contentAsString(result) must include("Authentication error")
+      // Verify the error response - controller redirects to login on error
+      status(result) mustEqual SEE_OTHER
+      redirectLocation(result) mustEqual Some("/login")
       
       // Verify that the provider was called
       verify(mockGoogleProvider).authenticate()(any())
