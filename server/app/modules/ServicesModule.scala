@@ -29,5 +29,6 @@ class ServicesModule extends SimpleModule(
   bind[CasualMatchRepository].to[CasualMatchRepositoryImpl],
   bind[CasualMatchFileRepository].to[CasualMatchFileRepositoryImpl],
   bind[MatchHistoryService].toSelf,
-  bind[UserActivityService].toSelf
+  bind[UserActivityService].toSelf,
+  bind[TournamentRegistrationValidationService].to[TournamentRegistrationValidationServiceImpl]
 )

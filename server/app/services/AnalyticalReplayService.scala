@@ -66,6 +66,15 @@ trait AnalyticalReplayService(futures: Futures)(implicit ec: ExecutionContext):
       rivalRace: SCRace
   ): Future[Seq[AnalyticalFile]]
 
+  /** Checks if user has enough base replays for a given race.
+   *
+   * @param userId The user ID
+   * @param race The StarCraft race (Protoss, Zerg, or Terran)
+   * @param minReplays Minimum number of replays required (default: 2)
+   * @return Future[Boolean] True if user has enough replays
+   */
+  def hasEnoughReplays(userId: Long, race: SCRace, minReplays: Int = 2): Future[Boolean]
+
   def loadFileAndParse(storedPath: Path): Future[Option[ReplayParsed]]
 
   def processUser[AC](
@@ -361,6 +370,12 @@ class AnalyticalReplayServiceImpl @Inject (
     analyticalFileRepository
       .findByUserRace(userId = userID, race = userRace)
       .map(_.filter(_.rivalRace == rivalRace))
+  }
+
+  def hasEnoughReplays(userId: Long, race: SCRace, minReplays: Int = 2): Future[Boolean] = {
+    analyticalFileRepository
+      .findByUserRace(userId = userId, race = race)
+      .map(_.length >= minReplays)
   }
 
   def loadFileAndParse(storedPath: Path): Future[Option[ReplayParsed]] = {

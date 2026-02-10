@@ -149,11 +149,17 @@ case class CloseMatchData(
 )
 
 case class AnalyticalFileData(playerID: Int, fileHash: String)
-case class RegisterToTournamentData(code: String)
+case class RegisterToTournamentData(code: String, race: String, acceptedRules: Boolean)
 
 object Forms:
 
-  val registerToTournamentForm = Form(mapping("tournamentcode" -> nonEmptyText)(RegisterToTournamentData.apply)(nn =>Some(nn.code)))
+  val registerToTournamentForm = Form(
+    mapping(
+      "tournamentcode" -> nonEmptyText,
+      "race" -> nonEmptyText.verifying("Invalid race selected", r => Seq("Protoss", "Zerg", "Terran").contains(r)),
+      "acceptedRules" -> boolean.verifying("You must accept the tournament rules", _ == true)
+    )(RegisterToTournamentData.apply)(nn => Some((nn.code, nn.race, nn.acceptedRules)))
+  )
 
   val closeMatchForm = Form(
     mapping(

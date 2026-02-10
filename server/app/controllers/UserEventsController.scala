@@ -124,7 +124,11 @@ class UserEventsController @Inject() (
         .bindFromRequest()
         .fold(
           formWithErrors => {
-            Future.successful(Redirect(routes.UserEventsController.userEvents()))
+            val errorMessage = formWithErrors.errors.map(_.message).mkString(", ")
+            Future.successful(
+              Redirect(routes.UserEventsController.userEvents())
+                .flashing("error" -> s"Validation failed: $errorMessage")
+            )
           },
           registerToTournamentData => {
 
@@ -132,7 +136,8 @@ class UserEventsController @Inject() (
               .registerUserForTournament(
                 tournamentId,
                 userId,
-                Some(registerToTournamentData.code)
+                Some(registerToTournamentData.code),
+                Some(registerToTournamentData.race)
               )
               .map {
                 case Right(_) =>
@@ -157,4 +162,8 @@ class UserEventsController @Inject() (
           }
         )
     }
+
+  def tournamentRules: Action[AnyContent] = Action { implicit request =>
+    Ok(views.html.tournamentRules())
+  }
 }

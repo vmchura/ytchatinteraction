@@ -75,6 +75,7 @@ POST    /my-events/vote             controllers.UserEventsController.submitVote(
 GET     /my-events/join/:eventId    controllers.UserEventsController.joinEvent(eventId: Int)
 POST    /my-events/tournament/:tournamentId/register controllers.UserEventsController.registerForTournament(tournamentId: Long)
 GET     /my-events/ws               controllers.UserEventsController.eventsUpdates
+GET     /tournament/rules           controllers.UserEventsController.tournamentRules()
 
 # Tournament management routes
 GET     /tournaments                controllers.TournamentController.showOpenTournaments()

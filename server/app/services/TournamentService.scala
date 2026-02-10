@@ -116,6 +116,21 @@ trait TournamentService {
   def closeExpiredRegistrations(): Future[List[Tournament]]
 
   // Registration management methods
+
+  /** Checks if a user is able to register for a tournament.
+    * Validates all registration constraints:
+    * - User has enough base replays for the selected race
+    * - User has added availability times
+    *
+    * @param userId
+    *   The user ID
+    * @param racePicked
+    *   The race selected by the user (Protoss, Zerg, or Terran)
+    * @return
+    *   Future[Boolean] True if user can register, false otherwise
+    */
+  def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean]
+
   /** Registers a user for a tournament.
     *
     * @param tournamentId
@@ -124,13 +139,16 @@ trait TournamentService {
     *   The user ID
     * @param code
     *   The code user provide
+    * @param race
+    *   The race selected by the user
     * @return
     *   The created registration or an error
     */
   def registerUser(
       tournamentId: Long,
       userId: Long,
-      code: Option[String]
+      code: Option[String],
+      race: Option[String] = None
   ): Future[Either[String, TournamentRegistration]]
 
   /** Withdraws a user's registration from a tournament.
@@ -342,7 +360,8 @@ class TournamentServiceImpl @Inject() (
     tournamentRegistrationRepository: TournamentRegistrationRepository,
     tournamentChallongeService: TournamentChallongeService,
     tournamentChallongeParticipantRepository: TournamentChallongeParticipantRepository,
-    uploadedFileRepository: models.repository.UploadedFileRepository
+    uploadedFileRepository: models.repository.UploadedFileRepository,
+    registrationValidationService: TournamentRegistrationValidationService
 )(implicit ec: ExecutionContext)
     extends TournamentService {
 
@@ -415,12 +434,30 @@ class TournamentServiceImpl @Inject() (
   }
 
   // Registration management methods
+
+  /** Checks if a user is able to register for a tournament.
+    * Validates all registration constraints:
+    * - User has enough base replays for the selected race
+    * - User has added availability times
+    *
+    * @param userId
+    *   The user ID
+    * @param racePicked
+    *   The race selected by the user (Protoss, Zerg, or Terran)
+    * @return
+    *   Future[Boolean] True if user can register, false otherwise
+    */
+  override def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean] = {
+    registrationValidationService.isUserAbleToRegister(userId, racePicked)
+  }
+
   /** Registers a user for a tournament.
     */
   override def registerUser(
       tournamentId: Long,
       userId: Long,
-      tournamentCode: Option[String]
+      tournamentCode: Option[String],
+      race: Option[String] = None
   ): Future[Either[String, TournamentRegistration]] = {
     for {
       tournamentOpt <- tournamentRepository.findById(tournamentId)
@@ -449,9 +486,19 @@ class TournamentServiceImpl @Inject() (
                   for {
                     registrationCount <- tournamentRegistrationRepository
                       .countActiveRegistrations(tournamentId)
+                    canRegister <- race match {
+                      case Some(racePicked) =>
+                        isUserAbleToRegister(userId, racePicked)
+                      case None =>
+                        Future.successful(false)
+                    }
                     finalResult <-
                       if (registrationCount >= tournament.maxParticipants) {
                         Future.successful(Left("Tournament is full"))
+                      } else if (!canRegister) {
+                        Future.successful(
+                          Left("You do not meet the registration requirements. Please ensure you have: 1) Selected a race, 2) Uploaded enough base replays for that race, 3) Added your availability times")
+                        )
                       } else {
                         tournamentCode match {
                           case Some(tc) if tc == tournament.tournamentCode =>

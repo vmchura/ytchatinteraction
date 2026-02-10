@@ -6,7 +6,19 @@ import models.ContentCreatorChannel
 enum TournamentRegistrationUserStatus:
   case Unregistered, Registered, NotAbleToRegister
 
-case class TournamentOpenDataUser(id: Long, name: String, userRegistered: TournamentRegistrationUserStatus, contentCreatorInfo: Option[ContentCreatorChannel])
+case class TournamentRegistrationRequirements(
+  hasEnoughReplays: Boolean,
+  hasAvailability: Boolean,
+  selectedRace: Option[String]
+)
+
+case class TournamentOpenDataUser(
+  id: Long,
+  name: String,
+  userRegistered: TournamentRegistrationUserStatus,
+  contentCreatorInfo: Option[ContentCreatorChannel],
+  registrationRequirements: Option[TournamentRegistrationRequirements] = None
+)
 case class InProgressTournament(id: Long, name: String, challongeID: Long, challongeURL: String)
 case class TournamentViewDataForUser(openTournaments: List[TournamentOpenDataUser],
                                      inProgressTournaments: List[InProgressTournament])

@@ -15,7 +15,8 @@ class TournamentMatchService @Inject() (
     tournamentChallongeService: TournamentChallongeService,
     tournamentChallongeDAO: TournamentChallongeDAO,
     contentCreatorChannelRepository: ContentCreatorChannelRepository,
-    ytUserRepository: YtUserRepository
+    ytUserRepository: YtUserRepository,
+    registrationValidationService: TournamentRegistrationValidationService
 )(implicit ec: ExecutionContext) {
 
   def getTournamentData(userId: Long): Future[TournamentViewDataForUser] = {
@@ -33,6 +34,13 @@ class TournamentMatchService @Inject() (
       inProgressTournaments <- tournamentService.getTournamentsByStatus(
         TournamentStatus.InProgress
       )
+      // Get registration requirements for non-registered users
+      registrationRequirements <- Future.sequence(
+        Seq("Protoss", "Zerg", "Terran").map { race =>
+          checkRegistrationRequirements(userId, race).map(race -> _)
+        }
+      ).map(_.toMap)
+      hasAvailability <- registrationValidationService.hasAvailabilityTimes(userId)
 
     } yield TournamentViewDataForUser(
       registered.map(t =>
@@ -40,15 +48,23 @@ class TournamentMatchService @Inject() (
           t.id,
           t.name,
           TournamentRegistrationUserStatus.Registered,
+          None,
           None
         )
       ) ++
         nonRegistered.map { t =>
+          // Determine if user can register based on requirements
+          val canRegisterAnyRace = registrationRequirements.values.exists(_.hasEnoughReplays) && hasAvailability
           TournamentOpenDataUser(
             t.id,
             t.name,
-            TournamentRegistrationUserStatus.Unregistered,
-            None
+            if (canRegisterAnyRace) TournamentRegistrationUserStatus.Unregistered else TournamentRegistrationUserStatus.NotAbleToRegister,
+            None,
+            Some(TournamentRegistrationRequirements(
+              hasEnoughReplays = registrationRequirements.values.exists(_.hasEnoughReplays),
+              hasAvailability = hasAvailability,
+              selectedRace = None
+            ))
           )
         },
       inProgressTournaments.flatMap { t =>
@@ -57,6 +73,31 @@ class TournamentMatchService @Inject() (
         }
       }
     )
+  }
+
+  private def checkRegistrationRequirements(userId: Long, race: String): Future[TournamentRegistrationRequirements] = {
+    import models.StarCraftModels.*
+    val raceOpt = race match {
+      case "Protoss" => Some(Protoss)
+      case "Zerg"    => Some(Zerg)
+      case "Terran"  => Some(Terran)
+      case _         => None
+    }
+
+    raceOpt match {
+      case None => Future.successful(TournamentRegistrationRequirements(false, false, None))
+      case Some(scRace) =>
+        for {
+          hasReplays <- registrationValidationService.hasEnoughReplays(userId, scRace, minReplays = 2)
+          hasAvail <- registrationValidationService.hasAvailabilityTimes(userId)
+        } yield {
+          TournamentRegistrationRequirements(
+            hasEnoughReplays = hasReplays,
+            hasAvailability = hasAvail,
+            selectedRace = Some(race)
+          )
+        }
+    }
   }
 
   def getUserMatches(
@@ -110,9 +151,17 @@ class TournamentMatchService @Inject() (
   def registerUserForTournament(
       tournamentId: Long,
       userId: Long,
-      tournamentCode: Option[String]
+      tournamentCode: Option[String],
+      race: Option[String] = None
   ): Future[Either[String, Unit]] = {
-    tournamentService.registerUser(tournamentId, userId, tournamentCode).map(_.map(_ => ()))
+    tournamentService.registerUser(tournamentId, userId, tournamentCode, race).map(_.map(_ => ()))
+  }
+
+  def isUserAbleToRegister(
+      userId: Long,
+      race: String
+  ): Future[Boolean] = {
+    tournamentService.isUserAbleToRegister(userId, race)
   }
 
   def isUserRegisteredForTournament(

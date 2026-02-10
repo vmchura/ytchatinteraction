@@ -11,37 +11,125 @@
         <h3>@tournamentViewDataForUser.name</h3>
     </header>
 
-        @tournamentViewDataForUser.userRegistered match {
-            case Registered => {
-                <button disabled>@messages("partials.tournament.already.registered")</button>
-            }
-            case Unregistered => {
-                <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST">
-                    @helper.CSRF.formField
-                    <fieldset>
-			<label>
-				Código de registro
+    @tournamentViewDataForUser.userRegistered match {
+        case Registered => {
+            <button disabled>@messages("partials.tournament.already.registered")</button>
+        }
+        case Unregistered => {
+            <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST" id="registration-form-@tournamentViewDataForUser.id">
+                @helper.CSRF.formField
+                <fieldset>
+                    <label>
+                        Código de registro
                         <input
-                                name="tournamentcode"
-                                aria-label="Code"
+                            name="tournamentcode"
+                            aria-label="Code"
+                            required
                         />
-			</label>
+                    </label>
+
+                    <label>
+                        Selecciona tu raza
+                        <select name="race" id="race-select-@tournamentViewDataForUser.id" required>
+                            <option value="">-- Selecciona una raza --</option>
+                            <option value="Protoss">Protoss</option>
+                            <option value="Zerg">Zerg</option>
+                            <option value="Terran">Terran</option>
+                        </select>
+                    </label>
+
+                    @tournamentViewDataForUser.registrationRequirements.map { req =>
+                        <div class="registration-requirements" style="margin: 1rem 0; padding: 1rem; background: var(--card-background-color); border-radius: var(--border-radius);">
+                            <h4>Requisitos de registro:</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li>
+                                    @if(req.hasEnoughReplays) {
+                                        <span style="color: green;">✓</span>
+                                    } else {
+                                        <span style="color: red;">✗</span>
+                                    }
+                                    Replays base subidos (mínimo 2)
+                                    @if(!req.hasEnoughReplays) {
+                                        <small><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">Subir replays</a></small>
+                                    }
+                                </li>
+                                <li>
+                                    @if(req.hasAvailability) {
+                                        <span style="color: green;">✓</span>
+                                    } else {
+                                        <span style="color: red;">✗</span>
+                                    }
+                                    Horario de disponibilidad registrado
+                                    @if(!req.hasAvailability) {
+                                        <small><a href="@routes.UserAvailabilityController.showAvailabilityManagement()">Configurar disponibilidad</a></small>
+                                    }
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
+                    <label>
                         <input
-                                type="submit"
-                                value=@messages("partials.tournament.register")
+                            type="checkbox"
+                            name="acceptedRules"
+                            id="rules-checkbox-@tournamentViewDataForUser.id"
+                            value="true"
+                            required
                         />
-                    </fieldset>
-                </form>
-            }
-            case NotAbleToRegister => {
-                <div class="grid">
+                        He leído y acepto las <a href="@routes.UserEventsController.tournamentRules()" target="_blank">bases y condiciones del torneo</a>
+                    </label>
+
+                    <input
+                        type="submit"
+                        id="submit-btn-@tournamentViewDataForUser.id"
+                        value=@messages("partials.tournament.register")
+                    />
+                </fieldset>
+            </form>
+
+            <script>
+                (function() {
+                    const form = document.getElementById('registration-form-@tournamentViewDataForUser.id');
+                    const raceSelect = document.getElementById('race-select-@tournamentViewDataForUser.id');
+                    const rulesCheckbox = document.getElementById('rules-checkbox-@tournamentViewDataForUser.id');
+                    const submitBtn = document.getElementById('submit-btn-@tournamentViewDataForUser.id');
+
+                    function validateForm() {
+                        const hasRace = raceSelect.value !== '';
+                        const hasAcceptedRules = rulesCheckbox.checked;
+                        submitBtn.disabled = !(hasRace && hasAcceptedRules);
+                    }
+
+                    raceSelect.addEventListener('change', validateForm);
+                    rulesCheckbox.addEventListener('change', validateForm);
+                    validateForm(); // Initial check
+                })();
+            </script>
+        }
+        case NotAbleToRegister => {
+            <div class="grid">
                 <button disabled>@messages("partials.tournament.register")</button>
                 @tournamentViewDataForUser.contentCreatorInfo.map { contentCreator =>
                     <small>
                         @messages("partials.tournament.subscription.required.channel", contentCreator.youtubeChannelName)
                     </small>
                 }
+            </div>
+            @tournamentViewDataForUser.registrationRequirements.map { req =>
+                <div class="registration-missing" style="margin-top: 1rem; padding: 1rem; background: var(--card-background-color); border-radius: var(--border-radius);">
+                    <h4>Faltan requisitos:</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        @if(!req.hasEnoughReplays) {
+                            <li style="color: red;">✗ Subir al menos 2 replays base para tu raza</li>
+                            <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()" role="button" class="secondary">Subir replays</a></li>
+                        }
+                        @if(!req.hasAvailability) {
+                            <li style="color: red;">✗ Configurar tu horario de disponibilidad</li>
+                            <li><a href="@routes.UserAvailabilityController.showAvailabilityManagement()" role="button" class="secondary">Configurar disponibilidad</a></li>
+                        }
+                    </ul>
                 </div>
             }
         }
+    }
 </article>
