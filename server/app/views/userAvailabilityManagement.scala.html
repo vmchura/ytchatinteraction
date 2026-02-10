@@ -12,351 +12,763 @@
 )(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main("Manage Availability", Some(user)) {
-        <h1>Manage Your Availability</h1>
+    <style>
+        .timezone-autocomplete {
+            position: relative;
+        }
+        
+        .timezone-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 250px;
+            overflow-y: auto;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-form-element-border-color);
+            border-top: none;
+            border-radius: 0 0 var(--pico-border-radius) var(--pico-border-radius);
+            z-index: 100;
+            display: none;
+            box-shadow: var(--pico-card-box-shadow);
+        }
+        
+        .timezone-dropdown.active {
+            display: block;
+        }
+        
+        .timezone-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        
+        .timezone-option:hover,
+        .timezone-option.selected {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+        }
+        
+        .timezone-option:last-child {
+            border-bottom: none;
+        }
+        
+        .timezone-option small {
+            display: block;
+            opacity: 0.7;
+            font-size: 0.8em;
+        }
+        
+        .availability-grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .day-selector {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+        }
+        
+        .day-btn {
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid var(--pico-form-element-border-color);
+            border-radius: var(--pico-border-radius);
+            background: var(--pico-form-element-background-color);
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        
+        .day-btn:hover {
+            border-color: var(--pico-primary-border);
+        }
+        
+        .day-btn.selected {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+            border-color: var(--pico-primary-border);
+        }
+        
+        .day-btn.range-start,
+        .day-btn.range-end {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+        }
+        
+        .day-btn.in-range {
+            background: var(--pico-primary-focus);
+            color: var(--pico-primary-inverse);
+            opacity: 0.7;
+        }
+        
+        .time-range-container {
+            margin: 1.5rem 0;
+        }
+        
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            background: var(--pico-card-sectioning-background-color);
+            border-radius: var(--pico-border-radius);
+        }
+        
+        .time-display .time-value {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--pico-primary);
+        }
+        
+        .dual-slider {
+            position: relative;
+            height: 40px;
+        }
+        
+        .slider-track {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 6px;
+            background: var(--pico-form-element-border-color);
+            border-radius: 3px;
+        }
+        
+        .slider-range {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 6px;
+            background: var(--pico-primary-background);
+            border-radius: 3px;
+        }
+        
+        .slider-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            background: var(--pico-primary-background);
+            border: 3px solid var(--pico-primary-inverse);
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .slider-thumb:active {
+            cursor: grabbing;
+        }
+        
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--pico-muted-color);
+        }
+        
+        .status-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .status-option {
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid var(--pico-form-element-border-color);
+            border-radius: var(--pico-border-radius);
+            transition: all 0.2s ease;
+        }
+        
+        .status-option:hover {
+            border-color: var(--pico-primary-border);
+        }
+        
+        .status-option.selected {
+            border-color: var(--pico-primary-border);
+            background: var(--pico-primary-focus);
+        }
+        
+        .status-option.highly {
+            border-left: 4px solid #22c55e;
+        }
+        
+        .status-option.maybe {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .status-option.selected.highly {
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .status-option.selected.maybe {
+            background: rgba(245, 158, 11, 0.1);
+        }
+        
+        .availability-preview {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--pico-card-sectioning-background-color);
+            border-radius: var(--pico-border-radius);
+            border-left: 4px solid var(--pico-primary);
+        }
+        
+        .availability-preview h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--pico-muted-color);
+        }
+        
+        .availability-preview .preview-text {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        
+        .availability-preview .preview-text strong {
+            color: var(--pico-primary);
+        }
+        
+        .current-timezone {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--pico-primary-focus);
+            border-radius: var(--pico-border-radius);
+            font-weight: 500;
+        }
+    </style>
 
-        @if(flash.get("success").isDefined) {
-            <div role="alert" class="success">
-                @flash.get("success")
-            </div>
+    <h1>Manage Your Availability</h1>
+
+    @if(flash.get("success").isDefined) {
+        <article class="success">
+            @flash.get("success")
+        </article>
+    }
+
+    @if(flash.get("error").isDefined) {
+        <article class="error">
+            @flash.get("error")
+        </article>
+    }
+
+    <article>
+        <header>
+            <h2>Your Timezone</h2>
+        </header>
+        
+        @timezoneOpt.map { timezone =>
+            <p class="current-timezone">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Currently set to: <strong>@timezone.timezone</strong>
+            </p>
         }
 
-        @if(flash.get("error").isDefined) {
-            <div role="alert" class="error">
-                @flash.get("error")
-            </div>
-        }
-
-        <section>
-            <h2>Tu zona horaria</h2>
-            @timezoneOpt.map { timezone =>
-                <div >
-                    <p><strong>Actual: </strong> @timezone.timezone</p>
-                </div>
-            }
-
-            @helper.form(action = routes.UserAvailabilityController.updateTimezone()) {
-                @helper.CSRF.formField
-		@defining(ZoneId.getAvailableZoneIds.asScala.toSeq.filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe")).sorted) { timezones =>
-                
-			<fieldset role="group">
-				<input type="text" id="timezone-search" placeholder="Buscar ciudad o zona horaria..." autocomplete="off"/>
-				<select id="timezone"
-					name="timezone"
-					required
-					@if(timezoneForm("timezone").hasErrors) {aria-invalid="true"}>
-
-				    <option value="" disabled
-					@if(timezoneForm("timezone").value.isEmpty) {selected}>
-					Selecciona una zona horaria
-				    </option>
-
-				    @for(tz <- timezones) {
-					<option value="@tz"
-					@if(
-					timezoneForm("timezone").value.contains(tz) ||
-					timezoneOpt.exists(_.timezone == tz)
-					) {selected}>
-				        @tz
-				    </option>
-				    }
-				</select>
-				<input type="submit" value="Actualizar"/>
-			</fieldset>
-			<small> Ejemplo: Lima, La_Paz, Madrid, New_York </small>
-		}
-            }
-        </section>
-
-        <section>
-            <h2>Disponibilidad Semanal</h2>
+        @helper.form(action = routes.UserAvailabilityController.updateTimezone(), Symbol("class") -> "timezone-form") {
+            @helper.CSRF.formField
             
-            @if(availabilities.nonEmpty) {
-                <div class="availability-list">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Días</th>
-                                <th>Horas</th>
-                                <th>Disponibilidad</th>
-                                <th>¿Eliminar?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @availabilities.map { availability =>
-                            <tr>
-                                <td>@dayName(availability.fromWeekDay)@if(availability.fromWeekDay != availability.toWeekDay){ - @dayName(availability.toWeekDay)}</td>
-                                <td>@availability.fromHourInclusive:00 - @availability.toHourExclusive:59</td>
-                                <td>
-                                    <span class="status-badge @statusClass(availability.availabilityStatus)">
-                                        @statusName(availability.availabilityStatus)
-                                    </span>
-                                </td>
-                                <td>
-                                    @helper.form(action = routes.UserAvailabilityController.deleteAvailability(availability.id), Symbol("class") -> "inline-form") {
-                                        @helper.CSRF.formField
-                                        <button type="submit" class="secondary" onclick="return confirm('Are you sure you want to delete this availability?')">Eliminar</button>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
+            @defining(ZoneId.getAvailableZoneIds.asScala.toSeq.filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe")).sorted) { timezones =>                
+                <div class="timezone-autocomplete">
+                    <input 
+                        type="text" 
+                        id="timezone-input" 
+                        name="timezone"
+                        placeholder="Type to search timezone (e.g., New York, Madrid, Lima)..."
+                        autocomplete="off"
+                        value="@timezoneForm("timezone").value.getOrElse("")"
+                        @if(timezoneForm("timezone").hasErrors) {aria-invalid="true"}
+                        required
+                    />
+                    <div id="timezone-dropdown" class="timezone-dropdown"></div>
                 </div>
-            } else {
+                
+                <small>Type a city name and select from the dropdown</small>
+                
+                <footer>
+                    <button type="submit">Update Timezone</button>
+                </footer>
+            }
+        }
+    </article>
+
+    @if(availabilities.nonEmpty) {
+        <article>
+            <header>
+                <h2>Your Current Availability</h2>
+            </header>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Días</th>
+                        <th>Horas</th>
+                        <th>Estado</th>
+                        <th>Eliminar?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @availabilities.map { availability =>
+                    <tr>
+                        <td>@dayName(availability.fromWeekDay)@if(availability.fromWeekDay != availability.toWeekDay){ - @dayName(availability.toWeekDay)}</td>
+                        <td>@formatHour(availability.fromHourInclusive):00 - @formatHour(availability.toHourExclusive):59</td>
+                        <td>
+                            <span class="status-badge @statusClass(availability.availabilityStatus)">
+                                @statusName(availability.availabilityStatus)
+                            </span>
+                        </td>
+                        <td>
+                            @helper.form(action = routes.UserAvailabilityController.deleteAvailability(availability.id), Symbol("class") -> "inline-form") {
+                                @helper.CSRF.formField
+                                <button type="submit" class="outline secondary" data-tooltip="Delete" onclick="return confirm('Are you sure you want to delete this availability?')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
                             }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </article>
+    }
 
-	<article>
-	<header> Añade tu disponibilidad </header>
+    <article>
+        <header>
+            <h2>Añade tu disponibilidad</h2>
+        </header>
 
-	@helper.form(action = routes.UserAvailabilityController.addAvailability()) {
-	    @helper.CSRF.formField
-	    
-	    <fieldset role="group">
-		<label for="fromWeekDay">
-		    De (día)
-		    <select name="fromWeekDay" id="fromWeekDay" required>
-			<option value="1">Lunes</option>
-			<option value="2">Martes</option>
-			<option value="3">Miércoles</option>
-			<option value="4">Jueves</option>
-			<option value="5">Viernes</option>
-			<option value="6">Sábado</option>
-			<option value="7">Domingo</option>
-		    </select>
-		</label>
+        @helper.form(action = routes.UserAvailabilityController.addAvailability(), Symbol("id") -> "availability-form") {
+            @helper.CSRF.formField
+            
+            <div class="availability-grid">
+                <div>
+                    <label>Select Days</label>
+                    <div class="day-selector" id="day-selector">
+                        <div class="day-btn" data-day="1" title="Lunes">Lu</div>
+                        <div class="day-btn" data-day="2" title="Martes">Ma</div>
+                        <div class="day-btn" data-day="3" title="Miércoles">Mi</div>
+                        <div class="day-btn" data-day="4" title="Jueves">Ju</div>
+                        <div class="day-btn" data-day="5" title="Viernes">Vi</div>
+                        <div class="day-btn" data-day="6" title="Sábado">Sá</div>
+                        <div class="day-btn" data-day="7" title="Domingo">Do</div>
+                    </div>
+                    <small>Click el día de inicio y fin, o el mismo día</small>
+                </div>
+                
+                <input type="hidden" name="fromWeekDay" id="fromWeekDay" required>
+                <input type="hidden" name="toWeekDay" id="toWeekDay" required>
 
-		<label for="toWeekDay">
-		    a (día)
-		    <select name="toWeekDay" id="toWeekDay" required>
-			<option value="1">Lunes</option>
-			<option value="2">Martes</option>
-			<option value="3">Miércoles</option>
-			<option value="4">Jueves</option>
-			<option value="5">Viernes</option>
-			<option value="6">Sábado</option>
-			<option value="7">Domingo</option>
-		    </select>
-		</label>
-	</fieldset>
-	<fieldset role="group">
-		<label for="fromHourInclusive">
-		    desde (hora)
-		    <select name="fromHourInclusive" id="fromHourInclusive" required>
-			@for(hour <- 0 to 23) {
-			    <option value="@hour">@{String.format("%02d", hour)}:00</option>
-			}
-		    </select>
-		</label>
+                <div class="time-range-container">
+                    <label>Time Range</label>
+                    <div class="time-display">
+                        <span>From <span class="time-value" id="from-time-display">08:00</span></span>
+                        <span>to <span class="time-value" id="to-time-display">20:00</span></span>
+                    </div>
+                    
+                    <div class="dual-slider" id="time-slider">
+                        <div class="slider-track"></div>
+                        <div class="slider-range" id="slider-range"></div>
+                        <div class="slider-thumb" id="thumb-from" data-value="8"></div>
+                        <div class="slider-thumb" id="thumb-to" data-value="20"></div>
+                    </div>
+                    
+                    <div class="slider-labels">
+                        <span>00:00</span>
+                        <span>06:00</span>
+                        <span>12:00</span>
+                        <span>18:00</span>
+                        <span>23:59</span>
+                    </div>
+                </div>
+                
+                <input type="hidden" name="fromHourInclusive" id="fromHourInclusive" value="8">
+                <input type="hidden" name="toHourExclusive" id="toHourExclusive" value="20">
 
-		<label for="toHourExclusive">
-		    hasta (hora)
-		    <select name="toHourExclusive" id="toHourExclusive" required>
-			@for(hour <- 0 to 23) {
-			    <option value="@hour">@{String.format("%02d", hour)}:59</option>
-			}
-		    </select>
-		</label>
-		</fieldset>
-		<fieldset role="group">
+                <div>
+                    <label>Availability Status</label>
+                    <div class="status-selector" id="status-selector">
+                        <div class="status-option highly" data-status="HIGHLY_AVAILABLE">
+                            <strong>MUY disponible</strong>
+                            <small>Estaré disponible este tiempo con seguridad</small>
+                        </div>
+                        <div class="status-option maybe" data-status="MAYBE_AVAILABLE">
+                            <strong>probablemente disponible</strong>
+                            <small>Quizás estoy disponible este tiempo</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" name="availabilityStatus" id="availabilityStatus" value="HIGHLY_AVAILABLE" required>
 
-		    <select name="availabilityStatus" id="availabilityStatus" required>
-			<option value="HIGHLY_AVAILABLE">MUY disponible</option>
-			<option value="MAYBE_AVAILABLE">probablemente disponible</option>
-		    </select>
-				<input type="submit" value="Enviar"/>
+                <div class="availability-preview" id="availability-preview">
+                    <h4>Preview</h4>
+                    <p class="preview-text" id="preview-text">
+                        Select days and times to see preview
+                    </p>
+                </div>
+            </div>
+
+            <footer>
+                <button type="submit">Add Availability</button>
+            </footer>
+        }
+    </article>
+
+    <script>
+    (function() {
+        // Timezone Autocomplete
+        var timezoneInput = document.getElementById('timezone-input');
+        var timezoneDropdown = document.getElementById('timezone-dropdown');
+        
+        var timezones = @Html(
+            ZoneId.getAvailableZoneIds.asScala.toSeq
+                .filter(r => r.startsWith("America") || r.startsWith("US") || r.startsWith("Europe"))
+                .sorted
+                .map(tz => {
+                    val parts = tz.split("/")
+                    val region = parts.head
+                    val city = parts.last.replace("_", " ")
+                    s"""{"value": "$tz", "region": "$region", "city": "$city"}"""
+                })
+                .mkString("[", ",", "]")
+        );
+        
+        var selectedIndex = -1;
+        var filteredTimezones = [];
+        
+        function renderDropdown(matches) {
+            filteredTimezones = matches;
+            selectedIndex = -1;
+            
+            if (matches.length === 0) {
+                timezoneDropdown.innerHTML = '<div class="timezone-option"><em>No matches found</em></div>';
+                timezoneDropdown.classList.add('active');
+                return;
+            }
+            
+            var html = '';
+            for (var i = 0; i < matches.length; i++) {
+                var tz = matches[i];
+                html += '<div class="timezone-option" data-index="' + i + '" data-value="' + tz.value + '">' +
+                    '<strong>' + tz.city + '</strong>' +
+                    '<small>' + tz.region + ' — ' + tz.value + '</small>' +
+                '</div>';
+            }
+            timezoneDropdown.innerHTML = html;
+            timezoneDropdown.classList.add('active');
+        }
+        
+        function selectTimezone(value) {
+            timezoneInput.value = value;
+            timezoneDropdown.classList.remove('active');
+        }
+        
+        timezoneInput.addEventListener('input', function() {
+            var query = this.value.trim().toLowerCase();
+            
+            if (query.length === 0) {
+                timezoneDropdown.classList.remove('active');
+                return;
+            }
+            
+            var matches = [];
+            for (var i = 0; i < timezones.length; i++) {
+                var tz = timezones[i];
+                if (tz.city.toLowerCase().indexOf(query) !== -1 || 
+                    tz.value.toLowerCase().indexOf(query) !== -1 ||
+                    tz.region.toLowerCase().indexOf(query) !== -1) {
+                    matches.push(tz);
+                }
+            }
+            matches = matches.slice(0, 10);
+            
+            renderDropdown(matches);
+        });
+        
+        timezoneInput.addEventListener('keydown', function(e) {
+            if (!timezoneDropdown.classList.contains('active')) return;
+            
+            var options = timezoneDropdown.querySelectorAll('.timezone-option');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, options.length - 1);
+                updateSelection(options);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                updateSelection(options);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedIndex >= 0 && filteredTimezones[selectedIndex]) {
+                    selectTimezone(filteredTimezones[selectedIndex].value);
+                }
+            } else if (e.key === 'Escape') {
+                timezoneDropdown.classList.remove('active');
+            }
+        });
+        
+        function updateSelection(options) {
+            for (var i = 0; i < options.length; i++) {
+                options[i].classList.toggle('selected', i === selectedIndex);
+            }
+            if (options[selectedIndex]) {
+                options[selectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+        
+        timezoneDropdown.addEventListener('click', function(e) {
+            var option = e.target.closest('.timezone-option');
+            if (option && option.dataset.value) {
+                selectTimezone(option.dataset.value);
+            }
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.timezone-autocomplete')) {
+                timezoneDropdown.classList.remove('active');
+            }
+        });
+        
+        // Day Selection
+        var dayButtons = document.querySelectorAll('.day-btn');
+        var fromWeekDayInput = document.getElementById('fromWeekDay');
+        var toWeekDayInput = document.getElementById('toWeekDay');
+        var selectionMode = 'start';
+        var startDay = null;
+        
+        for (var i = 0; i < dayButtons.length; i++) {
+            dayButtons[i].addEventListener('click', function() {
+                var day = parseInt(this.dataset.day);
+                
+                if (selectionMode === 'start' || startDay === null) {
+                    startDay = day;
+                    fromWeekDayInput.value = day;
+                    toWeekDayInput.value = day;
+                    selectionMode = 'end';
+                    updateDaySelection();
+                } else {
+                    if (day < startDay) {
+                        toWeekDayInput.value = startDay;
+                        fromWeekDayInput.value = day;
+                        startDay = day;
+                    } else {
+                        toWeekDayInput.value = day;
+                    }
+                    selectionMode = 'start';
+                    updateDaySelection();
+                }
+                
+                updatePreview();
+            });
+        }
+        
+        function updateDaySelection() {
+            var fromDay = parseInt(fromWeekDayInput.value) || 0;
+            var toDay = parseInt(toWeekDayInput.value) || 0;
+            
+            for (var i = 0; i < dayButtons.length; i++) {
+                var btn = dayButtons[i];
+                var day = parseInt(btn.dataset.day);
+                btn.classList.remove('selected', 'range-start', 'range-end', 'in-range');
+                
+                if (day === fromDay && day === toDay) {
+                    btn.classList.add('selected');
+                } else if (day === fromDay) {
+                    btn.classList.add('range-start');
+                } else if (day === toDay) {
+                    btn.classList.add('range-end');
+                } else if (day > fromDay && day < toDay) {
+                    btn.classList.add('in-range');
+                }
+            }
+        }
+        
+        // Time Range Slider
+        var slider = document.getElementById('time-slider');
+        var thumbFrom = document.getElementById('thumb-from');
+        var thumbTo = document.getElementById('thumb-to');
+        var sliderRange = document.getElementById('slider-range');
+        var fromHourInput = document.getElementById('fromHourInclusive');
+        var toHourInput = document.getElementById('toHourExclusive');
+        var fromTimeDisplay = document.getElementById('from-time-display');
+        var toTimeDisplay = document.getElementById('to-time-display');
+        
+        var fromHour = 8;
+        var toHour = 20;
+        var isDragging = null;
+        
+        function updateSlider() {
+            var fromPercent = (fromHour / 23) * 100;
+            var toPercent = (toHour / 23) * 100;
+            
+            thumbFrom.style.left = fromPercent + '%';
+            thumbFrom.dataset.value = fromHour;
+            thumbTo.style.left = toPercent + '%';
+            thumbTo.dataset.value = toHour;
+            
+            sliderRange.style.left = fromPercent + '%';
+            sliderRange.style.width = (toPercent - fromPercent) + '%';
+            
+            fromHourInput.value = fromHour;
+            toHourInput.value = toHour;
+            
+            fromTimeDisplay.textContent = formatHour(fromHour) + ':00';
+            toTimeDisplay.textContent = formatHour(toHour) + ':59';
+            
+            updatePreview();
+        }
+        
+        function formatHour(hour) {
+            return String(hour).padStart(2, '0');
+        }
+        
+        function getHourFromPosition(clientX) {
+            var rect = slider.getBoundingClientRect();
+            var percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            return Math.round(percent * 23);
+        }
+        
+        function onMouseDown(e) {
+            isDragging = this.id === 'thumb-from' ? 'desde' : 'hasta';
+            e.preventDefault();
+        }
+        
+        function onTouchStart(e) {
+            isDragging = this.id === 'thumb-from' ? 'desde' : 'hasta';
+        }
+        
+        thumbFrom.addEventListener('mousedown', onMouseDown);
+        thumbTo.addEventListener('mousedown', onMouseDown);
+        thumbFrom.addEventListener('touchstart', onTouchStart, { passive: true });
+        thumbTo.addEventListener('touchstart', onTouchStart, { passive: true });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            
+            var hour = getHourFromPosition(e.clientX);
+            
+            if (isDragging === 'from') {
+                fromHour = Math.min(hour, toHour - 1);
+            } else {
+                toHour = Math.max(hour, fromHour + 1);
+            }
+            
+            updateSlider();
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            
+            var hour = getHourFromPosition(e.touches[0].clientX);
+            
+            if (isDragging === 'from') {
+                fromHour = Math.min(hour, toHour - 1);
+            } else {
+                toHour = Math.max(hour, fromHour + 1);
+            }
+            
+            updateSlider();
+        }, { passive: true });
+        
+        document.addEventListener('mouseup', function() {
+            isDragging = null;
+        });
+        
+        document.addEventListener('touchend', function() {
+            isDragging = null;
+        });
+        
+        slider.addEventListener('click', function(e) {
+            if (e.target.classList.contains('slider-thumb')) return;
+            
+            var hour = getHourFromPosition(e.clientX);
+            var fromDist = Math.abs(hour - fromHour);
+            var toDist = Math.abs(hour - toHour);
+            
+            if (fromDist < toDist) {
+                fromHour = Math.min(hour, toHour - 1);
+            } else {
+                toHour = Math.max(hour, fromHour + 1);
+            }
+            
+            updateSlider();
+        });
+        
+        // Status Selection
+        var statusOptions = document.querySelectorAll('.status-option');
+        var statusInput = document.getElementById('availabilityStatus');
+        
+        for (var i = 0; i < statusOptions.length; i++) {
+            statusOptions[i].addEventListener('click', function() {
+                for (var j = 0; j < statusOptions.length; j++) {
+                    statusOptions[j].classList.remove('selected');
+                }
+                this.classList.add('selected');
+                statusInput.value = this.dataset.status;
+                updatePreview();
+            });
+        }
+        
+        statusOptions[0].classList.add('selected');
+        
+        // Preview
+        var previewText = document.getElementById('preview-text');
+        
+        function updatePreview() {
+            var fromDay = parseInt(fromWeekDayInput.value);
+            var toDay = parseInt(toWeekDayInput.value);
+            var fromH = parseInt(fromHourInput.value);
+            var toH = parseInt(toHourInput.value);
+            var status = statusInput.value === 'HIGHLY_AVAILABLE' ? 'MUY disponible' : 'probablemente disponible';
+            
+            if (!fromDay || !toDay) {
+                previewText.innerHTML = 'Selecciona días y horas para previsualizar';
+                return;
+            }
+            
+            var dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            var dayText;
+            if (fromDay === toDay) {
+                dayText = dayNames[fromDay - 1];
+            } else {
+                dayText = dayNames[fromDay - 1] + ' hasta ' + dayNames[toDay - 1];
+            }
+	    var prefixDay;
+	    if (fromDay === toDay) {
+                prefixDay = 'el';
+            } else {
+                prefixDay = 'desde el';
+            }
 
 
-	    </fieldset>
-
-
-	}
-	<div id="message_parse"></div>
-
-	<script>
-	document.addEventListener('DOMContentLoaded', function() {
-		// Timezone search functionality
-		const timezoneSearch = document.getElementById('timezone-search');
-		const timezoneSelect = document.getElementById('timezone');
-		
-		if (timezoneSearch && timezoneSelect) {
-			// Cache original options with their properties
-			const originalOptions = Array.from(timezoneSelect.options).map(option => ({
-				value: option.value,
-				text: option.text,
-				disabled: option.disabled,
-				selected: option.selected,
-				element: option.cloneNode(true)
-			}));
-			
-			timezoneSearch.addEventListener('input', function() {
-				const query = this.value.trim();
-				
-				// Clear and rebuild select
-				timezoneSelect.innerHTML = '';
-				
-				// Always add placeholder option first
-				const placeholderOption = originalOptions.find(opt => opt.disabled);
-				if (placeholderOption) {
-					const placeholderClone = placeholderOption.element.cloneNode(true);
-					timezoneSelect.add(placeholderClone);
-				}
-				
-				// If no query, show all options
-				if (!query) {
-					originalOptions.forEach(opt => {
-						if (!opt.disabled) {
-							timezoneSelect.add(opt.element.cloneNode(true));
-						}
-					});
-					return;
-				}
-				
-				// Try regex search first, fallback to text search
-				let matcher = null;
-				let useRegex = false;
-				
-				try {
-					matcher = new RegExp(query, 'i');
-					useRegex = true;
-				} catch {
-					// Invalid regex, will use text search
-					useRegex = false;
-				}
-				
-				// Filter options
-				const matchedOptions = originalOptions.filter(option => {
-					if (option.disabled || !option.value) return false;
-					
-					if (useRegex && matcher) {
-						return matcher.test(option.value);
-					} else {
-						// Text search: case-insensitive partial match
-						const searchText = option.value.toLowerCase();
-						const searchTerms = query.toLowerCase().split(/\s+/);
-						return searchTerms.every(term => searchText.includes(term));
-					}
-				});
-				
-				// Sort matches: prioritize exact matches, then relevance
-				matchedOptions.sort((a, b) => {
-					const aText = a.value.toLowerCase();
-					const bText = b.value.toLowerCase();
-					const queryLower = query.toLowerCase();
-					
-					// Exact matches first
-					if (aText === queryLower) return -1;
-					if (bText === queryLower) return 1;
-					
-					// Prioritize city matches (after last /)
-					const aCity = aText.split('/').pop();
-					const bCity = bText.split('/').pop();
-					const aCityMatch = aCity.includes(queryLower);
-					const bCityMatch = bCity.includes(queryLower);
-					
-					if (aCityMatch && !bCityMatch) return -1;
-					if (!aCityMatch && bCityMatch) return 1;
-					
-					// Then alphabetical
-					return aText.localeCompare(bText);
-				});
-				
-				// Add matched options
-				matchedOptions.forEach(option => {
-					timezoneSelect.add(option.element.cloneNode(true));
-				});
-				
-				// Show no results message if needed
-				if (matchedOptions.length === 0) {
-					const noResultOption = document.createElement('option');
-					noResultOption.value = '';
-					noResultOption.disabled = true;
-					noResultOption.textContent = 'No se encontraron resultados';
-					timezoneSelect.add(noResultOption);
-				}
-			});
-		}
-		
-		// Availability form functionality
-		const form = document.querySelector('form[action="@routes.UserAvailabilityController.addAvailability()"]');
-		const messageDiv = document.getElementById('message_parse');
-		const fromWeekDay = document.getElementById('fromWeekDay');
-		const toWeekDay = document.getElementById('toWeekDay');
-		const fromHour = document.getElementById('fromHourInclusive');
-		const toHour = document.getElementById('toHourExclusive');
-		const availabilityStatus = document.getElementById('availabilityStatus');
-
-		function getDayName(dayNum) {
-			const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-			return days[dayNum - 1];
-		}
-
-		function formatHourFrom(hour) {
-			return String(hour).padStart(2, '0') + ':00';
-		}
-		function formatHourTo(hour) {
-			return String(hour).padStart(2, '0') + ':59';
-		}
-
-		function validateAndShowMessage() {
-			const fromDay = parseInt(fromWeekDay.value);
-			const toDay = parseInt(toWeekDay.value);
-			const fromHourVal = parseInt(fromHour.value);
-			const toHourVal = parseInt(toHour.value);
-			const status = availabilityStatus.options[availabilityStatus.selectedIndex].text;
-
-			messageDiv.innerHTML = '';
-			messageDiv.className = '';
-
-			if (toDay < fromDay) {
-				messageDiv.innerHTML = '❌ El día "hasta" debe ser igual o posterior al día "desde"';
-				messageDiv.className = 'error-message';
-				return false;
-			}
-
-			if (toHourVal < fromHourVal) {
-				messageDiv.innerHTML = '❌La hora "hasta" debe ser posterior que la hora "desde"';
-				messageDiv.className = 'error-message';
-				return false;
-			}
-
-			let dayText = '';
-			if (fromDay === toDay) {
-				dayText = 'El ' + getDayName(fromDay);
-			} else {
-				dayText = 'De ' + getDayName(fromDay) + ' a ' + getDayName(toDay);
-			}
-
-			const message = '✅ ' + dayText + ' desde las ' + formatHourFrom(fromHourVal) + ' hasta las ' + formatHourTo(toHourVal) + ' estoy ' + status;
-			messageDiv.innerHTML = message;
-			messageDiv.className = 'success-message';
-			return true;
-		}
-
-		[fromWeekDay, toWeekDay, fromHour, toHour, availabilityStatus].forEach(element => {
-			element.addEventListener('change', validateAndShowMessage);
-		});
-
-		// Prevent form submission if validation fails
-		form.addEventListener('submit', function(e) {
-			if (!validateAndShowMessage()) {
-				e.preventDefault();
-			}
-		});
-
-		// Initial validation
-		validateAndShowMessage();
-	});
-	</script>
-
-	
-	<footer>
-		    <p>Ejemplo: De <strong> Lunes </strong> a <strong> Viernes  </strong> desde las <strong> 18:00 </strong> hasta las <strong> 21:59 </strong> estoy <strong> MUY disponible </strong> </p>
-		    <p>Ejemplo: El <strong> Sábado </strong> </strong> desde las <strong> 18:00 </strong> hasta las <strong> 23:59 </strong> estoy <strong> probablemente disponible </strong> </p>
-
-	</footer>
-	</article>
-        </section>
-
+            
+            previewText.innerHTML = "Estaré <strong>" + status + "</strong>" + prefixDay +"<strong>" + dayText + "</strong> de <strong>" + formatHour(fromH) + ":00</strong> a <strong>" + formatHour(toH) + ":59</strong>";
+        }
+        
+        // Form validation
+        document.getElementById('availability-form').addEventListener('submit', function(e) {
+            if (!fromWeekDayInput.value || !toWeekDayInput.value) {
+                e.preventDefault();
+                alert('Selecciona al menos un día');
+                return false;
+            }
+        });
+        
+        // Initialize
+        updateSlider();
+        updatePreview();
+    })();
+    </script>
 }
 
 @dayName(dayNum: Int) = @{
@@ -369,6 +781,10 @@
         case 6 => "Sábado"
         case 7 => "Domingo"
     }
+}
+
+@formatHour(hour: Int) = @{
+    String.format("%02d", hour)
 }
 
 @statusClass(status: AvailabilityStatus) = @{
