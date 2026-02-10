@@ -26,7 +26,7 @@
             </div>
         }
 
-        <div class="grid">
+        <div >
             <!-- Left Panel: Tournament Details -->
             <div>
                 <article>
@@ -160,13 +160,13 @@
                                             <td>
                                                 @matchDisplay.status.toLowerCase match {
                                                     case "complete" => {
-                                                        <mark style="background-color: var(--pico-green-400);">Complete</mark>
+                                                        <mark style="background-color: var(--pico-green-400);">complete</mark>
                                                     }
                                                     case "open" => {
-                                                        <mark style="background-color: var(--pico-primary);">In Progress</mark>
+                                                        <mark style="background-color: var(--pico-primary);">open</mark>
                                                     }
                                                     case "pending" => {
-                                                        <mark style="background-color: var(--pico-gray-400);">Pending</mark>
+                                                        <mark style="background-color: var(--pico-gray-400);">pending</mark>
                                                     }
                                                     case _ => {
                                                         <mark>@matchDisplay.status</mark>
@@ -185,7 +185,7 @@
                                             </td>
                                             <td>
                                                 @if(matchDisplay.status.toLowerCase == "open") {
-                                                    <a href="@routes.TournamentController.showMatchScheduling(tournament.id, matchDisplay.matchId)" role="button" class="secondary" style="font-size: 0.875rem;">Set Match Time</a>
+                                                    <a href="@routes.TournamentController.showMatchScheduling(tournament.id, matchDisplay.matchId)" role="button" class="secondary">Set Match Time</a>
                                                 }
                                             </td>
                                         </tr>
