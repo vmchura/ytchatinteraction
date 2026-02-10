@@ -1,0 +1,258 @@
+@import play.api.mvc.ControllerHelpers.request2flash
+@import models.{Tournament, TournamentRegistration, TournamentStatus, User}
+@import forms.Forms
+@import java.time.format.DateTimeFormatter
+@import java.time.ZoneId
+
+@(tournament: Tournament, registrations: List[(TournamentRegistration, User)])(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
+
+@main(s"Manage: ${tournament.name}") {
+    <div class="container">
+        <header>
+            <h1>@tournament.name</h1>
+            <p>Manage tournament details, participants, and actions.</p>
+        </header>
+
+        @if(request.flash.get("success").isDefined) {
+            <div role="alert">
+                @request.flash.get("success")
+            </div>
+        }
+
+        @if(request.flash.get("error").isDefined) {
+            <div role="alert">
+                @request.flash.get("error")
+            </div>
+        }
+
+        <div class="grid">
+            <!-- Left Panel: Tournament Details -->
+            <div>
+                <article>
+                    <header>
+                        <h2>Tournament Details</h2>
+                    </header>
+
+                    <table>
+                        <tbody>
+                            <tr>
+                                <th>Name</th>
+                                <td>@tournament.name</td>
+                            </tr>
+                            @tournament.description.map { desc =>
+                                <tr>
+                                    <th>Description</th>
+                                    <td>@desc</td>
+                                </tr>
+                            }
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    @tournament.status match {
+                                        case TournamentStatus.RegistrationOpen => {
+                                            <mark style="background-color: var(--pico-green-400);">Registration Open</mark>
+                                        }
+                                        case TournamentStatus.RegistrationClosed => {
+                                            <mark style="background-color: var(--pico-orange-400);">Registration Closed</mark>
+                                        }
+                                        case TournamentStatus.InProgress => {
+                                            <mark style="background-color: var(--pico-primary);">In Progress</mark>
+                                        }
+                                        case TournamentStatus.Completed => {
+                                            <mark style="background-color: var(--pico-gray-400);">Completed</mark>
+                                        }
+                                        case TournamentStatus.Cancelled => {
+                                            <mark style="background-color: var(--pico-red-400);">Cancelled</mark>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Participants</th>
+                                <td>@registrations.length / @tournament.maxParticipants</td>
+                            </tr>
+                            <tr>
+                                <th>Registration Start</th>
+                                <td>@tournament.registrationStartAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                            </tr>
+                            <tr>
+                                <th>Registration End</th>
+                                <td>@tournament.registrationEndAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                            </tr>
+                            @tournament.tournamentStartAt.map { start =>
+                                <tr>
+                                    <th>Tournament Start</th>
+                                    <td>@start.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                                </tr>
+                            }
+                            @tournament.tournamentEndAt.map { end =>
+                                <tr>
+                                    <th>Tournament End</th>
+                                    <td>@end.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                                </tr>
+                            }
+                            @tournament.challongeUrl.map { url =>
+                                <tr>
+                                    <th>Challonge</th>
+                                    <td><a href="@url" target="_blank">View on Challonge</a></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </article>
+
+                <!-- Participants List -->
+                <article>
+                    <header>
+                        <h2>Participants (@registrations.length)</h2>
+                    </header>
+
+                    @if(registrations.isEmpty) {
+                        <p><em>No participants registered yet.</em></p>
+                    } else {
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Registered At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for((registration, user) <- registrations.sortBy(_._1.registeredAt)) {
+                                        <tr>
+                                            <td>@user.userName</td>
+                                            <td>@registration.registeredAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </article>
+            </div>
+
+            <!-- Right Panel: Actions -->
+            <div>
+                <article>
+                    <header>
+                        <h2>Actions</h2>
+                    </header>
+
+                    <div class="grid">
+                        @if(tournament.status == TournamentStatus.RegistrationOpen) {
+                            <div>
+                                <h3>Start Tournament</h3>
+                                <form method="post" action="@routes.TournamentController.startTournament(tournament.id)">
+                                    @helper.CSRF.formField
+
+                                    <div>
+                                        <label for="tournamentType">Tournament Type</label>
+                                        <select id="tournamentType" name="tournamentType">
+                                            <option value="single elimination">Single Elimination</option>
+                                            <option value="double elimination">Double Elimination</option>
+                                            <option value="round robin">Round Robin</option>
+                                            <option value="swiss">Swiss</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="grid">
+                                        <div>
+                                            <label for="groupSize">Group Size</label>
+                                            <input type="number" id="groupSize" name="groupSize" value="5" min="2" max="16">
+                                        </div>
+                                        <div>
+                                            <label for="participantCountToAdvancePerGroup">Advancing per Group</label>
+                                            <input type="number" id="participantCountToAdvancePerGroup" name="participantCountToAdvancePerGroup" value="1" min="1" max="8">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label for="groupStageType">Group Stage Type</label>
+                                        <select id="groupStageType" name="groupStageType">
+                                            <option value="round robin">Round Robin</option>
+                                            <option value="single elimination">Single Elimination</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label>
+                                            <input type="checkbox" id="groupStageEnabled" name="groupStageEnabled" checked>
+                                            Enable Group Stage
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <label>
+                                            <input type="checkbox" id="holdThirdPlaceMatch" name="holdThirdPlaceMatch">
+                                            Hold 3rd Place Match
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <label>
+                                            <input type="checkbox" id="sequentialPairings" name="sequentialPairings" checked>
+                                            Sequential Pairings
+                                        </label>
+                                    </div>
+
+                                    <button type="submit"
+                                            onclick="return confirm('Are you sure you want to start this tournament? This will close registration and begin the tournament.');">
+                                        Start Tournament
+                                        @if(registrations.length == 0 || registrations.length == 1) {
+                                            (will add fake participants)
+                                        }
+                                    </button>
+                                </form>
+                            </div>
+                        }
+
+                        @if(tournament.status == TournamentStatus.RegistrationOpen || tournament.status == TournamentStatus.RegistrationClosed || tournament.status == TournamentStatus.InProgress) {
+                            <div>
+                                <h3>Complete Tournament</h3>
+                                <form method="post" action="@routes.TournamentController.completeTournament(tournament.id)">
+                                    @helper.CSRF.formField
+                                    <button type="submit" class="secondary"
+                                            onclick="return confirm('Are you sure you want to mark this tournament as completed?');">
+                                        Mark as Completed
+                                    </button>
+                                </form>
+                            </div>
+                        }
+
+                        @if(tournament.status == TournamentStatus.RegistrationOpen || tournament.status == TournamentStatus.RegistrationClosed || tournament.status == TournamentStatus.InProgress) {
+                            <div>
+                                <h3>Cancel Tournament</h3>
+                                <form method="post" action="@routes.TournamentController.cancelTournament(tournament.id)">
+                                    @helper.CSRF.formField
+                                    <button type="submit" class="contrast outline"
+                                            onclick="return confirm('Are you sure you want to cancel this tournament? This action cannot be undone.');">
+                                        Cancel Tournament
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </article>
+            </div>
+        </div>
+
+        <footer style="margin-top: 2rem;">
+            <a href="@routes.TournamentController.showOpenTournaments()" role="button" class="secondary">Back to Tournament List</a>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-dismiss flash messages after 5 seconds
+        setTimeout(function() {
+            var alerts = document.querySelectorAll('[role="alert"]');
+            alerts.forEach(function(alert) {
+                alert.style.transition = 'opacity 0.5s';
+                alert.style.opacity = '0';
+                setTimeout(function() {
+                    alert.remove();
+                }, 500);
+            });
+        }, 5000);
+    </script>
+}

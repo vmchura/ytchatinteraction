@@ -80,6 +80,7 @@ GET     /my-events/ws               controllers.UserEventsController.eventsUpdat
 GET     /tournaments                controllers.TournamentController.showOpenTournaments()
 GET     /tournaments/create         controllers.TournamentController.showCreateForm()
 POST    /tournaments/create         controllers.TournamentController.createTournament()
+GET     /tournaments/:id/manage     controllers.TournamentController.manageTournament(id: Long)
 POST    /tournaments/:id/start      controllers.TournamentController.startTournament(id: Long)
 POST    /tournaments/:id/complete   controllers.TournamentController.completeTournament(id: Long)
 POST    /tournaments/:id/cancel     controllers.TournamentController.cancelTournament(id: Long)
