@@ -3,6 +3,7 @@ package controllers
 import forms.Forms
 import models.{Tournament, TournamentStatus}
 import models.repository.TournamentRepository
+import models.viewmodels.TournamentMatchDisplay
 import modules.DefaultEnv
 import services.{
   ContentCreatorChannelService,
@@ -95,11 +96,32 @@ class TournamentController @Inject() (
             for {
               registrationsWithUsers <- tournamentService
                 .getTournamentRegistrationsWithUsers(id)
+              matches <-
+                if (
+                  tournament.status == TournamentStatus.InProgress && tournament.challongeTournamentId.isDefined
+                ) {
+                  tournamentChallongeService
+                    .getMatchesWithParticipants(
+                      tournament.challongeTournamentId.get
+                    )
+                    .map { matchesWithParticipants =>
+                      matchesWithParticipants.map {
+                        case (challongeMatch, participantMap) =>
+                          TournamentMatchDisplay.fromChallongeMatch(
+                            challongeMatch,
+                            participantMap
+                          )
+                      }
+                    }
+                } else {
+                  Future.successful(List.empty[TournamentMatchDisplay])
+                }
             } yield {
               Ok(
                 views.html.tournamentManagementDetail(
                   tournament,
-                  registrationsWithUsers
+                  registrationsWithUsers,
+                  matches
                 )
               )
             }

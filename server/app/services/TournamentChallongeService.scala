@@ -10,7 +10,6 @@ import models.{
   User
 }
 
-
 import play.api.libs.ws.WSClient
 import play.api.libs.json.*
 import play.api.Configuration
@@ -23,28 +22,32 @@ import scala.concurrent.{ExecutionContext, Future}
 import io.cequence.openaiscala.domain.settings.TranscriptResponseFormatType.json
 
 /** Service to integrate with the Challonge API for tournament management.
-*/
+  */
 
 /** Configuration for Challonge tournament creation parameters */
 case class TournamentChallongeConfiguration(
-  tournamentType: String = "single elimination",
-  groupStageEnabled: Boolean = true,
-  groupStageType: String = "round robin",
-  groupSize: Int = 5,
-  participantCountToAdvancePerGroup: Int = 1,
-  holdThirdPlaceMatch: Boolean = false,
-  sequentialPairings: Boolean = true
+    tournamentType: String = "single elimination",
+    groupStageEnabled: Boolean = true,
+    groupStageType: String = "round robin",
+    groupSize: Int = 5,
+    participantCountToAdvancePerGroup: Int = 1,
+    holdThirdPlaceMatch: Boolean = false,
+    sequentialPairings: Boolean = true
 )
 
 object TournamentChallongeConfiguration {
+
   /** Convert from form to service configuration */
-  def fromForm(form: forms.TournamentChallongeConfigForm): TournamentChallongeConfiguration = {
+  def fromForm(
+      form: forms.TournamentChallongeConfigForm
+  ): TournamentChallongeConfiguration = {
     TournamentChallongeConfiguration(
       tournamentType = form.tournamentType,
       groupStageEnabled = form.groupStageEnabled,
       groupStageType = form.groupStageType,
       groupSize = form.groupSize,
-      participantCountToAdvancePerGroup = form.participantCountToAdvancePerGroup,
+      participantCountToAdvancePerGroup =
+        form.participantCountToAdvancePerGroup,
       holdThirdPlaceMatch = form.holdThirdPlaceMatch,
       sequentialPairings = form.sequentialPairings
     )
@@ -70,7 +73,8 @@ trait TournamentChallongeService {
   def createChallongeTournament(
       tournament: Tournament,
       participants: List[User],
-      config: TournamentChallongeConfiguration = TournamentChallongeConfiguration()
+      config: TournamentChallongeConfiguration =
+        TournamentChallongeConfiguration()
   ): Future[(Long, String)]
 
   /** Updates an existing Challonge tournament.
@@ -133,6 +137,19 @@ trait TournamentChallongeService {
       challongeTournamentId: Long,
       participantId: Long
   ): Future[List[ChallongeMatch]]
+
+  /** Gets all matches with participant names for a tournament from Challonge.
+    * This is useful for admin views where you need to display all matches with
+    * player names.
+    *
+    * @param challongeTournamentId
+    *   The Challonge tournament ID
+    * @return
+    *   List of matches with participant names
+    */
+  def getMatchesWithParticipants(
+      challongeTournamentId: Long
+  ): Future[List[(ChallongeMatch, Map[Long, String])]]
 
   /** Gets a specific match by ID from Challonge.
     *
@@ -199,18 +216,21 @@ class TournamentChallongeServiceImpl @Inject() (
   override def createChallongeTournament(
       tournament: Tournament,
       participants: List[User],
-      config: TournamentChallongeConfiguration = TournamentChallongeConfiguration()
+      config: TournamentChallongeConfiguration =
+        TournamentChallongeConfiguration()
   ): Future[(Long, String)] = {
     logger.info(
       s"Creating Challonge tournament for: ${tournament.name} with ${participants.length} participants"
     )
 
     val groupStageOptions = if (config.groupStageEnabled) {
-      Some(Json.obj(
-        "stage_type" -> config.groupStageType,
-        "group_size" -> config.groupSize,
-        "participant_count_to_advance_per_group" -> config.participantCountToAdvancePerGroup
-      ))
+      Some(
+        Json.obj(
+          "stage_type" -> config.groupStageType,
+          "group_size" -> config.groupSize,
+          "participant_count_to_advance_per_group" -> config.participantCountToAdvancePerGroup
+        )
+      )
     } else None
 
     val attributes = Json.obj(
@@ -224,8 +244,10 @@ class TournamentChallongeServiceImpl @Inject() (
       ),
       "hold_third_place_match" -> config.holdThirdPlaceMatch,
       "sequential_pairings" -> config.sequentialPairings
-    ) ++ (if (config.groupStageEnabled) Json.obj("group_stage_enabled" -> config.groupStageEnabled) ++ 
-          Json.obj("group_stage_options" -> groupStageOptions.get) else Json.obj())
+    ) ++ (if (config.groupStageEnabled)
+            Json.obj("group_stage_enabled" -> config.groupStageEnabled) ++
+              Json.obj("group_stage_options" -> groupStageOptions.get)
+          else Json.obj())
 
     val tournamentData = Json.obj(
       "data" -> Json.obj(
@@ -251,8 +273,8 @@ class TournamentChallongeServiceImpl @Inject() (
             (json_data \ "attributes" \ "url").as[String]
           logger.info(s"Created Challonge tournament with ID: $tournamentId")
 
-          addAllParticipants(tournamentId, participants, tournament.id).map(
-            _ => (tournamentId, challongeFullURL)
+          addAllParticipants(tournamentId, participants, tournament.id).map(_ =>
+            (tournamentId, challongeFullURL)
           )
 
         case status =>
@@ -481,10 +503,18 @@ class TournamentChallongeServiceImpl @Inject() (
                 ChallongeMatch(
                   id = (matchObj \ "id").as[String].toLong,
                   state = (matchData \ "state").as[String],
-                  player1Id =
-                    (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(0,_ => None)),
-                  player2Id =
-                    (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(1,_ => None)),
+                  player1Id = (matchData \ "points_by_participant")
+                    .asOpt[List[JsObject]]
+                    .flatMap(
+                      _.map(r => (r \ "participant_id").asOpt[Long])
+                        .applyOrElse(0, _ => None)
+                    ),
+                  player2Id = (matchData \ "points_by_participant")
+                    .asOpt[List[JsObject]]
+                    .flatMap(
+                      _.map(r => (r \ "participant_id").asOpt[Long])
+                        .applyOrElse(1, _ => None)
+                    ),
                   winnerId = (matchData \ "winner_id").asOpt[Long],
                   loserId = (matchData \ "loser_id").asOpt[Long],
                   scheduledTime = (matchData \ "scheduled_time").asOpt[String],
@@ -650,10 +680,18 @@ class TournamentChallongeServiceImpl @Inject() (
               val challongeMatch = ChallongeMatch(
                 id = (matchObj \ "id").as[Long],
                 state = (matchData \ "state").as[String],
-                player1Id =
-                  (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(0,_ => None)),
-                player2Id =
-                  (matchData \ "points_by_participant").asOpt[List[JsObject]].flatMap(_.map(r => (r \ "participant_id").asOpt[Long]).applyOrElse(1,_ => None)),
+                player1Id = (matchData \ "points_by_participant")
+                  .asOpt[List[JsObject]]
+                  .flatMap(
+                    _.map(r => (r \ "participant_id").asOpt[Long])
+                      .applyOrElse(0, _ => None)
+                  ),
+                player2Id = (matchData \ "points_by_participant")
+                  .asOpt[List[JsObject]]
+                  .flatMap(
+                    _.map(r => (r \ "participant_id").asOpt[Long])
+                      .applyOrElse(1, _ => None)
+                  ),
                 winnerId = (matchData \ "winner_id").asOpt[Long],
                 loserId = (matchData \ "loser_id").asOpt[Long],
                 scheduledTime = (matchData \ "scheduled_time").asOpt[String],
@@ -692,6 +730,24 @@ class TournamentChallongeServiceImpl @Inject() (
         )
         None
       }
+  }
+
+  /** Gets all matches with participant names for a tournament from Challonge.
+    */
+  override def getMatchesWithParticipants(
+      challongeTournamentId: Long
+  ): Future[List[(ChallongeMatch, Map[Long, String])]] = {
+    logger.debug(
+      s"Getting matches with participants for tournament $challongeTournamentId"
+    )
+
+    for {
+      matches <- getMatches(challongeTournamentId)
+      participants <- getParticipants(challongeTournamentId)
+      participantMap = participants.map(p => p.id -> p.name).toMap
+    } yield {
+      matches.map(match_ => (match_, participantMap))
+    }
   }
 
   /** Submits match result to Challonge.

@@ -1,10 +1,11 @@
 @import play.api.mvc.ControllerHelpers.request2flash
 @import models.{Tournament, TournamentRegistration, TournamentStatus, User}
+@import models.viewmodels.TournamentMatchDisplay
 @import forms.Forms
 @import java.time.format.DateTimeFormatter
 @import java.time.ZoneId
 
-@(tournament: Tournament, registrations: List[(TournamentRegistration, User)])(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
+@(tournament: Tournament, registrations: List[(TournamentRegistration, User)], matches: List[TournamentMatchDisplay])(implicit request: RequestHeader, messages: Messages, webJarsUtil: org.webjars.play.WebJarsUtil)
 
 @main(s"Manage: ${tournament.name}") {
     <div class="container">
@@ -130,6 +131,64 @@
                         </div>
                     }
                 </article>
+
+                <!-- Tournament Matches (only for In Progress tournaments) -->
+                @if(tournament.status == TournamentStatus.InProgress && matches.nonEmpty) {
+                    <article>
+                        <header>
+                            <h2>Tournament Matches (@matches.length)</h2>
+                        </header>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Match</th>
+                                        <th>Player 1</th>
+                                        <th>Player 2</th>
+                                        <th>Status</th>
+                                        <th>Winner</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for(matchDisplay <- matches.sortBy(_.matchId)) {
+                                        <tr>
+                                            <td>@matchDisplay.matchIdentifier</td>
+                                            <td>@matchDisplay.player1Name</td>
+                                            <td>@matchDisplay.player2Name</td>
+                                            <td>
+                                                @matchDisplay.status.toLowerCase match {
+                                                    case "complete" => {
+                                                        <mark style="background-color: var(--pico-green-400);">Complete</mark>
+                                                    }
+                                                    case "open" => {
+                                                        <mark style="background-color: var(--pico-primary);">In Progress</mark>
+                                                    }
+                                                    case "pending" => {
+                                                        <mark style="background-color: var(--pico-gray-400);">Pending</mark>
+                                                    }
+                                                    case _ => {
+                                                        <mark>@matchDisplay.status</mark>
+                                                    }
+                                                }
+                                            </td>
+                                            <td>
+                                                @matchDisplay.winnerName match {
+                                                    case Some(winner) => {
+                                                        <strong>@winner</strong>
+                                                    }
+                                                    case None => {
+                                                        <em>—</em>
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                }
             </div>
 
             <!-- Right Panel: Actions -->
