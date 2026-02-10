@@ -36,12 +36,11 @@ import scala.math.Ordering.Implicits.infixOrderingOps
 /** Result of potential match time calculation
   */
 case class PotentialMatchTime(
-    matchId: Long,
     startTime: Instant,
     firstUserAvailability: UserAvailability,
     secondUserAvailability: UserAvailability
 ) {
-  def toPotentialMatch: PotentialMatch = {
+  def toPotentialMatch(matchId: Long): PotentialMatch = {
     PotentialMatch(
       id = matchId,
       firstUserId = firstUserAvailability.userId,
@@ -80,10 +79,35 @@ object AvailabilitySlot:
 
 object PotentialMatchCalculator {
 
-  /** Internal method to calculate best match times based on user availabilities
+  /** Finds optimal match times between two users based on their weekly availability schedules.
+    *
+    * This method calculates potential match times by finding overlapping availability windows
+    * between two users, converting their local availability times to UTC for comparison.
+    *
+    * Algorithm:
+    * 1. Start searching from the day after calculationTime (UTC-based days)
+    * 2. Search window: maximum 7 days (one week) into the future
+    * 3. For each future day, check if both users have availability that overlaps
+    * 4. Only consider overlaps of at least 45 minutes
+    * 5. Rank matches by availability status priority:
+    *    - Highest priority: Both users have HighlyAvailable status
+    *    - Lower priority: Mixed or MaybeAvailable statuses
+    * 6. If multiple valid matches exist on the same day, select the earliest one
+    * 7. Return up to 2 optimal match times (the 2 best available slots)
+    *
+    * Time zone handling:
+    * - User availabilities are defined in their local time zones
+    * - All calculations are performed in UTC to ensure accurate overlap detection
+    * - Days are determined based on UTC time (00:00-23:59 UTC)
+    *
+    * @param firstAvailabilities  Weekly availability ranges for user 1
+    * @param secondAvailabilities Weekly availability ranges for user 2
+    * @param firstTimeZoneID      IANA time zone ID for user 1 (e.g., "America/New_York")
+    * @param secondTimeZoneID     IANA time zone ID for user 2 (e.g., "Europe/London")
+    * @param calculationTime      Reference timestamp; search starts from the next UTC day
+    * @return List of up to 2 optimal match times, sorted by priority and then by time
     */
   def findOptimalMatchTimes(
-      matchRecord: PotentialMatch,
       firstAvailabilities: Seq[UserAvailability],
       secondAvailabilities: Seq[UserAvailability],
       firstTimeZoneID: String,
@@ -139,7 +163,6 @@ class PotentialMatchService @Inject() (
               firstUserTimeZoneOpt.zip(secondUserTimeZoneOpt).match {
                 case Some((firstUserTimeZone, secondUserTimeZone)) =>
                   PotentialMatchCalculator.findOptimalMatchTimes(
-                    matchRecord,
                     firstUserAvailabilities,
                     secondUserAvailabilities,
                     firstUserTimeZone.timezone,
