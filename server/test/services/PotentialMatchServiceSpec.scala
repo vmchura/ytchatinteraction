@@ -110,9 +110,10 @@ class PotentialMatchServiceSpec extends PlaySpec {
       result must be(Nil)
     }
 
-    "return single match time with overlapping availability in search window" in {
+    "return up to 2 match times with overlapping availability in search window" in {
       // Both available Mon-Wed 10:00-12:00
       // Search starts Friday Feb 6, next Monday is Feb 9
+      // Should return Monday and Tuesday (earliest 2 days, both HighlyAvailable)
       val availability1 = createTestAvailability(
         userId = 1L,
         fromWeekDay = 1, // Monday
@@ -139,17 +140,25 @@ class PotentialMatchServiceSpec extends PlaySpec {
         calculationTimeThursday
       )
 
-      result must have size 1
-      val matchTime = result.head
+      // Should return 2 matches (Monday and Tuesday, the earliest days)
+      result must have size 2
 
-      // Should be the first Monday after calculationTime (Feb 9, 2026)
-      val matchDayOfWeek = LocalDateTime
-        .from(matchTime.startTime.atZone(ZoneId.of("UTC")))
+      // First match should be Monday
+      val firstMatchDay = LocalDateTime
+        .from(result(0).startTime.atZone(ZoneId.of("UTC")))
         .getDayOfWeek
-      matchDayOfWeek mustBe DayOfWeek.MONDAY
+      firstMatchDay mustBe DayOfWeek.MONDAY
 
-      matchTime.firstUserAvailability.userId mustBe 1L
-      matchTime.secondUserAvailability.userId mustBe 2L
+      // Second match should be Tuesday
+      val secondMatchDay = LocalDateTime
+        .from(result(1).startTime.atZone(ZoneId.of("UTC")))
+        .getDayOfWeek
+      secondMatchDay mustBe DayOfWeek.TUESDAY
+
+      result.foreach { matchTime =>
+        matchTime.firstUserAvailability.userId mustBe 1L
+        matchTime.secondUserAvailability.userId mustBe 2L
+      }
     }
 
     "not return matches with less than 45 minutes overlap" in {
@@ -240,11 +249,21 @@ class PotentialMatchServiceSpec extends PlaySpec {
         calculationTimeThursday
       )
 
-      // Should return Thursday match first (both HighlyAvailable)
-      // Then Friday match (both HighlyAvailable)
-      // Or Monday-Wednesday (mixed availability) if no HighlyAvailable matches
-      result.size must be >= 1
-      result.size must be <= 2
+      // Must return exactly 2 matches (Thursday and Friday - both HighlyAvailable)
+      // These should be prioritized over Mon-Wed (mixed availability)
+      result must have size 2
+
+      // First match should be Thursday (day 4)
+      val firstMatchDay = LocalDateTime
+        .from(result(0).startTime.atZone(ZoneId.of("UTC")))
+        .getDayOfWeek
+      firstMatchDay mustBe DayOfWeek.THURSDAY
+
+      // Second match should be Friday (day 5)
+      val secondMatchDay = LocalDateTime
+        .from(result(1).startTime.atZone(ZoneId.of("UTC")))
+        .getDayOfWeek
+      secondMatchDay mustBe DayOfWeek.FRIDAY
     }
 
     "select earliest time when multiple matches exist on same day" in {
@@ -358,12 +377,16 @@ class PotentialMatchServiceSpec extends PlaySpec {
         calculationTimeThursday
       )
 
-      result must have size 1
-      val matchTime = result.head
-      val matchHour = LocalDateTime
-        .from(matchTime.startTime.atZone(ZoneId.of("UTC")))
-        .getHour
-      matchHour mustBe 9 // 09:00 UTC is the overlapping hour
+      // Should return 2 matches (Monday and Tuesday, the earliest days)
+      result must have size 2
+
+      // Verify all matches start at 09:00 UTC (the overlapping hour)
+      result.foreach { matchTime =>
+        val matchHour = LocalDateTime
+          .from(matchTime.startTime.atZone(ZoneId.of("UTC")))
+          .getHour
+        matchHour mustBe 9 // 09:00 UTC is the overlapping hour
+      }
     }
 
     "only search within 7-day window from calculationTime" in {
@@ -429,9 +452,14 @@ class PotentialMatchServiceSpec extends PlaySpec {
         calculationTimeThursday
       )
 
-      result must have size 1
-      result.head.firstUserAvailability.userId mustBe 1L
-      result.head.secondUserAvailability.userId mustBe 2L
+      // Should return 2 matches (Monday and Tuesday, the earliest days)
+      result must have size 2
+
+      // Verify user IDs are correctly assigned in all matches
+      result.foreach { matchTime =>
+        matchTime.firstUserAvailability.userId mustBe 1L
+        matchTime.secondUserAvailability.userId mustBe 2L
+      }
     }
   }
 }
