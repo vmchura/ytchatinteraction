@@ -634,12 +634,12 @@
         }
         
         function onMouseDown(e) {
-            isDragging = this.id === 'thumb-from' ? 'desde' : 'hasta';
+            isDragging = this.id === 'thumb-from' ? 'from' : 'to';
             e.preventDefault();
         }
-        
+
         function onTouchStart(e) {
-            isDragging = this.id === 'thumb-from' ? 'desde' : 'hasta';
+            isDragging = this.id === 'thumb-from' ? 'from' : 'to';
         }
         
         thumbFrom.addEventListener('mousedown', onMouseDown);
