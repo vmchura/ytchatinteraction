@@ -113,7 +113,92 @@ object PotentialMatchCalculator {
       firstTimeZoneID: String,
       secondTimeZoneID: String,
       calculationTime: Instant
-  ): List[PotentialMatchTime] = ???
+  ): List[PotentialMatchTime] = {
+    if (firstAvailabilities.isEmpty || secondAvailabilities.isEmpty) {
+      return Nil
+    }
+
+    val firstZone = ZoneId.of(firstTimeZoneID)
+    val secondZone = ZoneId.of(secondTimeZoneID)
+    val utcZone = ZoneId.of("UTC")
+
+    // Calculate the start of the search window (next day after calculationTime in UTC)
+    val calculationDateTime = calculationTime.atZone(utcZone)
+    val searchStartDate = calculationDateTime.toLocalDate.plusDays(1)
+    val searchEndDate = searchStartDate.plusDays(7)
+
+    // Collect all potential matches
+    val allMatches = mutable.ListBuffer[PotentialMatchTime]()
+
+    // Iterate through each day in the 7-day window
+    var currentDate = searchStartDate
+    while (!currentDate.isAfter(searchEndDate.minusDays(1))) {
+      val dayOfWeek = currentDate.getDayOfWeek.getValue // 1=Monday, 7=Sunday
+
+      // Check each combination of availabilities for this day
+      for {
+        firstAvail <- firstAvailabilities
+        if dayOfWeek >= firstAvail.fromWeekDay && dayOfWeek <= firstAvail.toWeekDay
+        secondAvail <- secondAvailabilities
+        if dayOfWeek >= secondAvail.fromWeekDay && dayOfWeek <= secondAvail.toWeekDay
+      } {
+        // Convert local availability times to UTC for this specific day
+        val firstStartUTC = convertLocalToUTC(currentDate, firstAvail.fromHourInclusive, firstZone)
+        val firstEndUTC = convertLocalToUTC(currentDate, firstAvail.toHourExclusive, firstZone)
+        val secondStartUTC = convertLocalToUTC(currentDate, secondAvail.fromHourInclusive, secondZone)
+        val secondEndUTC = convertLocalToUTC(currentDate, secondAvail.toHourExclusive, secondZone)
+
+        // Find overlap
+        val overlapStart = if (firstStartUTC.isAfter(secondStartUTC)) firstStartUTC else secondStartUTC
+        val overlapEnd = if (firstEndUTC.isBefore(secondEndUTC)) firstEndUTC else secondEndUTC
+
+        if (!overlapStart.isAfter(overlapEnd)) {
+          val overlapMinutes = java.time.Duration.between(overlapStart, overlapEnd).toMinutes
+          if (overlapMinutes >= 45) {
+            allMatches += PotentialMatchTime(
+              startTime = overlapStart,
+              firstUserAvailability = firstAvail,
+              secondUserAvailability = secondAvail
+            )
+          }
+        }
+      }
+
+      currentDate = currentDate.plusDays(1)
+    }
+
+    // Sort matches by priority and time
+    // Priority: Both HighlyAvailable > Mixed > Both MaybeAvailable
+    // Then by start time (earliest first)
+    val sortedMatches = allMatches.toList.sortBy { matchTime =>
+      val priorityScore = (matchTime.firstUserAvailability.availabilityStatus, matchTime.secondUserAvailability.availabilityStatus) match {
+        case (AvailabilityStatus.HighlyAvailable, AvailabilityStatus.HighlyAvailable) => 0
+        case (AvailabilityStatus.HighlyAvailable, _) => 1
+        case (_, AvailabilityStatus.HighlyAvailable) => 1
+        case _ => 2
+      }
+      (priorityScore, matchTime.startTime)
+    }
+
+    // Return up to 2 matches, ensuring they're on different days
+    val selectedMatches = mutable.ListBuffer[PotentialMatchTime]()
+    val usedDays = mutable.Set[java.time.LocalDate]()
+
+    for (matchTime <- sortedMatches if selectedMatches.size < 2) {
+      val matchDay = matchTime.startTime.atZone(utcZone).toLocalDate
+      if (!usedDays.contains(matchDay)) {
+        selectedMatches += matchTime
+        usedDays += matchDay
+      }
+    }
+
+    selectedMatches.toList
+  }
+
+  private def convertLocalToUTC(date: java.time.LocalDate, hour: Int, zone: ZoneId): Instant = {
+    val localDateTime = date.atTime(hour, 0)
+    localDateTime.atZone(zone).toInstant
+  }
 
 }
 

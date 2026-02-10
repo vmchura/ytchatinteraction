@@ -249,21 +249,22 @@ class PotentialMatchServiceSpec extends PlaySpec {
         calculationTimeThursday
       )
 
-      // Must return exactly 2 matches (Thursday and Friday - both HighlyAvailable)
+      // Must return exactly 2 matches (Friday and next Thursday - both HighlyAvailable)
       // These should be prioritized over Mon-Wed (mixed availability)
+      // Note: calculationTime is Thursday, search starts Friday, so Friday comes before next Thursday
       result must have size 2
 
-      // First match should be Thursday (day 4)
+      // First match should be Friday (day 5) - earliest in the search window
       val firstMatchDay = LocalDateTime
         .from(result(0).startTime.atZone(ZoneId.of("UTC")))
         .getDayOfWeek
-      firstMatchDay mustBe DayOfWeek.THURSDAY
+      firstMatchDay mustBe DayOfWeek.FRIDAY
 
-      // Second match should be Friday (day 5)
+      // Second match should be Thursday (day 4) - next week's Thursday
       val secondMatchDay = LocalDateTime
         .from(result(1).startTime.atZone(ZoneId.of("UTC")))
         .getDayOfWeek
-      secondMatchDay mustBe DayOfWeek.FRIDAY
+      secondMatchDay mustBe DayOfWeek.THURSDAY
     }
 
     "select earliest time when multiple matches exist on same day" in {
