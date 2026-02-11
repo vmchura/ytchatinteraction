@@ -116,6 +116,7 @@
                                 <thead>
                                     <tr>
                                         <th>User</th>
+                                        <th>Race</th>
                                         <th>Registered At</th>
                                     </tr>
                                 </thead>
@@ -123,6 +124,7 @@
                                     @for((registration, user) <- registrations.sortBy(_._1.registeredAt)) {
                                         <tr>
                                             <td>@user.userName</td>
+                                            <td>@registration.race</td>
                                             <td>@registration.registeredAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
                                         </tr>
                                     }
