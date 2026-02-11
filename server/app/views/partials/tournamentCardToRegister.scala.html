@@ -48,9 +48,37 @@
                                     } else {
                                         <span style="color: red;">✗</span>
                                     }
-                                    Replays base subidos (mínimo 2)
+                                    Replays base: 2 por matchup (6 total)
                                     @if(!req.hasEnoughReplays) {
                                         <small><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">Subir replays</a></small>
+                                    }
+                                    @req.replayCounts.map { counts =>
+                                        <ul style="margin-left: 1.5rem; font-size: 0.9em;">
+                                            <li>
+                                                @if(counts.vsProtoss >= 2) {
+                                                    <span style="color: green;">✓</span>
+                                                } else {
+                                                    <span style="color: red;">✗</span>
+                                                }
+                                                vs Protoss: @counts.vsProtoss/2
+                                            </li>
+                                            <li>
+                                                @if(counts.vsZerg >= 2) {
+                                                    <span style="color: green;">✓</span>
+                                                } else {
+                                                    <span style="color: red;">✗</span>
+                                                }
+                                                vs Zerg: @counts.vsZerg/2
+                                            </li>
+                                            <li>
+                                                @if(counts.vsTerran >= 2) {
+                                                    <span style="color: green;">✓</span>
+                                                } else {
+                                                    <span style="color: red;">✗</span>
+                                                }
+                                                vs Terran: @counts.vsTerran/2
+                                            </li>
+                                        </ul>
                                     }
                                 </li>
                                 <li>
@@ -120,7 +148,20 @@
                     <h4>Faltan requisitos:</h4>
                     <ul style="list-style: none; padding: 0;">
                         @if(!req.hasEnoughReplays) {
-                            <li style="color: red;">✗ Subir al menos 2 replays base para tu raza</li>
+                            <li style="color: red;">✗ Subir al menos 2 replays base por matchup (6 total)</li>
+                            @req.replayCounts.map { counts =>
+                                <ul style="margin-left: 1.5rem; font-size: 0.9em;">
+                                    @if(counts.vsProtoss < 2) {
+                                        <li style="color: orange;">vs Protoss: @counts.vsProtoss/2</li>
+                                    }
+                                    @if(counts.vsZerg < 2) {
+                                        <li style="color: orange;">vs Zerg: @counts.vsZerg/2</li>
+                                    }
+                                    @if(counts.vsTerran < 2) {
+                                        <li style="color: orange;">vs Terran: @counts.vsTerran/2</li>
+                                    }
+                                </ul>
+                            }
                             <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()" role="button" class="secondary">Subir replays</a></li>
                         }
                         @if(!req.hasAvailability) {

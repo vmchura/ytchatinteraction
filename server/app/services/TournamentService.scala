@@ -497,7 +497,7 @@ class TournamentServiceImpl @Inject() (
                         Future.successful(Left("Tournament is full"))
                       } else if (!canRegister) {
                         Future.successful(
-                          Left("You do not meet the registration requirements. Please ensure you have: 1) Selected a race, 2) Uploaded enough base replays for that race, 3) Added your availability times")
+                          Left("You do not meet the registration requirements. Please ensure you have: 1) Selected a race, 2) Uploaded at least 2 base replays for each matchup (6 total: 2 vs Protoss, 2 vs Zerg, 2 vs Terran), 3) Added your availability times")
                         )
                       } else {
                         tournamentCode match {

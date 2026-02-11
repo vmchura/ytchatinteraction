@@ -6,10 +6,22 @@ import models.ContentCreatorChannel
 enum TournamentRegistrationUserStatus:
   case Unregistered, Registered, NotAbleToRegister
 
+case class MatchupReplayCounts(
+  vsProtoss: Int,
+  vsZerg: Int,
+  vsTerran: Int
+) {
+  def hasEnoughPerMatchup(minPerMatchup: Int = 2): Boolean =
+    vsProtoss >= minPerMatchup && vsZerg >= minPerMatchup && vsTerran >= minPerMatchup
+  
+  def totalReplays: Int = vsProtoss + vsZerg + vsTerran
+}
+
 case class TournamentRegistrationRequirements(
   hasEnoughReplays: Boolean,
   hasAvailability: Boolean,
-  selectedRace: Option[String]
+  selectedRace: Option[String],
+  replayCounts: Option[MatchupReplayCounts] = None
 )
 
 case class TournamentOpenDataUser(

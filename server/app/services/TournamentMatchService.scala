@@ -85,16 +85,22 @@ class TournamentMatchService @Inject() (
     }
 
     raceOpt match {
-      case None => Future.successful(TournamentRegistrationRequirements(false, false, None))
+      case None => Future.successful(TournamentRegistrationRequirements(false, false, None, None))
       case Some(scRace) =>
         for {
-          hasReplays <- registrationValidationService.hasEnoughReplays(userId, scRace, minReplays = 2)
+          replayCounts <- registrationValidationService.getReplayCountsPerMatchup(userId, scRace)
           hasAvail <- registrationValidationService.hasAvailabilityTimes(userId)
         } yield {
+          val matchupCounts = MatchupReplayCounts(
+            vsProtoss = replayCounts.getOrElse(Protoss, 0),
+            vsZerg = replayCounts.getOrElse(Zerg, 0),
+            vsTerran = replayCounts.getOrElse(Terran, 0)
+          )
           TournamentRegistrationRequirements(
-            hasEnoughReplays = hasReplays,
+            hasEnoughReplays = matchupCounts.hasEnoughPerMatchup(2),
             hasAvailability = hasAvail,
-            selectedRace = Some(race)
+            selectedRace = Some(race),
+            replayCounts = Some(matchupCounts)
           )
         }
     }
