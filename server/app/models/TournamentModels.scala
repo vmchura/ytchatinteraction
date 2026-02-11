@@ -46,6 +46,22 @@ object TournamentModels {
 
   implicit val registrationStatusFormat: Format[RegistrationStatus] = Format(registrationStatusReads, registrationStatusWrites)
 
+  // SCRace JSON formatters
+  implicit val scRaceWrites: Writes[StarCraftModels.SCRace] = Writes[StarCraftModels.SCRace] {
+    case StarCraftModels.Zerg => JsString("Zerg")
+    case StarCraftModels.Terran => JsString("Terran")
+    case StarCraftModels.Protoss => JsString("Protoss")
+  }
+
+  implicit val scRaceReads: Reads[StarCraftModels.SCRace] = Reads[StarCraftModels.SCRace] {
+    case JsString("Zerg") => JsSuccess(StarCraftModels.Zerg)
+    case JsString("Terran") => JsSuccess(StarCraftModels.Terran)
+    case JsString("Protoss") => JsSuccess(StarCraftModels.Protoss)
+    case other => JsError(s"Unknown race: $other")
+  }
+
+  implicit val scRaceFormat: Format[StarCraftModels.SCRace] = Format(scRaceReads, scRaceWrites)
+
   // Instant JSON formatters (if not already available)
   implicit val instantFormat: Format[Instant] = Format[Instant](
     Reads.of[String].map(Instant.parse),

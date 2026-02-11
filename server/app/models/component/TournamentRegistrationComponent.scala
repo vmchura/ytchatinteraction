@@ -1,6 +1,6 @@
 package models.component
 
-import models.{TournamentRegistration, RegistrationStatus}
+import models.{TournamentRegistration, RegistrationStatus, ServerStarCraftModels, StarCraftModels}
 import models.component.{TournamentComponent, UserComponent}
 import slick.jdbc.JdbcProfile
 import slick.lifted.TableQuery
@@ -23,6 +23,8 @@ trait TournamentRegistrationComponent extends TournamentComponent with UserCompo
       }
     )
 
+  // Custom column type for SCRace
+  given BaseColumnType[StarCraftModels.SCRace] = ServerStarCraftModels.scRaceColumnType
 
 
   class TournamentRegistrationsTable(tag: Tag) extends Table[TournamentRegistration](tag, "tournament_registrations") {
@@ -31,8 +33,9 @@ trait TournamentRegistrationComponent extends TournamentComponent with UserCompo
     def userId = column[Long]("user_id")
     def registeredAt = column[Instant]("registered_at")
     def status = column[RegistrationStatus]("status")
+    def race = column[StarCraftModels.SCRace]("race")
 
-    def * = (id, tournamentId, userId, registeredAt, status) <> 
+    def * = (id, tournamentId, userId, registeredAt, status, race) <> 
             ((TournamentRegistration.apply _).tupled, TournamentRegistration.unapply)
 
     // Foreign key constraints

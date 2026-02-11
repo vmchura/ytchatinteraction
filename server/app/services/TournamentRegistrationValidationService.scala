@@ -46,15 +46,15 @@ trait TournamentRegistrationValidationService {
   def hasAvailabilityTimes(userId: Long): Future[Boolean]
 
   /** Validates all registration requirements for a user.
-    *
-    * @param userId
-    *   The user ID
-    * @param racePicked
-    *   The race selected by the user (Protoss, Zerg, or Terran)
-    * @return
-    *   Future[Boolean] True if user meets all requirements
-    */
-  def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean]
+   *
+   * @param userId
+   *   The user ID
+   * @param racePicked
+   *   The race selected by the user (Protoss, Zerg, or Terran)
+   * @return
+   *   Future[Boolean] True if user meets all requirements
+   */
+  def isUserAbleToRegister(userId: Long, racePicked: SCRace): Future[Boolean]
 }
 
 @Singleton
@@ -89,23 +89,12 @@ class TournamentRegistrationValidationServiceImpl @Inject() (
       .map(_.nonEmpty)
   }
 
-  override def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean] = {
-    val raceOpt = racePicked match {
-      case "Protoss" => Some(Protoss)
-      case "Zerg"    => Some(Zerg)
-      case "Terran"  => Some(Terran)
-      case _         => None
-    }
-
-    raceOpt match {
-      case None => Future.successful(false)
-      case Some(race) =>
-        for {
-          hasReplays     <- hasEnoughReplays(userId, race, minReplaysPerMatchup = 2)
-          hasAvailabilities <- hasAvailabilityTimes(userId)
-        } yield {
-          hasReplays && hasAvailabilities
-        }
+  override def isUserAbleToRegister(userId: Long, racePicked: SCRace): Future[Boolean] = {
+    for {
+      hasReplays     <- hasEnoughReplays(userId, racePicked, minReplaysPerMatchup = 2)
+      hasAvailabilities <- hasAvailabilityTimes(userId)
+    } yield {
+      hasReplays && hasAvailabilities
     }
   }
 }

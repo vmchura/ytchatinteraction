@@ -5,6 +5,8 @@ import play.api.data.{Form, FormError}
 import play.api.data.Forms.*
 import play.api.data.format.Formatter
 import evolutioncomplete.PotentialAnalyticalFileShared
+import models.StarCraftModels
+import models.StarCraftModels.SCRace
 
 /** Tournament type options for Challonge */
 sealed trait ChallongeTournamentType
@@ -149,14 +151,35 @@ case class CloseMatchData(
 )
 
 case class AnalyticalFileData(playerID: Int, fileHash: String)
-case class RegisterToTournamentData(code: String, race: String, acceptedRules: Boolean)
+case class RegisterToTournamentData(code: String, race: SCRace, acceptedRules: Boolean)
 
 object Forms:
+
+  // Formatter for SCRace
+  implicit val scRaceFormatter: Formatter[SCRace] = new Formatter[SCRace] {
+    override def bind(key: String, data: Map[String, String]): Either[Seq[FormError], SCRace] = {
+      data.get(key) match {
+        case Some("Protoss") => Right(StarCraftModels.Protoss)
+        case Some("Terran") => Right(StarCraftModels.Terran)
+        case Some("Zerg") => Right(StarCraftModels.Zerg)
+        case _ => Left(Seq(FormError(key, "Invalid race selected")))
+      }
+    }
+    
+    override def unbind(key: String, value: SCRace): Map[String, String] = {
+      val raceStr = value match {
+        case StarCraftModels.Protoss => "Protoss"
+        case StarCraftModels.Terran => "Terran"
+        case StarCraftModels.Zerg => "Zerg"
+      }
+      Map(key -> raceStr)
+    }
+  }
 
   val registerToTournamentForm = Form(
     mapping(
       "tournamentcode" -> nonEmptyText,
-      "race" -> nonEmptyText.verifying("Invalid race selected", r => Seq("Protoss", "Zerg", "Terran").contains(r)),
+      "race" -> of[SCRace],
       "acceptedRules" -> boolean.verifying("You must accept the tournament rules", _ == true)
     )(RegisterToTournamentData.apply)(nn => Some((nn.code, nn.race, nn.acceptedRules)))
   )

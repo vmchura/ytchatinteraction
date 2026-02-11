@@ -13,6 +13,7 @@ import evolutioncomplete.WinnerShared.{
 import models.{
   MatchStatus,
   RegistrationStatus,
+  StarCraftModels,
   Tournament,
   TournamentMatch,
   TournamentRegistration,
@@ -129,7 +130,7 @@ trait TournamentService {
     * @return
     *   Future[Boolean] True if user can register, false otherwise
     */
-  def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean]
+  def isUserAbleToRegister(userId: Long, racePicked: StarCraftModels.SCRace): Future[Boolean]
 
   /** Registers a user for a tournament.
     *
@@ -148,7 +149,7 @@ trait TournamentService {
       tournamentId: Long,
       userId: Long,
       code: String,
-      race: String
+      race: StarCraftModels.SCRace
   ): Future[Either[String, TournamentRegistration]]
 
   /** Withdraws a user's registration from a tournament.
@@ -447,7 +448,7 @@ class TournamentServiceImpl @Inject() (
     * @return
     *   Future[Boolean] True if user can register, false otherwise
     */
-  override def isUserAbleToRegister(userId: Long, racePicked: String): Future[Boolean] = {
+  override def isUserAbleToRegister(userId: Long, racePicked: StarCraftModels.SCRace): Future[Boolean] = {
     registrationValidationService.isUserAbleToRegister(userId, racePicked)
   }
 
@@ -457,7 +458,7 @@ class TournamentServiceImpl @Inject() (
       tournamentId: Long,
       userId: Long,
       tournamentCode: String,
-      race: String
+      race: StarCraftModels.SCRace
   ): Future[Either[String, TournamentRegistration]] = {
     for {
       tournamentOpt <- tournamentRepository.findById(tournamentId)
@@ -486,7 +487,7 @@ class TournamentServiceImpl @Inject() (
                   for {
                     registrationCount <- tournamentRegistrationRepository
                       .countActiveRegistrations(tournamentId)
-                    canRegister <- isUserAbleToRegister(userId, race)
+                    canRegister <- registrationValidationService.isUserAbleToRegister(userId, race)
                     finalResult <-
                       if (registrationCount >= tournament.maxParticipants) {
                         Future.successful(Left("Tournament is full"))
@@ -497,7 +498,8 @@ class TournamentServiceImpl @Inject() (
                       } else if (tournamentCode == tournament.tournamentCode) {
                         val registration = TournamentRegistration(
                           tournamentId = tournamentId,
-                          userId = userId
+                          userId = userId,
+                          race = race
                         )
                         tournamentRegistrationRepository
                           .create(registration)

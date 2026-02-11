@@ -137,8 +137,8 @@ class UserEventsController @Inject() (
               .registerUserForTournament(
                 tournamentId,
                 userId,
-                Some(registerToTournamentData.code),
-                Some(registerToTournamentData.race)
+                registerToTournamentData.code,
+                registerToTournamentData.race
               )
               .map {
                 case Right(_) =>

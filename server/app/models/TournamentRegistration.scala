@@ -10,7 +10,8 @@ case class TournamentRegistration(
   tournamentId: Long,
   userId: Long,
   registeredAt: Instant = Instant.now(),
-  status: RegistrationStatus = RegistrationStatus.Registered
+  status: RegistrationStatus = RegistrationStatus.Registered,
+  race: StarCraftModels.SCRace = StarCraftModels.Protoss
 )
 
 /**

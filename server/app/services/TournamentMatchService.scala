@@ -158,14 +158,14 @@ class TournamentMatchService @Inject() (
       tournamentId: Long,
       userId: Long,
       tournamentCode: String,
-      race: String
+      race: StarCraftModels.SCRace
   ): Future[Either[String, Unit]] = {
     tournamentService.registerUser(tournamentId, userId, tournamentCode, race).map(_.map(_ => ()))
   }
 
   def isUserAbleToRegister(
       userId: Long,
-      race: String
+      race: StarCraftModels.SCRace
   ): Future[Boolean] = {
     tournamentService.isUserAbleToRegister(userId, race)
   }
