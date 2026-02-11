@@ -18,7 +18,7 @@
         case Unregistered => {
             <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST" id="registration-form-@tournamentViewDataForUser.id">
                 @helper.CSRF.formField
-                <fieldset>
+                <fieldset class="grid">
                     <label>
                         Código de registro
                         <input
@@ -31,14 +31,33 @@
                     <label>
                         Selecciona tu raza
                         <select name="race" id="race-select-@tournamentViewDataForUser.id" required>
-                            <option value="">-- Selecciona una raza --</option>
                             <option value="Protoss">Protoss</option>
                             <option value="Zerg">Zerg</option>
                             <option value="Terran">Terran</option>
                         </select>
                     </label>
+		</fieldset>
+			<fieldset> 
 
-                    @tournamentViewDataForUser.registrationRequirements.map { req =>
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="acceptedRules"
+                            id="rules-checkbox-@tournamentViewDataForUser.id"
+                            value="true"
+                            required
+                        />
+                        He leído y acepto las <a href="@routes.UserEventsController.tournamentRules()" target="_blank">bases y condiciones del torneo</a>
+                    </label>
+
+                    <input
+                        type="submit"
+                        id="submit-btn-@tournamentViewDataForUser.id"
+                        value=@messages("partials.tournament.register")
+                    />
+                </fieldset>
+            </form>
+@tournamentViewDataForUser.registrationRequirements.map { req =>
                         <div class="registration-requirements" style="margin: 1rem 0; padding: 1rem; background: var(--card-background-color); border-radius: var(--border-radius);">
                             <h4>Requisitos de registro:</h4>
                             <ul style="list-style: none; padding: 0;">
@@ -95,26 +114,6 @@
                             </ul>
                         </div>
                     }
-
-                    <label>
-                        <input
-                            type="checkbox"
-                            name="acceptedRules"
-                            id="rules-checkbox-@tournamentViewDataForUser.id"
-                            value="true"
-                            required
-                        />
-                        He leído y acepto las <a href="@routes.UserEventsController.tournamentRules()" target="_blank">bases y condiciones del torneo</a>
-                    </label>
-
-                    <input
-                        type="submit"
-                        id="submit-btn-@tournamentViewDataForUser.id"
-                        value=@messages("partials.tournament.register")
-                    />
-                </fieldset>
-            </form>
-
             <script>
                 (function() {
                     const form = document.getElementById('registration-form-@tournamentViewDataForUser.id');
