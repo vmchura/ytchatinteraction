@@ -124,7 +124,8 @@ class UserEventsController @Inject() (
         .bindFromRequest()
         .fold(
           formWithErrors => {
-            val errorMessage = formWithErrors.errors.map(_.message).mkString(", ")
+            val errorMessage =
+              formWithErrors.errors.map(_.message).mkString(", ")
             Future.successful(
               Redirect(routes.UserEventsController.userEvents())
                 .flashing("error" -> s"Validation failed: $errorMessage")

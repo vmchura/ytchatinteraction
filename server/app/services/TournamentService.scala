@@ -147,8 +147,8 @@ trait TournamentService {
   def registerUser(
       tournamentId: Long,
       userId: Long,
-      code: Option[String],
-      race: Option[String] = None
+      code: String,
+      race: String
   ): Future[Either[String, TournamentRegistration]]
 
   /** Withdraws a user's registration from a tournament.
@@ -456,8 +456,8 @@ class TournamentServiceImpl @Inject() (
   override def registerUser(
       tournamentId: Long,
       userId: Long,
-      tournamentCode: Option[String],
-      race: Option[String] = None
+      tournamentCode: String,
+      race: String
   ): Future[Either[String, TournamentRegistration]] = {
     for {
       tournamentOpt <- tournamentRepository.findById(tournamentId)
@@ -486,12 +486,7 @@ class TournamentServiceImpl @Inject() (
                   for {
                     registrationCount <- tournamentRegistrationRepository
                       .countActiveRegistrations(tournamentId)
-                    canRegister <- race match {
-                      case Some(racePicked) =>
-                        isUserAbleToRegister(userId, racePicked)
-                      case None =>
-                        Future.successful(false)
-                    }
+                    canRegister <- isUserAbleToRegister(userId, race)
                     finalResult <-
                       if (registrationCount >= tournament.maxParticipants) {
                         Future.successful(Left("Tournament is full"))
@@ -499,22 +494,18 @@ class TournamentServiceImpl @Inject() (
                         Future.successful(
                           Left("You do not meet the registration requirements. Please ensure you have: 1) Selected a race, 2) Uploaded at least 2 base replays for each matchup (6 total: 2 vs Protoss, 2 vs Zerg, 2 vs Terran), 3) Added your availability times")
                         )
+                      } else if (tournamentCode == tournament.tournamentCode) {
+                        val registration = TournamentRegistration(
+                          tournamentId = tournamentId,
+                          userId = userId
+                        )
+                        tournamentRegistrationRepository
+                          .create(registration)
+                          .map(Right(_))
                       } else {
-                        tournamentCode match {
-                          case Some(tc) if tc == tournament.tournamentCode =>
-                            val registration = TournamentRegistration(
-                              tournamentId = tournamentId,
-                              userId = userId
-                            )
-                            tournamentRegistrationRepository
-                              .create(registration)
-                              .map(Right(_))
-
-                          case _ =>
-                            Future.successful(
-                              Left("Invalid or no tournament code provided")
-                            )
-                        }
+                        Future.successful(
+                          Left("Invalid tournament code provided")
+                        )
                       }
                   } yield finalResult
                 }

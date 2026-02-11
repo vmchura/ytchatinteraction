@@ -157,8 +157,8 @@ class TournamentMatchService @Inject() (
   def registerUserForTournament(
       tournamentId: Long,
       userId: Long,
-      tournamentCode: Option[String],
-      race: Option[String] = None
+      tournamentCode: String,
+      race: String
   ): Future[Either[String, Unit]] = {
     tournamentService.registerUser(tournamentId, userId, tournamentCode, race).map(_.map(_ => ()))
   }
