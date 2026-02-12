@@ -58,47 +58,30 @@
                 </fieldset>
             </form>
 @tournamentViewDataForUser.registrationRequirements.map { req =>
-                        <div class="registration-requirements" style="margin: 1rem 0; padding: 1rem; background: var(--card-background-color); border-radius: var(--border-radius);">
+                        <div class="registration-requirements" id="req-container-@tournamentViewDataForUser.id" style="margin: 1rem 0; padding: 1rem; background: var(--card-background-color); border-radius: var(--border-radius);">
                             <h4>Requisitos de registro:</h4>
                             <ul style="list-style: none; padding: 0;">
-                                <li>
-                                    @if(req.hasEnoughReplays) {
-                                        <span style="color: green;">✓</span>
-                                    } else {
-                                        <span style="color: red;">✗</span>
-                                    }
+                                <li id="replays-status-@tournamentViewDataForUser.id">
+                                    <span id="replays-icon-@tournamentViewDataForUser.id"></span>
                                     Replays base: 2 por matchup (6 total)
-                                    @if(!req.hasEnoughReplays) {
-                                        <small><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">Subir replays</a></small>
-                                    }
-                                    @req.replayCounts.map { counts =>
-                                        <ul style="margin-left: 1.5rem; font-size: 0.9em;">
-                                            <li>
-                                                @if(counts.vsProtoss >= 2) {
-                                                    <span style="color: green;">✓</span>
-                                                } else {
-                                                    <span style="color: red;">✗</span>
-                                                }
-                                                vs Protoss: @counts.vsProtoss/2
-                                            </li>
-                                            <li>
-                                                @if(counts.vsZerg >= 2) {
-                                                    <span style="color: green;">✓</span>
-                                                } else {
-                                                    <span style="color: red;">✗</span>
-                                                }
-                                                vs Zerg: @counts.vsZerg/2
-                                            </li>
-                                            <li>
-                                                @if(counts.vsTerran >= 2) {
-                                                    <span style="color: green;">✓</span>
-                                                } else {
-                                                    <span style="color: red;">✗</span>
-                                                }
-                                                vs Terran: @counts.vsTerran/2
-                                            </li>
-                                        </ul>
-                                    }
+                                    <small><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()">Subir replays</a></small>
+                                    <div id="replays-details-@tournamentViewDataForUser.id" style="margin-left: 1.5rem; font-size: 0.9em;">
+                                        <div class="race-req" data-race="Protoss" style="display: none;">
+                                            <span class="vs-protoss-icon"></span> vs Protoss: <span class="vs-protoss-count">0</span>/2<br>
+                                            <span class="vs-zerg-icon"></span> vs Zerg: <span class="vs-zerg-count">0</span>/2<br>
+                                            <span class="vs-terran-icon"></span> vs Terran: <span class="vs-terran-count">0</span>/2
+                                        </div>
+                                        <div class="race-req" data-race="Zerg" style="display: none;">
+                                            <span class="vs-protoss-icon"></span> vs Protoss: <span class="vs-protoss-count">0</span>/2<br>
+                                            <span class="vs-zerg-icon"></span> vs Zerg: <span class="vs-zerg-count">0</span>/2<br>
+                                            <span class="vs-terran-icon"></span> vs Terran: <span class="vs-terran-count">0</span>/2
+                                        </div>
+                                        <div class="race-req" data-race="Terran" style="display: none;">
+                                            <span class="vs-protoss-icon"></span> vs Protoss: <span class="vs-protoss-count">0</span>/2<br>
+                                            <span class="vs-zerg-icon"></span> vs Zerg: <span class="vs-zerg-count">0</span>/2<br>
+                                            <span class="vs-terran-icon"></span> vs Terran: <span class="vs-terran-count">0</span>/2
+                                        </div>
+                                    </div>
                                 </li>
                                 <li>
                                     @if(req.hasAvailability) {
@@ -113,6 +96,24 @@
                                 </li>
                             </ul>
                         </div>
+                        <script>
+                            window.raceRequirements = window.raceRequirements || {};
+                            window.raceRequirements[@tournamentViewDataForUser.id] = {
+                                hasAvailability: @req.hasAvailability,
+                                requirementsPerRace: {
+                                    @req.requirementsPerRace.map { case (race, raceReq) =>
+                                        '@race': {
+                                            hasEnoughReplays: @raceReq.hasEnoughReplays,
+                                            replayCounts: {
+                                                vsProtoss: @raceReq.replayCounts.vsProtoss,
+                                                vsZerg: @raceReq.replayCounts.vsZerg,
+                                                vsTerran: @raceReq.replayCounts.vsTerran
+                                            }
+                                        },
+                                    }
+                                }
+                            };
+                        </script>
                     }
             <script>
                 (function() {
@@ -120,16 +121,73 @@
                     const raceSelect = document.getElementById('race-select-@tournamentViewDataForUser.id');
                     const rulesCheckbox = document.getElementById('rules-checkbox-@tournamentViewDataForUser.id');
                     const submitBtn = document.getElementById('submit-btn-@tournamentViewDataForUser.id');
+                    const tournamentId = @tournamentViewDataForUser.id;
+                    const reqData = window.raceRequirements && window.raceRequirements[tournamentId];
+
+                    function updateRequirementsDisplay() {
+                        if (!reqData) return;
+                        
+                        const selectedRace = raceSelect.value;
+                        const raceReq = reqData.requirementsPerRace[selectedRace];
+                        
+                        // Hide all race requirement details
+                        document.querySelectorAll('#req-container-' + tournamentId + ' .race-req').forEach(el => {
+                            el.style.display = 'none';
+                        });
+                        
+                        if (raceReq) {
+                            // Show selected race details
+                            const raceDetails = document.querySelector('#req-container-' + tournamentId + ' .race-req[data-race="' + selectedRace + '"]');
+                            if (raceDetails) {
+                                raceDetails.style.display = 'block';
+                                // Update counts
+                                raceDetails.querySelector('.vs-protoss-count').textContent = raceReq.replayCounts.vsProtoss;
+                                raceDetails.querySelector('.vs-zerg-count').textContent = raceReq.replayCounts.vsZerg;
+                                raceDetails.querySelector('.vs-terran-count').textContent = raceReq.replayCounts.vsTerran;
+                                // Update icons
+                                raceDetails.querySelector('.vs-protoss-icon').textContent = raceReq.replayCounts.vsProtoss >= 2 ? '✓' : '✗';
+                                raceDetails.querySelector('.vs-protoss-icon').style.color = raceReq.replayCounts.vsProtoss >= 2 ? 'green' : 'red';
+                                raceDetails.querySelector('.vs-zerg-icon').textContent = raceReq.replayCounts.vsZerg >= 2 ? '✓' : '✗';
+                                raceDetails.querySelector('.vs-zerg-icon').style.color = raceReq.replayCounts.vsZerg >= 2 ? 'green' : 'red';
+                                raceDetails.querySelector('.vs-terran-icon').textContent = raceReq.replayCounts.vsTerran >= 2 ? '✓' : '✗';
+                                raceDetails.querySelector('.vs-terran-icon').style.color = raceReq.replayCounts.vsTerran >= 2 ? 'green' : 'red';
+                            }
+                            
+                            // Update main replays status
+                            const replaysIcon = document.getElementById('replays-icon-' + tournamentId);
+                            if (replaysIcon) {
+                                replaysIcon.textContent = raceReq.hasEnoughReplays ? '✓' : '✗';
+                                replaysIcon.style.color = raceReq.hasEnoughReplays ? 'green' : 'red';
+                            }
+                        }
+                    }
 
                     function validateForm() {
                         const hasRace = raceSelect.value !== '';
                         const hasAcceptedRules = rulesCheckbox.checked;
-                        submitBtn.disabled = !(hasRace && hasAcceptedRules);
+                        let hasEnoughReplays = false;
+                        let hasAvailability = false;
+                        
+                        if (reqData && raceSelect.value) {
+                            const raceReq = reqData.requirementsPerRace[raceSelect.value];
+                            if (raceReq) {
+                                hasEnoughReplays = raceReq.hasEnoughReplays;
+                            }
+                            hasAvailability = reqData.hasAvailability;
+                        }
+                        
+                        submitBtn.disabled = !(hasRace && hasAcceptedRules && hasEnoughReplays && hasAvailability);
                     }
 
-                    raceSelect.addEventListener('change', validateForm);
+                    raceSelect.addEventListener('change', function() {
+                        updateRequirementsDisplay();
+                        validateForm();
+                    });
                     rulesCheckbox.addEventListener('change', validateForm);
-                    validateForm(); // Initial check
+                    
+                    // Initial display
+                    updateRequirementsDisplay();
+                    validateForm();
                 })();
             </script>
         }

@@ -21,7 +21,13 @@ case class TournamentRegistrationRequirements(
   hasEnoughReplays: Boolean,
   hasAvailability: Boolean,
   selectedRace: Option[String],
-  replayCounts: Option[MatchupReplayCounts] = None
+  replayCounts: Option[MatchupReplayCounts] = None,
+  requirementsPerRace: Map[String, RaceRegistrationRequirements] = Map.empty
+)
+
+case class RaceRegistrationRequirements(
+  hasEnoughReplays: Boolean,
+  replayCounts: MatchupReplayCounts
 )
 
 case class TournamentOpenDataUser(

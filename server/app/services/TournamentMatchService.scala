@@ -34,15 +34,40 @@ class TournamentMatchService @Inject() (
       inProgressTournaments <- tournamentService.getTournamentsByStatus(
         TournamentStatus.InProgress
       )
-      // Get registration requirements for non-registered users
-      registrationRequirements <- Future.sequence(
-        Seq("Protoss", "Zerg", "Terran").map { race =>
-          checkRegistrationRequirements(userId, race).map(race -> _)
-        }
-      ).map(_.toMap)
+      // Get registration requirements for all races
+      protossReq <- checkRaceRequirements(userId, "Protoss")
+      zergReq <- checkRaceRequirements(userId, "Zerg")
+      terranReq <- checkRaceRequirements(userId, "Terran")
       hasAvailability <- registrationValidationService.hasAvailabilityTimes(userId)
+      result = buildTournamentViewData(
+        registered,
+        nonRegistered,
+        inProgressTournaments,
+        protossReq,
+        zergReq,
+        terranReq,
+        hasAvailability
+      )
+    } yield result
+  }
 
-    } yield TournamentViewDataForUser(
+  private def buildTournamentViewData(
+      registered: List[Tournament],
+      nonRegistered: List[Tournament],
+      inProgressTournaments: List[Tournament],
+      protossReq: RaceRegistrationRequirements,
+      zergReq: RaceRegistrationRequirements,
+      terranReq: RaceRegistrationRequirements,
+      hasAvailability: Boolean
+  ): TournamentViewDataForUser = {
+    val requirementsPerRace = Map(
+      "Protoss" -> protossReq,
+      "Zerg" -> zergReq,
+      "Terran" -> terranReq
+    )
+    val canRegisterAnyRace = requirementsPerRace.values.exists(_.hasEnoughReplays) && hasAvailability
+    
+    TournamentViewDataForUser(
       registered.map(t =>
         TournamentOpenDataUser(
           t.id,
@@ -53,17 +78,16 @@ class TournamentMatchService @Inject() (
         )
       ) ++
         nonRegistered.map { t =>
-          // Determine if user can register based on requirements
-          val canRegisterAnyRace = registrationRequirements.values.exists(_.hasEnoughReplays) && hasAvailability
           TournamentOpenDataUser(
             t.id,
             t.name,
             if (canRegisterAnyRace) TournamentRegistrationUserStatus.Unregistered else TournamentRegistrationUserStatus.NotAbleToRegister,
             None,
             Some(TournamentRegistrationRequirements(
-              hasEnoughReplays = registrationRequirements.values.exists(_.hasEnoughReplays),
+              hasEnoughReplays = requirementsPerRace.values.exists(_.hasEnoughReplays),
               hasAvailability = hasAvailability,
-              selectedRace = None
+              selectedRace = None,
+              requirementsPerRace = requirementsPerRace
             ))
           )
         },
@@ -75,7 +99,7 @@ class TournamentMatchService @Inject() (
     )
   }
 
-  private def checkRegistrationRequirements(userId: Long, race: String): Future[TournamentRegistrationRequirements] = {
+  private def checkRaceRequirements(userId: Long, race: String): Future[RaceRegistrationRequirements] = {
     import models.StarCraftModels.*
     val raceOpt = race match {
       case "Protoss" => Some(Protoss)
@@ -85,22 +109,19 @@ class TournamentMatchService @Inject() (
     }
 
     raceOpt match {
-      case None => Future.successful(TournamentRegistrationRequirements(false, false, None, None))
+      case None => Future.successful(RaceRegistrationRequirements(false, MatchupReplayCounts(0, 0, 0)))
       case Some(scRace) =>
         for {
           replayCounts <- registrationValidationService.getReplayCountsPerMatchup(userId, scRace)
-          hasAvail <- registrationValidationService.hasAvailabilityTimes(userId)
         } yield {
           val matchupCounts = MatchupReplayCounts(
             vsProtoss = replayCounts.getOrElse(Protoss, 0),
             vsZerg = replayCounts.getOrElse(Zerg, 0),
             vsTerran = replayCounts.getOrElse(Terran, 0)
           )
-          TournamentRegistrationRequirements(
+          RaceRegistrationRequirements(
             hasEnoughReplays = matchupCounts.hasEnoughPerMatchup(2),
-            hasAvailability = hasAvail,
-            selectedRace = Some(race),
-            replayCounts = Some(matchupCounts)
+            replayCounts = matchupCounts
           )
         }
     }
