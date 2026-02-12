@@ -37,13 +37,22 @@ trait TournamentRegistrationValidationService {
   def getReplayCountsPerMatchup(userId: Long, race: SCRace): Future[Map[SCRace, Int]]
 
   /** Checks if user has added any availability times.
-    *
-    * @param userId
-    *   The user ID
-    * @return
-    *   Future[Boolean] True if user has availability times
-    */
+   *
+   * @param userId
+   *   The user ID
+   * @return
+   *   Future[Boolean] True if user has availability times
+   */
   def hasAvailabilityTimes(userId: Long): Future[Boolean]
+
+  /** Checks if user has selected a timezone.
+   *
+   * @param userId
+   *   The user ID
+   * @return
+   *   Future[Boolean] True if user has selected a timezone
+   */
+  def hasTimezone(userId: Long): Future[Boolean]
 
   /** Validates all registration requirements for a user.
    *
@@ -63,6 +72,12 @@ class TournamentRegistrationValidationServiceImpl @Inject() (
     userAvailabilityRepository: UserAvailabilityRepository
 )(implicit ec: ExecutionContext)
     extends TournamentRegistrationValidationService {
+
+  override def hasTimezone(userId: Long): Future[Boolean] = {
+    userAvailabilityRepository
+      .getTimezone(userId)
+      .map(_.isDefined)
+  }
 
   override def hasEnoughReplays(userId: Long, race: SCRace, minReplaysPerMatchup: Int = 2): Future[Boolean] = {
     for {
@@ -93,8 +108,9 @@ class TournamentRegistrationValidationServiceImpl @Inject() (
     for {
       hasReplays     <- hasEnoughReplays(userId, racePicked, minReplaysPerMatchup = 2)
       hasAvailabilities <- hasAvailabilityTimes(userId)
+      hasTimezoneSet <- hasTimezone(userId)
     } yield {
-      hasReplays && hasAvailabilities
+      hasReplays && hasAvailabilities && hasTimezoneSet
     }
   }
 }

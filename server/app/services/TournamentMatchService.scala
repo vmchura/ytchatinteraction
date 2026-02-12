@@ -39,6 +39,7 @@ class TournamentMatchService @Inject() (
       zergReq <- checkRaceRequirements(userId, "Zerg")
       terranReq <- checkRaceRequirements(userId, "Terran")
       hasAvailability <- registrationValidationService.hasAvailabilityTimes(userId)
+      hasTimezone <- registrationValidationService.hasTimezone(userId)
       result = buildTournamentViewData(
         registered,
         nonRegistered,
@@ -46,7 +47,8 @@ class TournamentMatchService @Inject() (
         protossReq,
         zergReq,
         terranReq,
-        hasAvailability
+        hasAvailability,
+        hasTimezone
       )
     } yield result
   }
@@ -58,14 +60,15 @@ class TournamentMatchService @Inject() (
       protossReq: RaceRegistrationRequirements,
       zergReq: RaceRegistrationRequirements,
       terranReq: RaceRegistrationRequirements,
-      hasAvailability: Boolean
+      hasAvailability: Boolean,
+      hasTimezone: Boolean
   ): TournamentViewDataForUser = {
     val requirementsPerRace = Map(
       "Protoss" -> protossReq,
       "Zerg" -> zergReq,
       "Terran" -> terranReq
     )
-    val canRegisterAnyRace = requirementsPerRace.values.exists(_.hasEnoughReplays) && hasAvailability
+    val canRegisterAnyRace = requirementsPerRace.values.exists(_.hasEnoughReplays) && hasAvailability && hasTimezone
     
     TournamentViewDataForUser(
       registered.map(t =>
@@ -86,6 +89,7 @@ class TournamentMatchService @Inject() (
             Some(TournamentRegistrationRequirements(
               hasEnoughReplays = requirementsPerRace.values.exists(_.hasEnoughReplays),
               hasAvailability = hasAvailability,
+              hasTimezone = hasTimezone,
               selectedRace = None,
               requirementsPerRace = requirementsPerRace
             ))

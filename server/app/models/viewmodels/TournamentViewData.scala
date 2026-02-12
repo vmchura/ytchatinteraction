@@ -20,6 +20,7 @@ case class MatchupReplayCounts(
 case class TournamentRegistrationRequirements(
   hasEnoughReplays: Boolean,
   hasAvailability: Boolean,
+  hasTimezone: Boolean,
   selectedRace: Option[String],
   replayCounts: Option[MatchupReplayCounts] = None,
   requirementsPerRace: Map[String, RaceRegistrationRequirements] = Map.empty

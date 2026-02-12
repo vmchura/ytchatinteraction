@@ -84,6 +84,17 @@
                                     </div>
                                 </li>
                                 <li>
+                                    @if(req.hasTimezone) {
+                                        <span style="color: green;">✓</span>
+                                    } else {
+                                        <span style="color: red;">✗</span>
+                                    }
+                                    Zona horaria registrada
+                                    @if(!req.hasTimezone) {
+                                        <small><a href="@routes.UserAvailabilityController.showAvailabilityManagement()">Configurar zona horaria</a></small>
+                                    }
+                                </li>
+                                <li>
                                     @if(req.hasAvailability) {
                                         <span style="color: green;">✓</span>
                                     } else {
@@ -100,6 +111,7 @@
                             window.raceRequirements = window.raceRequirements || {};
                             window.raceRequirements[@tournamentViewDataForUser.id] = {
                                 hasAvailability: @req.hasAvailability,
+                                hasTimezone: @req.hasTimezone,
                                 requirementsPerRace: {
                                     @req.requirementsPerRace.map { case (race, raceReq) =>
                                         '@race': {
@@ -167,6 +179,7 @@
                         const hasAcceptedRules = rulesCheckbox.checked;
                         let hasEnoughReplays = false;
                         let hasAvailability = false;
+                        let hasTimezone = false;
                         
                         if (reqData && raceSelect.value) {
                             const raceReq = reqData.requirementsPerRace[raceSelect.value];
@@ -174,9 +187,10 @@
                                 hasEnoughReplays = raceReq.hasEnoughReplays;
                             }
                             hasAvailability = reqData.hasAvailability;
+                            hasTimezone = reqData.hasTimezone;
                         }
                         
-                        submitBtn.disabled = !(hasRace && hasAcceptedRules && hasEnoughReplays && hasAvailability);
+                        submitBtn.disabled = !(hasRace && hasAcceptedRules && hasEnoughReplays && hasAvailability && hasTimezone);
                     }
 
                     raceSelect.addEventListener('change', function() {
@@ -220,6 +234,10 @@
                                 </ul>
                             }
                             <li><a href="@routes.AnalyticalUploadController.uploadAnalyticalFile()" role="button" class="secondary">Subir replays</a></li>
+                        }
+                        @if(!req.hasTimezone) {
+                            <li style="color: red;">✗ Configurar tu zona horaria</li>
+                            <li><a href="@routes.UserAvailabilityController.showAvailabilityManagement()" role="button" class="secondary">Configurar zona horaria</a></li>
                         }
                         @if(!req.hasAvailability) {
                             <li style="color: red;">✗ Configurar tu horario de disponibilidad</li>
