@@ -1,5 +1,125 @@
+/* Mobile-first responsive navigation */
 nav details.dropdown {
   display: inline-block;
+}
+
+/* Base navigation styles for better mobile layout */
+nav.container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+nav.container > ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: 0.5rem;
+}
+
+nav.container > ul:first-child {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+nav.container > ul:last-child {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
+/* Navigation logo */
+.nav-logo {
+  height: 120px;
+  width: auto;
+  max-width: 100%;
+}
+
+/* Navigation responsive styles */
+@media (max-width: 768px) {
+  nav.container {
+    padding: 0.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  nav.container > ul:first-child {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  nav.container > ul:first-child a {
+    font-size: 0.9rem;
+  }
+
+  .nav-logo {
+    height: 60px !important;
+  }
+
+  nav.container > ul:last-child {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  nav.container > ul:last-child li {
+    margin: 0;
+  }
+
+  nav details.dropdown ul {
+    position: absolute;
+    right: 0;
+    left: auto;
+    min-width: 200px;
+    z-index: 1000;
+  }
+}
+
+/* Table responsive wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+.table-responsive table {
+  min-width: 600px;
+  margin-bottom: 0;
+}
+
+/* Mobile table adjustments */
+@media (max-width: 768px) {
+  .table-responsive table {
+    font-size: 0.875rem;
+  }
+
+  .table-responsive th,
+  .table-responsive td {
+    padding: 0.5rem;
+  }
+}
+
+/* Grid responsive adjustments */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+}
+
+/* WebSocket indicator mobile adjustment */
+@media (max-width: 768px) {
+  #websocket-indicator {
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }
 
 /* global ranking */
@@ -202,5 +322,41 @@ input[aria-invalid="true"] {
 	border-radius: 0.25rem;
 	margin: 0.5rem 0;
 	border: 1px solid #00b894;
+}
+
+/* Availability Management Mobile Styles */
+@media (max-width: 768px) {
+  .day-selector {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  .day-btn {
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .status-selector {
+    grid-template-columns: 1fr !important;
+  }
+
+  .status-option {
+    padding: 0.75rem !important;
+  }
+
+  .current-timezone {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  article header h2 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .timezone-form fieldset.grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
