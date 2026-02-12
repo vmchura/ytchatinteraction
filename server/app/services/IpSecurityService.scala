@@ -22,9 +22,11 @@ class IpSecurityService @Inject() (config: Configuration) extends Logging {
 
   // Load from config on startup
   config.getOptional[Seq[String]]("security.blacklist").foreach { ips =>
-    ips.foreach { ip =>
-      blacklist.add(ip)
-      logger.info(s"Loaded blacklisted IP from config: $ip")
+    {
+      ips.foreach { ip =>
+        blacklist.add(ip)
+      }
+      logger.info(s"Blocked ${ips.length} ips from config")
     }
   }
 
