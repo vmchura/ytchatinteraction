@@ -18,7 +18,7 @@
         case Unregistered => {
             <form action="@routes.UserEventsController.registerForTournament(tournamentViewDataForUser.id)" method="POST" id="registration-form-@tournamentViewDataForUser.id">
                 @helper.CSRF.formField
-                <fieldset class="grid">
+                <fieldset class="grid" style="grid-template-columns: 1fr;">
                     <label>
                         Código de registro
                         <input
@@ -134,7 +134,7 @@
             </script>
         }
         case NotAbleToRegister => {
-            <div class="grid">
+            <div class="grid" style="grid-template-columns: 1fr;">
                 <button disabled>@messages("partials.tournament.register")</button>
                 @tournamentViewDataForUser.contentCreatorInfo.map { contentCreator =>
                     <small>

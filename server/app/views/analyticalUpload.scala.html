@@ -6,26 +6,28 @@
 
 @main(messages("upload.title"), Some(user)) {
 
-<table>
-    <thead>
-    <tr>
-        <th scope="col">Match</th>
-        <th scope="col">@messages("quantity.expected")</th>
-    </tr>
-    <tbody>
-    @for((playerRace, opponentMatches) <- matches) {
-    @for((opponentRace, count) <- opponentMatches) {
-    <tr>
-        <td>@playerRace vs @opponentRace</td>
-        <td>@count</td>
-    </tr>
-    }
-    }
-    </tbody>
-    </thead>
-</table>
+<div class="table-responsive">
+    <table>
+        <thead>
+        <tr>
+            <th scope="col">Match</th>
+            <th scope="col">@messages("quantity.expected")</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for((playerRace, opponentMatches) <- matches) {
+        @for((opponentRace, count) <- opponentMatches) {
+        <tr>
+            <td>@playerRace vs @opponentRace</td>
+            <td>@count</td>
+        </tr>
+        }
+        }
+        </tbody>
+    </table>
+</div>
 
-<div class="grid">
+<div class="grid" style="grid-template-columns: 1fr;">
     <form method="post"
           id="matchUploadForm"
           action="@routes.AnalyticalUploadController.updateState()"

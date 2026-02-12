@@ -14,24 +14,26 @@
     @if(currentElos.isEmpty) {
     <p>@messages("elo.stats.no.current")</p>
     } else {
-    <table>
-        <thead>
-        <tr>
-            <th>@messages("elo.stats.matchup")</th>
-            <th>@messages("elo.stats.elo")</th>
-            <th>@messages("elo.stats.updated")</th>
-        </tr>
-        </thead>
-        <tbody>
-        @for(elo <- currentElos.sortBy(e => (e.userRace.shortLabel, e.rivalRace.shortLabel))) {
-        <tr>
-            <td>@{elo.userRace.shortLabel}v@{elo.rivalRace.shortLabel}</td>
-            <td><strong>@elo.elo</strong></td>
-            <td>@elo.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
-        </tr>
-        }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table>
+            <thead>
+            <tr>
+                <th>@messages("elo.stats.matchup")</th>
+                <th>@messages("elo.stats.elo")</th>
+                <th>@messages("elo.stats.updated")</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for(elo <- currentElos.sortBy(e => (e.userRace.shortLabel, e.rivalRace.shortLabel))) {
+            <tr>
+                <td>@{elo.userRace.shortLabel}v@{elo.rivalRace.shortLabel}</td>
+                <td><strong>@elo.elo</strong></td>
+                <td>@elo.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
     }
 </section>
 
@@ -40,35 +42,37 @@
     @if(eloLogs.isEmpty) {
     <p>@messages("elo.stats.no.history")</p>
     } else {
-    <table>
-        <thead>
-        <tr>
-            <th>@messages("elo.stats.date")</th>
-            <th>@messages("elo.stats.matchup")</th>
-            <th>@messages("elo.stats.rival")</th>
-            <th>@messages("elo.stats.initial")</th>
-            <th>@messages("elo.stats.new")</th>
-            <th>@messages("elo.stats.change")</th>
-        </tr>
-        </thead>
-        <tbody>
-        @for(log <- eloLogs) {
-        <tr>
-            <td>@log.eventAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
-            <td>@{log.userRace.shortLabel}v@{log.rivalRace.shortLabel}</td>
-            <td>@log.rivalUserName</td>
-            <td>@log.userInitialElo</td>
-            <td>@log.userNewElo</td>
-            <td style="color: @if(log.userNewElo > log.userInitialElo) {green} else {red}">
-                @{log.userNewElo - log.userInitialElo match {
-                case change if change > 0 => s"+$change"
-                case change => change.toString
-                }}
-            </td>
-        </tr>
-        }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table>
+            <thead>
+            <tr>
+                <th>@messages("elo.stats.date")</th>
+                <th>@messages("elo.stats.matchup")</th>
+                <th>@messages("elo.stats.rival")</th>
+                <th>@messages("elo.stats.initial")</th>
+                <th>@messages("elo.stats.new")</th>
+                <th>@messages("elo.stats.change")</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for(log <- eloLogs) {
+            <tr>
+                <td>@log.eventAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))</td>
+                <td>@{log.userRace.shortLabel}v@{log.rivalRace.shortLabel}</td>
+                <td>@log.rivalUserName</td>
+                <td>@log.userInitialElo</td>
+                <td>@log.userNewElo</td>
+                <td style="color: @if(log.userNewElo > log.userInitialElo) {green} else {red}">
+                    @{log.userNewElo - log.userInitialElo match {
+                    case change if change > 0 => s"+$change"
+                    case change => change.toString
+                    }}
+                </td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
     }
 </section>
 
@@ -78,26 +82,28 @@
     @if(recentMatches.isEmpty) {
     <p>@messages("match.recent.no.history")</p>
     } else {
-    <table>
-        <thead>
-        <tr>
-            <th>@messages("match.recent.firstUser")</th>
-            <th>@messages("match.recent.secondUser")</th>
-            <th>@messages("match.recent.winner")</th>
-            <th>@messages("match.recent.arena")</th>
-        </tr>
-        </thead>
-        <tbody>
-        @for(singleMatch <- recentMatches) {
-        <tr>
-            <td>@singleMatch._1</td>
-            <td>@singleMatch._2</td>
-            <td>@singleMatch._3</td>
-            <td>@singleMatch._4</td>
-        </tr>
-        }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table>
+            <thead>
+            <tr>
+                <th>@messages("match.recent.firstUser")</th>
+                <th>@messages("match.recent.secondUser")</th>
+                <th>@messages("match.recent.winner")</th>
+                <th>@messages("match.recent.arena")</th>
+            </tr>
+            </thead>
+            <tbody>
+            @for(singleMatch <- recentMatches) {
+            <tr>
+                <td>@singleMatch._1</td>
+                <td>@singleMatch._2</td>
+                <td>@singleMatch._3</td>
+                <td>@singleMatch._4</td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
     }
 </section>
 }

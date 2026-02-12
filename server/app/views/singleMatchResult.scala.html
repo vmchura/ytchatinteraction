@@ -6,38 +6,40 @@
 @(user: User, analyticalResponse: List[AnalyticalResultView])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
 @main(messages("match.result.title"), Some(user)) {
-<table>
-    <thead>
-    <tr>
-        <th scope="col">@messages("match.result.user.alias")</th>
-        <th scope="col">@messages("match.result.matchup")</th>
-        <th scope="col">@messages("match.result.file.name")</th>
-        <th scope="col">@messages("match.result.algorithm.version")</th>
-        <th scope="col">@messages("match.result.result")</th>
-    </tr>
-    </thead>
-    <tbody>
-    @for(response <- analyticalResponse) {
-    <tr>
-        <td>@response.userAlias</td>
-        <td>@{response.userRace.shortLabel}v@{response.rivalRace.shortLabel}</td>
-        <td>@response.originalFileName</td>
-        <td>@response.algorithmVersion.getOrElse("-")</td>
-        <td>
-            @response.result match {
-            case Some(false) => {
-            <span style="color: green;">✓ @messages("match.result.valid")</span>
-            }
-            case Some(true) => {
-            <span style="color: red;">✗ @messages("match.result.invalid")</span>
-            }
-            case None => {
-            <span style="color: orange;">? @messages("match.result.error")</span>
-            }
-            }
-        </td>
-    </tr>
-    }
-    </tbody>
-</table>
+<div class="table-responsive">
+    <table>
+        <thead>
+        <tr>
+            <th scope="col">@messages("match.result.user.alias")</th>
+            <th scope="col">@messages("match.result.matchup")</th>
+            <th scope="col">@messages("match.result.file.name")</th>
+            <th scope="col">@messages("match.result.algorithm.version")</th>
+            <th scope="col">@messages("match.result.result")</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for(response <- analyticalResponse) {
+        <tr>
+            <td>@response.userAlias</td>
+            <td>@{response.userRace.shortLabel}v@{response.rivalRace.shortLabel}</td>
+            <td>@response.originalFileName</td>
+            <td>@response.algorithmVersion.getOrElse("-")</td>
+            <td>
+                @response.result match {
+                case Some(false) => {
+                <span style="color: green;">✓ @messages("match.result.valid")</span>
+                }
+                case Some(true) => {
+                <span style="color: red;">✗ @messages("match.result.invalid")</span>
+                }
+                case None => {
+                <span style="color: orange;">? @messages("match.result.error")</span>
+                }
+                }
+            </td>
+        </tr>
+        }
+        </tbody>
+    </table>
+</div>
 }

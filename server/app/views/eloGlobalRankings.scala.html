@@ -12,29 +12,31 @@
 @if(allElos.isEmpty) {
 <p>@messages("elo.global.no.data")</p>
 } else {
-<table>
-    <thead>
-    <tr>
-        <th>@messages("elo.global.rank")</th>
-        <th>@messages("elo.global.player")</th>
-        <th>@messages("elo.global.race")</th>
-        <th>@messages("elo.global.scpower")</th>
-        <th>@messages("elo.global.updated")</th>
-    </tr>
-    </thead>
-    <tbody>
-    @for((elo, index) <- allElos.zipWithIndex) {
-    <tr @if(elo.userId== user.userId) { class="highlight" }>
-        <td>@{index + 1}</td>
-        <td>
-            <a href="@routes.EloStatsController.viewStats(elo.userId)">@elo.userName</a>
-        </td>
-        <td>@{elo.userRace.shortLabel}</td>
-        <td><strong>@elo.averageElo</strong></td>
-        <td>@elo.maxUpdatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))</td>
-    </tr>
-    }
-    </tbody>
-</table>
+<div class="table-responsive">
+    <table>
+        <thead>
+        <tr>
+            <th>@messages("elo.global.rank")</th>
+            <th>@messages("elo.global.player")</th>
+            <th>@messages("elo.global.race")</th>
+            <th>@messages("elo.global.scpower")</th>
+            <th>@messages("elo.global.updated")</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for((elo, index) <- allElos.zipWithIndex) {
+        <tr @if(elo.userId== user.userId) { class="highlight" }>
+            <td>@{index + 1}</td>
+            <td>
+                <a href="@routes.EloStatsController.viewStats(elo.userId)">@elo.userName</a>
+            </td>
+            <td>@{elo.userRace.shortLabel}</td>
+            <td><strong>@elo.averageElo</strong></td>
+            <td>@elo.maxUpdatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))</td>
+        </tr>
+        }
+        </tbody>
+    </table>
+</div>
 }
 }
