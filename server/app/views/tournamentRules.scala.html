@@ -1,110 +1,103 @@
 @import controllers.routes
-
 @()(implicit request: RequestHeader, messages: Messages)
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
     <title>Bases del Torneo - Evolution Complete</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@picocss/pico@@2/css/pico.min.css">
-    <style>
-        .rules-container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 2rem;
-        }
-        .rules-section {
-            margin-bottom: 2rem;
-        }
-        .rules-section h2 {
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        .rules-section ul {
-            margin-left: 1.5rem;
-        }
-        .rules-section li {
-            margin-bottom: 0.5rem;
-        }
-        .back-link {
-            margin-top: 2rem;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <main class="container">
-        <div class="rules-container">
-            <h1>Bases y Condiciones del Torneo</h1>
+  </head>
+  <body>
+    <main>
+      <div>
+        <h1>Bases y Condiciones del Torneo</h1>
 
-            <div class="rules-section">
-                <h2>1. Requisitos de Participación</h2>
-                <ul>
-                    <li>Contar con al menos 2 replays base subidos para la raza seleccionada</li>
-                    <li>Seleccionar una raza principal (Protoss, Zerg o Terran)</li>
-                    <li>Registrar al menos un horario de disponibilidad semanal</li>
-                    <li>Aceptar las bases y condiciones del torneo</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>2. Sistema de Juego</h2>
-                <ul>
-                    <li>Modalidad: 1v1 (Uno contra Uno)</li>
-                    <li>Formato: Eliminación directa o grupos (según el torneo)</li>
-                    <li>Mapas: Serán anunciados al inicio del torneo</li>
-                    <li>Rondas: Al mejor de 3 o 5 (según la fase del torneo)</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>3. Reglas de Conducta</h2>
-                <ul>
-                    <li>Respeto mutuo entre todos los participantes</li>
-                    <li>No se permite el uso de hacks, cheats o cualquier software no autorizado</li>
-                    <li>Las partidas deben ser jugadas en el horario acordado</li>
-                    <li>En caso de desconexión, se evaluará según el reglamento específico</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>4. Sistema de Replays</h2>
-                <ul>
-                    <li>Todos los participantes deben subir sus replays de las partidas jugadas</li>
-                    <li>Los replays son necesarios para el sistema de análisis anticheats</li>
-                    <li>La no subida de replays puede resultar en descalificación</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>5. Disponibilidad y Horarios</h2>
-                <ul>
-                    <li>Los jugadores deben registrar su disponibilidad horaria</li>
-                    <li>Se espera puntualidad en las partidas programadas</li>
-                    <li>En caso de no presentarse, se puede aplicar walkover</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>6. Sanciones</h2>
-                <ul>
-                    <li>Uso de software no autorizado: Descalificación inmediata y baneo</li>
-                    <li>Comportamiento tóxico: Advertencia o descalificación según gravedad</li>
-                    <li>No presentación a partidas: Walkover o descalificación</li>
-                </ul>
-            </div>
-
-            <div class="rules-section">
-                <h2>7. Aceptación</h2>
-                <p>Al registrarte en el torneo, aceptas cumplir con todas las bases y condiciones aquí establecidas. El incumplimiento de cualquiera de estas reglas puede resultar en descalificación del torneo.</p>
-            </div>
-
-            <div class="back-link">
-                <a href="@routes.UserEventsController.userEvents()" class="secondary" role="button">Volver a Eventos</a>
-            </div>
+        <div>
+          <h2>1. Requisitos de Participación</h2>
+          <ul>
+            <li>
+              Contar con al menos 2 replays base subidos para la raza
+              seleccionada
+            </li>
+            <li>Seleccionar una raza principal (Protoss, Zerg o Terran)</li>
+            <li>Registrar al menos un horario de disponibilidad semanal</li>
+            <li>Aceptar las bases y condiciones del torneo</li>
+          </ul>
         </div>
+
+        <div>
+          <h2>2. Sistema de Juego</h2>
+          <ul>
+            <li>Modalidad: 1v1 (Uno contra Uno)</li>
+            <li>Formato: Eliminación directa o grupos (según el torneo)</li>
+            <li>Mapas: Serán anunciados al inicio del torneo</li>
+            <li>Rondas: Al mejor de 3 o 5 (según la fase del torneo)</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>3. Reglas de Conducta</h2>
+          <ul>
+            <li>Respeto mutuo entre todos los participantes</li>
+            <li>
+              No se permite el uso de hacks, cheats o cualquier software no
+              autorizado
+            </li>
+            <li>Las partidas deben ser jugadas en el horario acordado</li>
+            <li>
+              En caso de desconexión, se evaluará según el reglamento específico
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>4. Sistema de Replays</h2>
+          <ul>
+            <li>
+              Todos los participantes deben subir sus replays de las partidas
+              jugadas
+            </li>
+            <li>
+              Los replays son necesarios para el sistema de análisis anticheats
+            </li>
+            <li>La no subida de replays puede resultar en descalificación</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>5. Disponibilidad y Horarios</h2>
+          <ul>
+            <li>Los jugadores deben registrar su disponibilidad horaria</li>
+            <li>Se espera puntualidad en las partidas programadas</li>
+            <li>En caso de no presentarse, se puede aplicar walkover</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>6. Sanciones</h2>
+          <ul>
+            <li>
+              Uso de software no autorizado: Descalificación inmediata y baneo
+            </li>
+            <li>
+              Comportamiento tóxico: Advertencia o descalificación según
+              gravedad
+            </li>
+            <li>No presentación a partidas: Walkover o descalificación</li>
+          </ul>
+        </div>
+
+        <div>
+          <h2>7. Aceptación</h2>
+          <p>
+            Al registrarte en el torneo, aceptas cumplir con todas las bases y
+            condiciones aquí establecidas. El incumplimiento de cualquiera de
+            estas reglas puede resultar en descalificación del torneo.
+          </p>
+        </div>
+
+          <a href="@routes.UserEventsController.userEvents()" role="button">Volver a Eventos</a>
+      </div>
     </main>
-</body>
+  </body>
 </html>
