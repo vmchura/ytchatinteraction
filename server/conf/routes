@@ -129,7 +129,24 @@ GET     /stats                      controllers.EloStatsController.globalRanking
 # Polls view
 GET     /polls                      controllers.PollsViewController.viewPolls()
 
-
+# Prediction Game routes
+GET     /predictions                                   controllers.PredictionController.showPredictionHome()
+GET     /predictions/event/:eventId                    controllers.PredictionController.showEventPage(eventId: Long)
+GET     /admin/predictions                             controllers.PredictionController.showAdminPredictions()
+GET     /admin/predictions/event/:eventId              controllers.PredictionController.showAdminEventPage(eventId: Long)
+GET     /api/predictions/events                        controllers.PredictionController.listEvents()
+GET     /api/predictions/events/:id                    controllers.PredictionController.getEvent(id: Long)
+POST    /api/predictions/events                        controllers.PredictionController.createEvent()
+GET     /api/predictions/events/:eventId/matchups      controllers.PredictionController.getMatchups(eventId: Long)
+GET     /api/predictions/events/:eventId/matchups/:round controllers.PredictionController.getMatchupsByRound(eventId: Long, round: Int)
+POST    /api/predictions/matchups                      controllers.PredictionController.createMatchup()
+PUT     /api/predictions/matchups/:id                  controllers.PredictionController.updateMatchup(id: Long)
+POST    /api/predictions/matchups/:id/lock             controllers.PredictionController.lockMatchup(id: Long)
+POST    /api/predictions/bets                          controllers.PredictionController.placeBet()
+GET     /api/predictions/events/:eventId/bets          controllers.PredictionController.getUserBets(eventId: Long)
+DELETE  /api/predictions/bets/:matchupId               controllers.PredictionController.deleteBets(matchupId: Long)
+POST    /api/predictions/matchups/:id/score            controllers.PredictionController.scoreMatchup(id: Long)
+GET     /api/predictions/events/:eventId/leaderboard   controllers.PredictionController.getLeaderboard(eventId: Long)
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

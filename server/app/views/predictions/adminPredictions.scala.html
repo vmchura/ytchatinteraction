@@ -1,0 +1,58 @@
+@import models.{PredictionEvent, User}
+@(user: User, events: Seq[PredictionEvent])(implicit request: RequestHeader, flash: Flash, messages: Messages)
+
+@main("Admin - Predictions", Some(user)) {
+<h1>Prediction Events (Admin)</h1>
+
+@flash.get("error").map { e => <article class="error">@e</article> }
+@flash.get("success").map { s => <article class="success">@s</article> }
+
+<details>
+  <summary>Create New Event</summary>
+  <form id="create-event-form">
+    <div class="grid">
+      <div><label>Event Name <input type="text" id="event-name" required></label></div>
+      <div><button type="submit" style="margin-top:1.5rem">Create</button></div>
+    </div>
+  </form>
+</details>
+
+<hr>
+
+@if(events.isEmpty) {
+  <p>No prediction events yet.</p>
+} else {
+  <table>
+    <thead><tr><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody>
+    @for(event <- events) {
+      <tr>
+        <td><a href="/admin/predictions/event/@event.id">@event.name</a></td>
+        <td><span class="badge">@event.status</span></td>
+        <td>@event.createdAt.toString.take(10)</td>
+        <td><a href="/admin/predictions/event/@event.id" role="button" class="secondary small">Manage</a></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+}
+
+<script>
+function getCsrf() {
+  const match = document.cookie.match(/(?:^|;\s*)Csrf-Token\s*=\s*([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+document.getElementById('create-event-form')?.addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const name = document.getElementById('event-name').value;
+  const res = await fetch('/api/predictions/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Csrf-Token': getCsrf() },
+    body: JSON.stringify({ name: name })
+  });
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || 'Error'); }
+});
+</script>
+}

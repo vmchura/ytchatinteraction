@@ -1,0 +1,207 @@
+@(user: models.User, event: models.PredictionEvent, matchups: Seq[models.PredictionMatchup], bets: Seq[(models.PredictionBet, models.PredictionMatchup)], leaderboard: Seq[models.PredictionUserScoreWithUsername])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
+
+@main(event.name + " - Predictions", Some(user)) {
+<h1>@event.name</h1>
+
+@flash.get("error").map { e => <article class="error">@e</article> }
+@flash.get("success").map { s => <article class="success">@s</article> }
+
+<div class="grid">
+  <div>
+    <div role="tablist">
+      @for(round <- 1 to 4) {
+        <button role="tab" class="secondary round-tab" data-round="@round"
+          onclick="showRound(@round)">R@round</button>
+      }
+    </div>
+
+    @for(round <- 1 to 4) {
+      @defining(matchups.filter(_.round == round)) { roundMatchups =>
+      <div class="round-content" id="round-@round" style="display:@if(round == 1){block}else{none}">
+        @if(roundMatchups.isEmpty) {
+          <p>No matchups for this round yet.</p>
+        } else {
+          @for(m <- roundMatchups) {
+            @defining(bets.filter(_._2.id == m.id)) { mBets =>
+            @defining(mBets.map(_._1.pointsBet).sum) { totalUsed =>
+            <article>
+              <header>
+                <strong>@m.matchLabel</strong>
+                @if(m.status.toString == "Open") {
+                  <span class="badge success">Open</span>
+                } else {
+                  <span class="badge secondary">@m.status</span>
+                }
+              </header>
+
+              @if(m.betType.toString == "GroupPosition") {
+                <p>@m.player1Name.getOrElse("P1") / @m.player2Name.getOrElse("P2") / @m.player3Name.getOrElse("P3") / @m.player4Name.getOrElse("P4")</p>
+
+                @if(m.status.toString == "Open") {
+                  <table>
+                    <thead><tr><th>Player</th><th>Position</th><th>Bet</th><th>Mult</th></tr></thead>
+                    <tbody>
+                    @for(pNum <- 1 to 4) {
+                      <tr>
+                        <td>@m.productElement(5 + (pNum-1)*2).asInstanceOf[Option[String]].getOrElse("P" + pNum)</td>
+                        <td>
+                          <select id="sel-@m.id-p@pNum">
+                            <option value="">-</option>
+                            @for(pos <- 1 to 4) {
+                              <option value="player@{pNum}-position@{pos}">@pos</option>
+                            }
+                          </select>
+                        </td>
+                        <td><input type="number" id="pts-@m.id-p@{pNum}" min="0" max="100" value="0" style="width:5rem"></td>
+                        <td><small>x@m.multipliers.getOrElse("player" + pNum + "-position1", 3.0).toString.take(4)</small></td>
+                      </tr>
+                    }
+                    </tbody>
+                  </table>
+                  <p>Budget: <span id="budget-@m.id">@{100 - totalUsed}</span>/100 used: @totalUsed</p>
+                  <button type="button" onclick="submitGroupBets(@m.id)">Place Bets</button>
+                }
+
+                @if(m.status.toString == "Scored") {
+                  @m.result.map { r =>
+                    <p><strong>Result:</strong> @r.toString</p>
+                  }
+                  @for((bet, _) <- mBets) {
+                    <span class="badge success">@bet.selection: @bet.pointsBet pts</span>
+                  }
+                }
+              } else {
+                <p>@m.player1Name.getOrElse("P1") vs @m.player2Name.getOrElse("P2") (Bo7)</p>
+
+                @if(m.status.toString == "Open") {
+                  <div class="grid">
+                    @for(score <- Seq("4-0","4-1","4-2","4-3","3-4","2-4","1-4","0-4")) {
+                      <div>
+                        <label>
+                          <input type="number" id="pts-@m.id-@score.replace("-","_")" min="0" max="100" value="0" style="width:4rem">
+                          <small>@score (x@m.multipliers.getOrElse(score, 3.0).toString.take(3))</small>
+                        </label>
+                      </div>
+                    }
+                  </div>
+                  <p>Budget: <span id="budget-@m.id">@{100 - totalUsed}</span>/100 used: @totalUsed</p>
+                  <button type="button" onclick="submitMatchBets(@m.id)">Place Bets</button>
+                }
+
+                @if(m.status.toString == "Scored") {
+                  @m.result.map { r =>
+                    <p><strong>Result:</strong> @r.toString</p>
+                  }
+                }
+              }
+
+              @if(mBets.nonEmpty && m.status.toString == "Open") {
+                <footer>
+                  <small>Your bets:</small>
+                  @for((bet, _) <- mBets) {
+                    <span class="badge">@bet.selection: @bet.pointsBet pts</span>
+                  }
+                  <button type="button" class="secondary small" onclick="clearBets(@m.id)">Clear</button>
+                </footer>
+              }
+            </article>
+            }}
+          }
+        }
+      </div>
+      }
+    }
+  </div>
+
+  <aside>
+    <h2>Leaderboard</h2>
+    @if(leaderboard.isEmpty) {
+      <p>No scores yet.</p>
+    } else {
+      <table>
+        <thead><tr><th>#</th><th>Player</th><th>Score</th></tr></thead>
+        <tbody>
+        @for((s, i) <- leaderboard.zipWithIndex) {
+          <tr @if(s.userId == user.userId) { style="background:var(--primary-focus)" }>
+            <td>@{i+1}</td>
+            <td>@s.userName</td>
+            <td><strong>@s.totalScore</strong></td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+  </aside>
+</div>
+
+<style>
+.round-content { margin-top: 1rem; }
+[role="tablist"] { margin-bottom: 0.5rem; }
+</style>
+
+<script>
+function getCsrf() {
+  const match = document.cookie.match(/(?:^|;\s*)Csrf-Token\s*=\s*([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+async function api(method, url, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'Csrf-Token': getCsrf() } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts);
+}
+
+function showRound(r) {
+  document.querySelectorAll('.round-tab').forEach(t => t.classList.remove('primary'));
+  document.querySelectorAll('.round-content').forEach(c => c.style.display = 'none');
+  document.getElementById('round-' + r).style.display = 'block';
+  document.querySelector('[data-round="' + r + '"]').classList.add('primary');
+}
+
+async function submitGroupBets(matchupId) {
+  const bets = [];
+  for (let p = 1; p <= 4; p++) {
+    const sel = document.getElementById('sel-' + matchupId + '-p' + p);
+    const pts = document.getElementById('pts-' + matchupId + '-p' + p);
+    if (sel && pts && sel.value && parseInt(pts.value) > 0) {
+      bets.push({ matchupId, selection: sel.value, pointsBet: parseInt(pts.value) });
+    }
+  }
+  if (bets.length === 0) { alert('Select at least one bet'); return; }
+  let total = bets.reduce((s, b) => s + b.pointsBet, 0);
+  if (total > 100) { alert('Total exceeds 100 points'); return; }
+  for (const bet of bets) {
+    const res = await api('POST', '/api/predictions/bets', bet);
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Error'); return; }
+  }
+  location.reload();
+}
+
+async function submitMatchBets(matchupId) {
+  const scores = ['4-0','4-1','4-2','4-3','3-4','2-4','1-4','0-4'];
+  const bets = [];
+  for (const score of scores) {
+    const id = 'pts-' + matchupId + '-' + score.replace('-','_');
+    const pts = document.getElementById(id);
+    if (pts && parseInt(pts.value) > 0) {
+      bets.push({ matchupId, selection: score, pointsBet: parseInt(pts.value) });
+    }
+  }
+  if (bets.length === 0) { alert('Select at least one bet'); return; }
+  let total = bets.reduce((s, b) => s + b.pointsBet, 0);
+  if (total > 100) { alert('Total exceeds 100 points'); return; }
+  for (const bet of bets) {
+    const res = await api('POST', '/api/predictions/bets', bet);
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Error'); return; }
+  }
+  location.reload();
+}
+
+async function clearBets(matchupId) {
+  if (!confirm('Clear all your bets for this matchup?')) return;
+  const res = await api('DELETE', '/api/predictions/bets/' + matchupId);
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || 'Error'); }
+}
+</script>
+}

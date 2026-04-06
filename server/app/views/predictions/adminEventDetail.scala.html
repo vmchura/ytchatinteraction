@@ -1,0 +1,283 @@
+@import models.PredictionMatchupStatus
+@(user: models.User, event: models.PredictionEvent, matchups: Seq[models.PredictionMatchup], leaderboard: Seq[models.PredictionUserScoreWithUsername])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
+
+@main("Admin - " + event.name, Some(user)) {
+<h1>@event.name <small>(Admin)</small></h1>
+
+@flash.get("error").map { e => <article class="error">@e</article> }
+@flash.get("success").map { s => <article class="success">@s</article> }
+
+<div class="grid">
+  <div>
+    <h2>Matchups</h2>
+
+    <details open>
+      <summary>Add Matchup</summary>
+      <form id="add-matchup-form">
+        <div class="grid">
+          <div>
+            <label>Round <select id="m-round" required>
+              <option value="1">1 - Groups</option>
+              <option value="2">2 - Quarterfinals</option>
+              <option value="3">3 - Semifinals</option>
+              <option value="4">4 - Final</option>
+            </select></label>
+          </div>
+          <div>
+            <label>Label <input type="text" id="m-label" placeholder="Group A / QF1 / Final" required></label>
+          </div>
+        </div>
+        <label>Type <select id="m-type">
+          <option value="GroupPosition">Group (4 players)</option>
+          <option value="MatchScore">Match (1v1 Bo7)</option>
+        </select></label>
+
+        <div id="group-fields">
+          <div class="grid">
+            <div><label>P1 Name <input type="text" id="m-p1name"></label></div>
+            <div><label>P1 Race <select id="m-p1race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <div class="grid">
+            <div><label>P2 Name <input type="text" id="m-p2name"></label></div>
+            <div><label>P2 Race <select id="m-p2race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <div class="grid">
+            <div><label>P3 Name <input type="text" id="m-p3name"></label></div>
+            <div><label>P3 Race <select id="m-p3race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <div class="grid">
+            <div><label>P4 Name <input type="text" id="m-p4name"></label></div>
+            <div><label>P4 Race <select id="m-p4race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <p><small>Default multiplier 3.0 for all. Edit after creation.</small></p>
+        </div>
+
+        <div id="match-fields" style="display:none">
+          <div class="grid">
+            <div><label>P1 Name <input type="text" id="m-mp1name"></label></div>
+            <div><label>P1 Race <select id="m-mp1race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <div class="grid">
+            <div><label>P2 Name <input type="text" id="m-mp2name"></label></div>
+            <div><label>P2 Race <select id="m-mp2race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
+          </div>
+          <p><small>Default multiplier 3.0 for all scores. Edit after creation.</small></p>
+        </div>
+
+        <button type="submit">Create Matchup</button>
+      </form>
+    </details>
+
+    <hr>
+
+    @for(round <- 1 to 4) {
+      @defining(matchups.filter(_.round == round)) { roundMatchups =>
+      @if(roundMatchups.nonEmpty) {
+        <h3>Round @round</h3>
+        @for(m <- roundMatchups) {
+        <article>
+          <header><strong>@m.matchLabel</strong>
+            @if(m.status.toString == "Open") {
+              <span class="badge success">Open</span>
+            } else if(m.status.toString == "Locked") {
+              <span class="badge warning">Locked</span>
+            } else {
+              <span class="badge secondary">Scored</span>
+            }
+          </header>
+          @if(m.betType.toString == "GroupPosition") {
+            <table>
+              <tr><th>Player</th><th>Race</th></tr>
+              <tr><td>@m.player1Name.getOrElse("-")</td><td>@m.player1Race.getOrElse("-")</td></tr>
+              <tr><td>@m.player2Name.getOrElse("-")</td><td>@m.player2Race.getOrElse("-")</td></tr>
+              <tr><td>@m.player3Name.getOrElse("-")</td><td>@m.player3Race.getOrElse("-")</td></tr>
+              <tr><td>@m.player4Name.getOrElse("-")</td><td>@m.player4Race.getOrElse("-")</td></tr>
+            </table>
+          } else {
+            <p>@m.player1Name.getOrElse("-") vs @m.player2Name.getOrElse("-")</p>
+          }
+          <details>
+            <summary>Multipliers</summary>
+            <div id="mult-@m.id">
+              @for((k, v) <- m.multipliers.toSeq.sortBy(_._1)) {
+                <div class="grid">
+                  <div><label>@k</label></div>
+                  <div><input type="number" step="0.5" value="@v" data-key="@k" class="mult-input"></div>
+                </div>
+              }
+              <button type="button" onclick="saveMultipliers(@m.id)" class="secondary small">Save Multipliers</button>
+            </div>
+          </details>
+          <footer>
+            @if(m.status.toString == "Open") {
+              <button type="button" onclick="lockMatchup(@m.id)" class="secondary">Lock</button>
+            }
+            @if(m.status.toString == "Locked") {
+              <details>
+                <summary>Enter Result</summary>
+                @if(m.betType.toString == "GroupPosition") {
+                  <div>
+                    <select id="pos1-@m.id"><option value="">1st place</option>
+                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
+                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
+                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
+                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
+                    </select>
+                    <select id="pos2-@m.id"><option value="">2nd place</option>
+                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
+                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
+                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
+                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
+                    </select>
+                    <select id="pos3-@m.id"><option value="">3rd place</option>
+                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
+                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
+                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
+                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
+                    </select>
+                    <select id="pos4-@m.id"><option value="">4th place</option>
+                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
+                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
+                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
+                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
+                    </select>
+                    <button type="button" onclick="scoreGroup(@m.id)">Score</button>
+                  </div>
+                } else {
+                  <div>
+                    <select id="score-@m.id">
+                      <option value="4-0">4-0</option><option value="4-1">4-1</option>
+                      <option value="4-2">4-2</option><option value="4-3">4-3</option>
+                      <option value="3-4">3-4</option><option value="2-4">2-4</option>
+                      <option value="1-4">1-4</option><option value="0-4">0-4</option>
+                    </select>
+                    <button type="button" onclick="scoreMatch(@m.id)">Score</button>
+                  </div>
+                }
+              </details>
+            }
+            @if(m.status.toString == "Scored") {
+              <span class="badge secondary">Scored: @m.result.map(_.toString).getOrElse("-")</span>
+            }
+          </footer>
+        </article>
+        }
+      }
+      }
+    }
+  </div>
+
+  <div>
+    <h2>Leaderboard</h2>
+    @if(leaderboard.isEmpty) {
+      <p>No scores yet.</p>
+    } else {
+      <table>
+        <thead><tr><th>#</th><th>Player</th><th>Score</th></tr></thead>
+        <tbody>
+        @for((s, i) <- leaderboard.zipWithIndex) {
+          <tr><td>@{i+1}</td><td>@s.userName</td><td><strong>@s.totalScore</strong></td></tr>
+        }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+<script>
+const EVENT_ID = @event.id;
+
+function getCsrf() {
+  const match = document.cookie.match(/(?:^|;\s*)Csrf-Token\s*=\s*([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+async function api(method, url, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'Csrf-Token': getCsrf() } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts);
+}
+
+document.getElementById('m-type').addEventListener('change', function() {
+  document.getElementById('group-fields').style.display = this.value === 'GroupPosition' ? 'block' : 'none';
+  document.getElementById('match-fields').style.display = this.value === 'MatchScore' ? 'block' : 'none';
+});
+
+document.getElementById('add-matchup-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const type = document.getElementById('m-type').value;
+  const mult = {};
+  if (type === 'GroupPosition') {
+    ['player1','player2','player3','player4'].forEach(function(p) {
+      ['1','2','3','4'].forEach(function(pos) { mult[p+'-position'+pos] = 3.0; });
+    });
+  } else {
+    ['4-0','4-1','4-2','4-3','3-4','2-4','1-4','0-4'].forEach(function(s) { mult[s] = 3.0; });
+  }
+  const body = {
+    eventId: EVENT_ID,
+    round: parseInt(document.getElementById('m-round').value),
+    matchLabel: document.getElementById('m-label').value,
+    betType: type,
+    multipliers: mult
+  };
+  if (type === 'GroupPosition') {
+    body.player1Name = document.getElementById('m-p1name').value || null;
+    body.player1Race = document.getElementById('m-p1race').value;
+    body.player2Name = document.getElementById('m-p2name').value || null;
+    body.player2Race = document.getElementById('m-p2race').value;
+    body.player3Name = document.getElementById('m-p3name').value || null;
+    body.player3Race = document.getElementById('m-p3race').value;
+    body.player4Name = document.getElementById('m-p4name').value || null;
+    body.player4Race = document.getElementById('m-p4race').value;
+  } else {
+    body.player1Name = document.getElementById('m-mp1name').value || null;
+    body.player1Race = document.getElementById('m-mp1race').value;
+    body.player2Name = document.getElementById('m-mp2name').value || null;
+    body.player2Race = document.getElementById('m-mp2race').value;
+  }
+  const res = await api('POST', '/api/predictions/matchups', body);
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || 'Error'); }
+});
+
+async function saveMultipliers(id) {
+  const container = document.getElementById('mult-' + id);
+  const inputs = container.querySelectorAll('.mult-input');
+  const mult = {};
+  inputs.forEach(function(inp) { mult[inp.dataset.key] = parseFloat(inp.value); });
+  const res = await api('PUT', '/api/predictions/matchups/' + id, { multipliers: mult });
+  if (res.ok) { alert('Multipliers saved'); }
+  else { const err = await res.json(); alert(err.error || 'Error'); }
+}
+
+async function lockMatchup(id) {
+  if (!confirm('Lock this matchup? No more bets can be placed.')) return;
+  const res = await api('POST', '/api/predictions/matchups/' + id + '/lock');
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || 'Error'); }
+}
+
+async function scoreGroup(id) {
+  var p1 = document.getElementById('pos1-'+id).value;
+  var p2 = document.getElementById('pos2-'+id).value;
+  var p3 = document.getElementById('pos3-'+id).value;
+  var p4 = document.getElementById('pos4-'+id).value;
+  if (!p1 || !p2 || !p3 || !p4) { alert('Select all positions'); return; }
+  var vals = [p1,p2,p3,p4];
+  if (new Set(vals).size !== 4) { alert('Each position must have a different player'); return; }
+  var result = { positions: { "1": p1, "2": p2, "3": p3, "4": p4 } };
+  var res = await api('POST', '/api/predictions/matchups/' + id + '/score', result);
+  if (res.ok) { location.reload(); }
+  else { var err = await res.json(); alert(err.error || 'Error'); }
+}
+
+async function scoreMatch(id) {
+  var score = document.getElementById('score-'+id).value;
+  var result = { score: score };
+  var res = await api('POST', '/api/predictions/matchups/' + id + '/score', result);
+  if (res.ok) { location.reload(); }
+  else { var err = await res.json(); alert(err.error || 'Error'); }
+}
+</script>
+}

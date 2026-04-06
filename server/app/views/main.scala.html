@@ -28,6 +28,7 @@
     <ul>
         @user.map { u =>
         <li><a href="@routes.EloStatsController.globalRankings()">SCPower</a></li>
+        <li><a href="@routes.PredictionController.showPredictionHome()">Predictions</a></li>
         <li>
                 <details class="dropdown">
                 <summary>@messages("nav.my.options")</summary>
