@@ -20,8 +20,8 @@ CREATE TABLE prediction_matchups (
   player3_race VARCHAR,
   player4_name VARCHAR,
   player4_race VARCHAR,
-  multipliers JSONB NOT NULL,
-  result JSONB,
+  multipliers TEXT NOT NULL,
+  result TEXT,
   status VARCHAR NOT NULL DEFAULT 'Open',
   result_scored_at TIMESTAMP
 );
