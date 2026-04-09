@@ -1,5 +1,6 @@
 @import controllers.routes
-@()(implicit request: RequestHeader, messages: Messages)
+@()(implicit request: RequestHeader, messages:
+Messages)
 
 <!doctype html>
 <html lang="es">
@@ -17,11 +18,21 @@
           <h2>1. Requisitos de Participación</h2>
           <ul>
             <li>
-              Este torneo es exclusivo para miembros de un grupo privado de WhatsApp.
-              Al inscribirte, aceptas ser agregado a dicho grupo para coordinación.
-              <strong>Queda estrictamente prohibido compartir el enlace del grupo o agregar a otras personas sin autorización previa de la organización.</strong>
-              El incumplimiento de esta norma resultará en descalificación inmediata.
+              Este torneo es exclusivo para miembros de un grupo privado de
+              WhatsApp.
+              <strong
+                >Queda estrictamente prohibido compartir el enlace del grupo o
+                agregar a otras personas sin autorización previa de la
+                organización.</strong
+              >
+              El incumplimiento de esta norma resultará en descalificación
+              inmediata.
             </li>
+            <li>Costo: $0.0</li>
+            <li>Aceptar estas bases y condiciones</li>
+          </ul>
+          <h3>Registro opcional y beneficios</h3>
+          <ul>
             <li>
               Registrarse en
               <a
@@ -38,15 +49,18 @@
                 <li>2 partidas por cada matchup</li>
                 <li>Mínimo 6 replays en total</li>
                 <li>
-                  La raza seleccionada quedará <strong>fija</strong> para
-                  todo el torneo
+                  La raza seleccionada quedará <strong>fija</strong> para todo
+                  el torneo
                 </li>
               </ul>
             </li>
             <li>Registrar zona horaria</li>
             <li>Registrar disponibilidad semanal</li>
-            <li>Aceptar estas bases y condiciones</li>
           </ul>
+          <p>
+            Beneficios: Ayudas al organizador, aparecerás en el rank oficial.
+            Tus replays se guardarán y tu historia se recordará por siempre
+          </p>
         </section>
 
         <section>
@@ -62,35 +76,19 @@
 
           <h3>2.1 Formato según número de inscritos</h3>
           <ul>
-            <li><strong>1 inscrito:</strong> Campeón automático</li>
-            <li><strong>2 inscritos:</strong> Final directa Bo3</li>
-            <li>
-              <strong>3 inscritos:</strong> Round Robin Bo3
-              <ul>
-                <li>
-                  El campeón se define por: victorias
-                </li>
-              </ul>
-            </li>
-            <li>
-              <strong>4 inscritos:</strong> Eliminación directa (Single
-              Elimination)
-            </li>
-            <li>
-              <strong>5–6 inscritos:</strong> Fase de grupos + Eliminación
-              directa
-              <ul>
-                <li>Clasifica el mejor de cada grupo</li>
-              </ul>
-            </li>
             <li>
               <strong>Más de 6 inscritos:</strong> Grupos de 3–4 jugadores
               <ul>
-                <li>Clasifican los primeros de cada grupo</li>
+                <li>Clasifican los 2 primeros de cada grupo</li>
                 <li>Fase final de eliminación directa</li>
               </ul>
             </li>
           </ul>
+          <h3>2.2 Definición de grupos</h3>
+          <p>
+            El organizador se reserva TODO el derecho de armar los grupos
+            iniciales según sus propios criterios.
+          </p>
         </section>
 
         <section>
@@ -108,7 +106,10 @@
         <section>
           <h2>4. Sistema de Replays</h2>
           <ul>
-            <li>Todos los partidos oficiales deben contar con replay subido</li>
+            <li>
+              Todos los partidos oficiales deben contar con replay subido o
+              compartirlo con el organizador
+            </li>
             <li>Los replays se usan para validación y control anticheat</li>
             <li>
               La ausencia reiterada de replays puede implicar descalificación
@@ -118,6 +119,10 @@
 
         <section>
           <h2>5. Coordinación de Partidas</h2>
+          <p>
+            Para la etapa de grupos se creará un grupo whatsapp alternativo
+            temporal, aceptas ser agregado a este grupo temporalmente
+          </p>
 
           <h3>5.1 Asignación de Horario</h3>
           <ul>
@@ -163,7 +168,9 @@
         </section>
 
         <footer>
-          <a href="@routes.UserEventsController.userEvents()">Volver a Eventos</a>
+          <a href="@routes.UserEventsController.userEvents()"
+            >Volver a Eventos</a
+          >
         </footer>
       </section>
     </main>

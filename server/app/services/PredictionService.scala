@@ -94,10 +94,20 @@ class PredictionService @Inject()(
             result <- {
               val alreadyUsed = currentTotal
               val selectionExists = existingBets.exists(_.selection == selection)
-              if (selectionExists) {
-                Future.successful(Left(s"Bet already placed on $selection"))
-              } else if (alreadyUsed + pointsBet > 100) {
+              val budgetAvailable = if (selectionExists) {
+                alreadyUsed - existingBets.find(_.selection == selection).get.pointsBet
+              } else {
+                alreadyUsed
+              }
+              if (budgetAvailable + pointsBet > 100) {
                 Future.successful(Left(s"Budget exceeded: $alreadyUsed already used, ${100 - alreadyUsed} remaining"))
+              } else if (selectionExists) {
+                betRepository.updatePoints(PredictionBet(
+                  userId = userId,
+                  matchupId = matchupId,
+                  selection = selection,
+                  pointsBet = pointsBet
+                )).map(Right(_))
               } else {
                 betRepository.create(PredictionBet(
                   userId = userId,

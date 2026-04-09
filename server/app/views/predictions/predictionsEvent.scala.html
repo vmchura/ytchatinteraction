@@ -45,15 +45,14 @@
                       <tr>
                         <td>@m.productElement(5 + (pNum-1)*2).asInstanceOf[Option[String]].getOrElse("P" + pNum)</td>
                         <td>
-                          <select id="sel-@m.id-p@pNum">
-                            <option value="">-</option>
+                          <select id="sel-@m.id-p@pNum" onchange="updateMult(@m.id, @pNum)">
                             @for(pos <- 1 to 4) {
                               <option value="player@{pNum}-position@{pos}">@pos</option>
                             }
                           </select>
                         </td>
                         <td><input type="number" id="pts-@m.id-p@{pNum}" min="0" max="100" value="0" style="width:5rem"></td>
-                        <td><small>x@m.multipliers.getOrElse("player" + pNum + "-position1", 3.0).toString.take(4)</small></td>
+                        <td><small id="mult-@m.id-p@pNum">x@m.multipliers.getOrElse("player" + pNum + "-position1", 3.0).toString.take(4)</small></td>
                       </tr>
                     }
                     </tbody>
@@ -140,6 +139,12 @@
 </style>
 
 <script>
+var multipliersData = {
+  @for(m <- matchups.filter(m => m.betType.toString == "GroupPosition")) {
+    @m.id: { @for((k, v) <- m.multipliers) { "@k": @v, } },
+  }
+};
+
 function getCsrf() {
   const match = document.cookie.match(/(?:^|;\s*)Csrf-Token\s*=\s*([^;]*)/);
   return match ? decodeURIComponent(match[1]) : '';
@@ -149,6 +154,15 @@ async function api(method, url, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json', 'Csrf-Token': getCsrf() } };
   if (body) opts.body = JSON.stringify(body);
   return fetch(url, opts);
+}
+
+function updateMult(matchupId, pNum) {
+  var sel = document.getElementById('sel-' + matchupId + '-p' + pNum);
+  var multEl = document.getElementById('mult-' + matchupId + '-p' + pNum);
+  if (sel && multEl && sel.value && multipliersData[matchupId]) {
+    var mult = multipliersData[matchupId][sel.value];
+    multEl.textContent = mult != null ? 'x' + String(mult).substring(0, 4) : 'x-';
+  }
 }
 
 function showRound(r) {

@@ -128,11 +128,30 @@ class PredictionController @Inject()(
   }
 
   def updateMatchup(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
-    request.body.asJson.flatMap(json => parseMatchupFromJson(json)) match {
-      case Some(matchup) =>
-        predictionService.updateMatchup(matchup.copy(id = id)).map {
-          case Some(updated) => Ok(matchupToJson(updated))
-          case None => NotFound(Json.obj("error" -> "Matchup not found"))
+    request.body.asJson match {
+      case Some(json) =>
+        val parsed = parseMatchupFromJson(json)
+        parsed match {
+          case Some(matchup) =>
+            predictionService.updateMatchup(matchup.copy(id = id)).map {
+              case Some(updated) => Ok(matchupToJson(updated))
+              case None => NotFound(Json.obj("error" -> "Matchup not found"))
+            }
+          case None =>
+            (json \ "multipliers").asOpt[Map[String, Double]] match {
+              case Some(multipliers) =>
+                predictionService.getMatchup(id).flatMap {
+                  case Some(existing) =>
+                    predictionService.updateMatchup(existing.copy(multipliers = multipliers)).map {
+                      case Some(updated) => Ok(matchupToJson(updated))
+                      case None => NotFound(Json.obj("error" -> "Matchup not found"))
+                    }
+                  case None =>
+                    Future.successful(NotFound(Json.obj("error" -> "Matchup not found")))
+                }
+              case None =>
+                Future.successful(BadRequest(Json.obj("error" -> "Invalid matchup data")))
+            }
         }
       case None =>
         Future.successful(BadRequest(Json.obj("error" -> "Invalid matchup data")))

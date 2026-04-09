@@ -82,4 +82,12 @@ class PredictionBetRepository @Inject()(dbConfigProvider: DatabaseConfigProvider
       .filter(b => b.userId === userId && b.matchupId.inSet(matchupIds))
       .result
   }
+
+  def updatePoints(bet: PredictionBet): Future[PredictionBet] = db.run {
+    predictionBetsTable
+      .filter(b => b.userId === bet.userId && b.matchupId === bet.matchupId && b.selection === bet.selection)
+      .map(_.pointsBet)
+      .update(bet.pointsBet)
+      .map(_ => bet)
+  }
 }
