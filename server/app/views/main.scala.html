@@ -49,11 +49,10 @@
                     <li><a href="@routes.AliasController.showChangeAliasForm()">@messages("nav.change.alias")</a></li>
                     <li><a href="@routes.LanguageController.changeLanguage("es")">Español</a></li>
                     <li><a href="@routes.LanguageController.changeLanguage("en")">English</a></li>
+		    <li><a href="@routes.AuthController.signOut" id="logout">@messages("nav.logout")</a></li>
                 </ul>
             </details>
         </li>
-        <li><a href="@routes.AuthController.signOut" role="button" class="contrast"
-               id="logout">@messages("nav.logout")</a></li>
         }.getOrElse {
         <li><a href="@routes.AuthController.authenticate("google")" role="button">@messages("nav.login.google")</a></li>
         <li><a href="@routes.AuthController.authenticate("discord")" role="button">@messages("nav.login.discord")</a></li>
