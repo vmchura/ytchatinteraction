@@ -19,7 +19,8 @@ app.subtitle = Conecta con tu audiencia de YouTube en tiempo real.
 nav.home = Inicio
 nav.my.events = Mis Eventos
 nav.add.history = Tus Partidas Base
-nav.login = Iniciar Sesión con Google
+nav.login.google = Iniciar Sesión con Google
+nav.login.discord = Iniciar Sesión con Discord
 nav.logout = Cerrar Sesión
 nav.change.alias = Cambiar Alias
 nav.language = Idioma
@@ -44,7 +45,8 @@ home.features.alerts = Alertas y notificaciones personalizadas
 # Página de login
 login.title = Iniciar Sesión
 login.signin.title = Iniciar Sesión
-login.signin.youtube = Iniciar sesión con Google
+login.signin.google = Iniciar sesión con Google
+login.signin.discord = Iniciar sesión con Discord
 
 # Eventos de usuario
 events.title = Mis Eventos

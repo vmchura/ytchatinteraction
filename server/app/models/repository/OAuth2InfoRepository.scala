@@ -25,14 +25,20 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
   import profile.api.*
 
   /**
+   * Providers that store their OAuth2 tokens in the oauth2_tokens table.
+   * The provider key (user id / channel id) is stored in the user_channel_id column.
+   */
+  private val supportedProviders = Set("google", "discord")
+
+  /**
    * Finds the OAuth2 info for the specified login info.
    *
    * @param loginInfo The login info for which the OAuth2 info should be found.
    * @return The found OAuth2 info or None if no OAuth2 info could be found for the given login info.
    */
   def find(loginInfo: LoginInfo): Future[Option[play.silhouette.impl.providers.OAuth2Info]] = {
-    // First, get the YtUser that matches this login info (YouTube provider)
-    if (loginInfo.providerID == "google") {
+    // First, get the OAuth2 info that matches this login info (provider id/key)
+    if (supportedProviders.contains(loginInfo.providerID)) {
       val channelId = loginInfo.providerKey
 
       val query = for {
@@ -53,7 +59,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return The added OAuth2 info.
    */
   def add(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
-    if (loginInfo.providerID == "google") {
+    if (supportedProviders.contains(loginInfo.providerID)) {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
 
@@ -85,7 +91,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return The updated OAuth2 info.
    */
   def update(loginInfo: LoginInfo, authInfo: play.silhouette.impl.providers.OAuth2Info): Future[play.silhouette.impl.providers.OAuth2Info] = {
-    if (loginInfo.providerID == "google") {
+    if (supportedProviders.contains(loginInfo.providerID)) {
       val channelId = loginInfo.providerKey
       val now = Instant.now()
 
@@ -140,7 +146,7 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
    * @return A future to wait for the process to be completed.
    */
   def remove(loginInfo: LoginInfo): Future[Unit] = {
-    if (loginInfo.providerID == "google") {
+    if (supportedProviders.contains(loginInfo.providerID)) {
       val channelId = loginInfo.providerKey
 
       db.run(oauth2InfoTable.filter(_.userChannelId === channelId).delete).map(_ => ())
@@ -150,9 +156,9 @@ with DelegableAuthInfoDAO[play.silhouette.impl.providers.OAuth2Info] {
   }
 
   /**
-   * Gets all OAuth2 info for a YouTube channel.
+   * Gets all OAuth2 info for a channel/user id.
    *
-   * @param channelId The YouTube channel ID.
+   * @param channelId The channel/user ID.
    * @return The OAuth2 info.
    */
   def getByChannelId(channelId: String): Future[Option[OAuth2Info]] = {

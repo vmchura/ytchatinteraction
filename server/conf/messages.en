@@ -19,7 +19,8 @@ app.subtitle = Connect with your audience and community.
 nav.home = Home
 nav.my.events = My Events
 nav.add.history = Your base games
-nav.login = Login with Google
+nav.login.google = Login with Google
+nav.login.discord = Login with Discord
 nav.logout = Logout
 nav.change.alias = Change Alias
 nav.language = Language
@@ -43,7 +44,8 @@ home.features.alerts = Custom alerts and notifications
 # Login page
 login.title = Login
 login.signin.title = Sign In
-login.signin.youtube = Sign in with Google
+login.signin.google = Sign in with Google
+login.signin.discord = Sign in with Discord
 
 # User events
 events.title = My Events

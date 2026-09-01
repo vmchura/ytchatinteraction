@@ -11,11 +11,19 @@ play.http.secret.key = "changeme"
 silhouette.authenticator.signer.key = "changeme" # Should be at least 16 characters
 silhouette.authenticator.crypter.key = "changeme" # Should be at least 16 characters
 
-# YouTube API settings - replace with your development credentials
-silhouette.youtube.clientID = "your-client-id.apps.googleusercontent.com"
-silhouette.youtube.clientSecret = "your-client-secret"
-silhouette.youtube.redirectURL = "http://localhost:9000/authenticate/youtube"
+# Google API settings - replace with your development credentials
+silhouette.google.clientID = "your-client-id.apps.googleusercontent.com"
+silhouette.google.clientSecret = "your-client-secret"
+silhouette.google.redirectURL = "http://localhost:9000/authenticate/google"
 youtube.api.key = "your-youtube-api-key"
+
+# Discord API settings - replace with your LOCAL DEVELOPMENT Discord app credentials
+# (the Discord app whose redirect URIs include http://localhost:9000/authenticate/discord)
+silhouette.discord.clientID = "your-local-discord-client-id"
+silhouette.discord.clientSecret = "your-local-discord-client-secret"
+# Leave the redirectURL commented out: the relative default /authenticate/discord is
+# resolved against the request host, so it becomes http://localhost:9000/authenticate/discord.
+# silhouette.discord.redirectURL = "http://localhost:9000/authenticate/discord"
 
 # Challonge API settings - replace with your development credentials
 challonge.api.key = "your-challonge-api-key"

@@ -11,9 +11,7 @@ import play.silhouette.api.exceptions.ProviderException
 import play.silhouette.impl.exceptions.OAuth2StateException
 import play.silhouette.api.repositories.AuthInfoRepository
 import play.silhouette.api.{LoginEvent, LogoutEvent, Silhouette}
-import play.silhouette.impl.providers.{CommonSocialProfileBuilder, SocialProviderRegistry}
-import providers.YouTubeProvider
-import play.silhouette.impl.providers.CommonSocialProfile
+import play.silhouette.impl.providers.{CommonSocialProfileBuilder, SocialProvider, SocialProviderRegistry}
 import services.UserService
 
 import java.time.Instant
@@ -24,7 +22,6 @@ import play.silhouette.api.util.Credentials
 import play.silhouette.api.LoginInfo
 import modules.DefaultEnv
 import java.util.UUID
-import play.silhouette.impl.providers.oauth2.GoogleProvider
 import play.api.Logger
 
 /**
@@ -55,7 +52,8 @@ class AuthController @Inject()(
   }
 
   /**
-   * Handles the YouTube authentication.
+   * Handles the OAuth2 authentication flow for any registered social provider
+   * (currently Google and Discord).
    * Only accessible to non-authenticated users.
    *
    * @return The result to display.
@@ -76,28 +74,29 @@ class AuthController @Inject()(
     }
     logger.info(s"=== End Debug ===")
 
-    (socialProviderRegistry.get[GoogleProvider] match {
-      case Some(p) => p.authenticate()
-      case None => Future.failed(new ProviderException(s"Cannot authenticate with unknown provider $provider"))
-    }).flatMap {
-      case Left(result) => Future.successful(result)
-      case Right(authInfo) => for {
-        profile <- socialProviderRegistry.get[GoogleProvider].get.retrieveProfile(authInfo)
-        user <- loginInfoRepository.findUser(profile.loginInfo) flatMap {
-          case Some(existingUser) => Future.successful(existingUser)
-          case None => userService.createUserWithAlias()
-        }
+    (socialProviderRegistry.get[SocialProvider](provider) match {
+      case Some(p: SocialProvider with CommonSocialProfileBuilder) =>
+        p.authenticate().flatMap {
+          case Left(result) => Future.successful(result)
+          case Right(authInfo) => for {
+            profile <- p.retrieveProfile(authInfo)
+            user <- loginInfoRepository.findUser(profile.loginInfo) flatMap {
+              case Some(existingUser) => Future.successful(existingUser)
+              case None => userService.createUserWithAlias()
+            }
 
-        loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
-        oauthInfoInsert <- oauth2InfoRepository.save(profile.loginInfo, authInfo)
-        authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
-        value <- silhouette.env.authenticatorService.init(authenticator)
-        result <- silhouette.env.authenticatorService.embed(value, Redirect(routes.HomeController.index()).withSession("userId" -> user.userId.toString()))
-      } yield {
-        silhouette.env.eventBus.publish(LoginEvent(user, request))
-        result
-      }
-    }.recover {
+            loginInfoInsert <- loginInfoRepository.add(user.userId, profile.loginInfo)
+            oauthInfoInsert <- authInfoRepository.save(profile.loginInfo, authInfo)
+            authenticator <- silhouette.env.authenticatorService.create(profile.loginInfo)
+            value <- silhouette.env.authenticatorService.init(authenticator)
+            result <- silhouette.env.authenticatorService.embed(value, Redirect(routes.HomeController.index()).withSession("userId" -> user.userId.toString()))
+          } yield {
+            silhouette.env.eventBus.publish(LoginEvent(user, request))
+            result
+          }
+        }
+      case _ => Future.failed(new ProviderException(s"Cannot authenticate with unknown provider $provider"))
+    }).recover {
       case e: OAuth2StateException =>
         logger.error(s"OAuth2StateException: ${e.getMessage}")
         logger.error(s"Exception details: ", e)

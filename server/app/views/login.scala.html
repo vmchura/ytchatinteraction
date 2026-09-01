@@ -21,8 +21,11 @@
                             Please enable cookies in your browser settings and refresh the page.
                         </div>
                         <div class="d-grid gap-2">
-                            <a href="@controllers.routes.AuthController.authenticate("youtube")" class="btn btn-danger" id="login-btn">
-                                <i class="fa fa-youtube"></i> @messages("login.signin.youtube")
+                            <a href="@controllers.routes.AuthController.authenticate("google")" class="btn btn-danger login-btn" id="login-btn">
+                                <i class="fa fa-google"></i> @messages("login.signin.google")
+                            </a>
+                            <a href="@controllers.routes.AuthController.authenticate("discord")" class="btn btn-primary login-btn" id="discord-login-btn">
+                                <i class="fa fa-discord"></i> @messages("login.signin.discord")
                             </a>
                         </div>
                     </div>
@@ -43,15 +46,16 @@
                     // Check on page load
                     if (!checkCookiesEnabled()) {
                         document.getElementById('cookie-warning').style.display = 'block';
-                        var loginBtn = document.getElementById('login-btn');
-                        loginBtn.classList.add('disabled');
-                        loginBtn.style.opacity = '0.5';
-                        loginBtn.style.cursor = 'not-allowed';
-                        loginBtn.onclick = function(e) {
-                            e.preventDefault();
-                            alert('Please enable cookies in your browser to continue with authentication.');
-                            return false;
-                        };
+                        document.querySelectorAll('.login-btn').forEach(function(btn) {
+                            btn.classList.add('disabled');
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                            btn.onclick = function(e) {
+                                e.preventDefault();
+                                alert('Please enable cookies in your browser to continue with authentication.');
+                                return false;
+                            };
+                        });
                     }
                 </script>
 }

@@ -140,6 +140,29 @@ class OAuth2InfoRepositorySpec extends PlaySpec with GuiceOneAppPerSuite with In
       found.get.accessToken must be("test-access-token")
     }
     
+    "add and find OAuth2Info for the discord provider" in {
+      val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
+      
+      // Create test data with a Discord user id as provider key
+      val loginInfo = LoginInfo("discord", "123456789012345678")
+      val oAuth2Info = new OAuth2Info(
+        accessToken = "discord-access-token",
+        tokenType = Some("Bearer"),
+        expiresIn = Some(604800),
+        refreshToken = Some("discord-refresh-token")
+      )
+      
+      // Add the OAuth2Info
+      val result = Await.result(repository.add(loginInfo, oAuth2Info), 5.seconds)
+      result.accessToken must be("discord-access-token")
+      
+      // Find the OAuth2Info
+      val found = Await.result(repository.find(loginInfo), 5.seconds)
+      found must not be None
+      found.get.accessToken must be("discord-access-token")
+      found.get.refreshToken must be(Some("discord-refresh-token"))
+    }
+    
     "update existing OAuth2Info" in {
       val repository = new OAuth2InfoRepository(dbConfigProvider, ytUserRepository)
       

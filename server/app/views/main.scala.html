@@ -55,7 +55,8 @@
         <li><a href="@routes.AuthController.signOut" role="button" class="contrast"
                id="logout">@messages("nav.logout")</a></li>
         }.getOrElse {
-        <li><a href="@routes.AuthController.authenticate("youtube")" role="button">@messages("nav.login")</a></li>
+        <li><a href="@routes.AuthController.authenticate("google")" role="button">@messages("nav.login.google")</a></li>
+        <li><a href="@routes.AuthController.authenticate("discord")" role="button">@messages("nav.login.discord")</a></li>
         }
     </ul>
 </nav>

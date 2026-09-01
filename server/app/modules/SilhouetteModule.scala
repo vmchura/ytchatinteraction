@@ -22,7 +22,7 @@ import play.silhouette.impl.util.{DefaultFingerprintGenerator, SecureRandomIDGen
 import play.silhouette.password.{BCryptPasswordHasher, BCryptSha256PasswordHasher}
 import play.silhouette.persistence.daos.DelegableAuthInfoDAO
 import play.silhouette.persistence.repositories.DelegableAuthInfoRepository
-import providers.YouTubeProvider
+import providers.{DiscordProvider, YouTubeProvider}
 import services.{UserService, UserServiceImpl}
 import utils.auth.{CustomSecuredErrorHandler, CustomUnsecuredErrorHandler}
 import play.silhouette.api.actions.{SecuredErrorHandler, UnsecuredErrorHandler}
@@ -238,16 +238,42 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
   }
   
   /**
+   * Provides the Discord provider.
+   *
+   * @param httpLayer The HTTP layer implementation.
+   * @param socialStateHandler The social state handler.
+   * @param configuration The Discord OAuth2 settings.
+   * @return The Discord provider.
+   */
+  @Provides
+  def provideDiscordProvider(
+    httpLayer: HTTPLayer,
+    socialStateHandler: SocialStateHandler,
+    configuration: Configuration): DiscordProvider = {
+    val config = configuration.get[Configuration]("silhouette.discord")
+    val settings = OAuth2Settings(
+      authorizationURL = Some(config.get[String]("authorizationURL")),
+      accessTokenURL = config.get[String]("accessTokenURL"),
+      redirectURL = Some(config.get[String]("redirectURL")),
+      clientID = config.get[String]("clientID"),
+      clientSecret = config.get[String]("clientSecret"),
+      scope = Some(config.get[String]("scope")))
+    new DiscordProvider(httpLayer, socialStateHandler, settings)
+  }
+
+  /**
    * Provides the social provider registry.
    *
-   * @param youTubeProvider The YouTube provider implementation.
+   * @param googleProvider The Google provider implementation.
+   * @param discordProvider The Discord provider implementation.
    * @return The social provider registry.
    */
   @Provides
   def provideSocialProviderRegistry(
-    googleProvider: GoogleProvider
+    googleProvider: GoogleProvider,
+    discordProvider: DiscordProvider
   ): SocialProviderRegistry = {
-    SocialProviderRegistry(Seq(googleProvider))
+    SocialProviderRegistry(Seq(googleProvider, discordProvider))
   }
 
   @Provides

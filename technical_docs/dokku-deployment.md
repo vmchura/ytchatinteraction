@@ -21,9 +21,19 @@ dokku config:set ytchatinteraction \
   YOUTUBE_CLIENT_ID="your-youtube-client-id" \
   YOUTUBE_CLIENT_SECRET="your-youtube-client-secret" \
   YOUTUBE_API_KEY="your-youtube-api-key" \
+  DISCORD_CLIENT_ID="your-production-discord-client-id" \
+  DISCORD_CLIENT_SECRET="your-production-discord-client-secret" \
+  DISCORD_REDIRECT_URL="https://evolutioncomplete.com/authenticate/discord" \
   DATABASE_URL="postgres://user:pass@host:port/dbname" \
   REPLAY_PARSER_URL="http://replay-parser.dokku-internal:5000"
 ```
+
+> **Discord login:** use the **production** Discord application credentials here. Its registered
+> redirect URI must include `https://evolutioncomplete.com/authenticate/discord`. `DISCORD_REDIRECT_URL`
+> is optional — if unset, the relative default `/authenticate/discord` is resolved against the request
+> host at runtime (requires the X-Forwarded-Proto trust configured in `production.conf`).
+> The local development Discord app credentials (redirect URI `http://localhost:9000/authenticate/discord`)
+> go in `server/conf/local.conf`.
 
 ### Go Replay Parser App
 

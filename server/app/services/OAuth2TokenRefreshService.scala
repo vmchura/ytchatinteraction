@@ -48,8 +48,8 @@ class OAuth2TokenRefreshService @Inject()(
   private def refreshToken(oauth2Info: OAuth2Info): Future[Option[OAuth2Info]] = {
     oauth2Info.refreshToken match {
       case Some(refreshToken) =>
-        val clientId = config.get[String]("silhouette.youtube.clientID")
-        val clientSecret = config.get[String]("silhouette.youtube.clientSecret")
+        val clientId = config.get[String]("silhouette.google.clientID")
+        val clientSecret = config.get[String]("silhouette.google.clientSecret")
 
         ws.url(tokenUrl)
           .withHttpHeaders("Content-Type" -> "application/x-www-form-urlencoded")
@@ -75,7 +75,7 @@ class OAuth2TokenRefreshService @Inject()(
                 )
 
                 // Update in database
-                val loginInfo = LoginInfo("youtube", oauth2Info.userChannelId)
+                val loginInfo = LoginInfo("google", oauth2Info.userChannelId)
                 oauth2InfoRepository.update(loginInfo, updatedOAuth2Info.toSilhouetteOAuth2Info)
                   .map(_ => Some(updatedOAuth2Info))
 

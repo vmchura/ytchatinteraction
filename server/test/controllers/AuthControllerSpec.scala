@@ -13,7 +13,8 @@ import play.api.test.Helpers.*
 import play.silhouette.api.repositories.AuthInfoRepository
 import play.silhouette.api.{Environment, EventBus, LoginEvent, LoginInfo, Silhouette, SilhouetteEvent}
 import play.silhouette.impl.authenticators.{CookieAuthenticator, CookieAuthenticatorService}
-import play.silhouette.impl.providers.{CommonSocialProfile, OAuth2Info, SocialProviderRegistry}
+import play.silhouette.impl.providers.{CommonSocialProfile, OAuth2Info, SocialProvider, SocialProviderRegistry}
+import providers.DiscordProvider
 import services.UserService
 import modules.DefaultEnv
 import play.silhouette.api.exceptions.ProviderException
@@ -52,7 +53,7 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       when(mockGoogleProvider.authenticate()(any())).thenReturn(Future.successful(Left(redirectResult)))
       
       // Mock the social provider registry
-      when(mockSocialProviderRegistry.get[GoogleProvider]).thenReturn(Some(mockGoogleProvider))
+      when(mockSocialProviderRegistry.get[SocialProvider]("google")).thenReturn(Some(mockGoogleProvider))
       when(ytStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
 
       // Mock the UnsecuredAction to execute the function directly  
@@ -90,6 +91,64 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       // Verify that the provider was called
       verify(mockGoogleProvider).authenticate()(any())
     }
+
+    "redirect to discord authorization page" in {
+      // Mocks
+      val mockSilhouette = mock[Silhouette[DefaultEnv]]
+      val mockUserService = mock[UserService]
+      val mockAuthInfoRepository = mock[AuthInfoRepository]
+      val mockSocialProviderRegistry = mock[SocialProviderRegistry]
+      val mockYtUserRepository = mock[YtUserRepository]
+      val mockLoginInfoRepository = mock[LoginInfoRepository]
+      val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
+      val mockDiscordProvider = mock[DiscordProvider]
+      val ytStreamerRepository = mock[YtStreamerRepository]
+
+      // Create a fake request
+      val fakeRequest = FakeRequest()
+
+      val redirectResult = Results.Redirect("https://discord.com/oauth2/authorize")
+      when(mockDiscordProvider.authenticate()(any())).thenReturn(Future.successful(Left(redirectResult)))
+
+      // Mock the social provider registry
+      when(mockSocialProviderRegistry.get[SocialProvider]("discord")).thenReturn(Some(mockDiscordProvider))
+      when(ytStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
+
+      // Mock the UnsecuredAction to execute the function directly
+      val mockUnsecuredAction = mock[UnsecuredActionBuilder[DefaultEnv, AnyContent]]
+      when(mockSilhouette.UnsecuredAction).thenReturn(mockUnsecuredAction)
+
+      // Create a real action that will execute the business logic
+      import play.api.mvc.ActionBuilderImpl
+      val realActionBuilder = new ActionBuilderImpl(stubControllerComponents().parsers.default)(global)
+      when(mockUnsecuredAction.async(any[Request[AnyContent] => Future[Result]])).thenAnswer { invocation =>
+        val func = invocation.getArgument[Request[AnyContent] => Future[Result]](0)
+        realActionBuilder.async(func)
+      }
+
+      // Create controller
+      val controller = new AuthController(
+        stubControllerComponents(),
+        mockSilhouette,
+        mockUserService,
+        mockAuthInfoRepository,
+        mockSocialProviderRegistry,
+        mockYtUserRepository,
+        mockLoginInfoRepository,
+        mockOAuth2InfoRepository,
+        ytStreamerRepository
+      )
+
+      // Execute the test - call the actual controller method
+      val result = call(controller.authenticate("discord"), fakeRequest)
+
+      // Verify the redirect
+      status(result) mustEqual SEE_OTHER
+      redirectLocation(result) mustEqual Some("https://discord.com/oauth2/authorize")
+
+      // Verify that the provider was called
+      verify(mockDiscordProvider).authenticate()(any())
+    }
     
     "handle authentication error gracefully" in {
       // Mocks
@@ -104,7 +163,7 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       val mockYtStreamerRepository = mock[YtStreamerRepository]
 
       // Mock the social provider registry
-      when(mockSocialProviderRegistry.get[GoogleProvider]).thenReturn(Some(mockGoogleProvider))
+      when(mockSocialProviderRegistry.get[SocialProvider]("google")).thenReturn(Some(mockGoogleProvider))
       when(mockYtStreamerRepository.getByChannelId(any())).thenReturn(Future.successful(None))
       
       // Create a fake request
@@ -147,6 +206,56 @@ class AuthControllerSpec extends PlaySpec with MockitoSugar with ScalaFutures {
       
       // Verify that the provider was called
       verify(mockGoogleProvider).authenticate()(any())
+    }
+
+    "redirect to login when provider is unknown" in {
+      // Mocks
+      val mockSilhouette = mock[Silhouette[DefaultEnv]]
+      val mockUserService = mock[UserService]
+      val mockAuthInfoRepository = mock[AuthInfoRepository]
+      val mockSocialProviderRegistry = mock[SocialProviderRegistry]
+      val mockYtUserRepository = mock[YtUserRepository]
+      val mockLoginInfoRepository = mock[LoginInfoRepository]
+      val mockOAuth2InfoRepository = mock[OAuth2InfoRepository]
+      val ytStreamerRepository = mock[YtStreamerRepository]
+
+      // Mock the social provider registry to return no provider
+      when(mockSocialProviderRegistry.get[SocialProvider]("unknown")).thenReturn(None)
+
+      // Mock the UnsecuredAction to execute the function directly
+      val mockUnsecuredAction = mock[UnsecuredActionBuilder[DefaultEnv, AnyContent]]
+      when(mockSilhouette.UnsecuredAction).thenReturn(mockUnsecuredAction)
+
+      // Create a real action that will execute the business logic
+      import play.api.mvc.ActionBuilderImpl
+      val realActionBuilder = new ActionBuilderImpl(stubControllerComponents().parsers.default)(global)
+      when(mockUnsecuredAction.async(any[Request[AnyContent] => Future[Result]])).thenAnswer { invocation =>
+        val func = invocation.getArgument[Request[AnyContent] => Future[Result]](0)
+        realActionBuilder.async(func)
+      }
+
+      // Create controller
+      val controller = new AuthController(
+        stubControllerComponents(),
+        mockSilhouette,
+        mockUserService,
+        mockAuthInfoRepository,
+        mockSocialProviderRegistry,
+        mockYtUserRepository,
+        mockLoginInfoRepository,
+        mockOAuth2InfoRepository,
+        ytStreamerRepository
+      )
+
+      // Execute the test - call the actual controller method
+      val result = call(controller.authenticate("unknown"), FakeRequest())
+
+      // Verify the error response - controller redirects to login on error
+      status(result) mustEqual SEE_OTHER
+      redirectLocation(result) mustEqual Some("/login")
+
+      // Verify that the provider was NOT called
+      verify(mockSocialProviderRegistry).get[SocialProvider]("unknown")
     }
   }
 }
