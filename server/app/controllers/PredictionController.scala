@@ -1,11 +1,11 @@
 package controllers
 
-import models.{PredictionBetType, PredictionMatchup, User}
+import models.{PredictionBetType, PredictionMatchup, SavePredictionRequest}
 import modules.DefaultEnv
 import services.PredictionService
 import utils.auth.WithAdmin
 import play.api.Logger
-import play.api.i18n.I18nSupport
+import play.api.i18n.{I18nSupport, Messages}
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.*
 import play.silhouette.api.Silhouette
@@ -30,6 +30,7 @@ class PredictionController @Inject()(
   }
 
   def showEventPage(eventId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    implicit val messages: Messages = messagesApi.preferred(request)
     for {
       eventOpt <- predictionService.getEvent(eventId)
       result <- eventOpt match {
@@ -38,10 +39,15 @@ class PredictionController @Inject()(
             matchups <- predictionService.getMatchupsByEvent(eventId)
             bets <- predictionService.getUserBetsForEvent(request.identity.userId, eventId)
             leaderboard <- predictionService.getLeaderboard(eventId)
-          } yield Ok(views.html.predictions.predictionsEvent(request.identity, event, matchups, bets, leaderboard))
+            pointsByMatchup = bets.flatMap { case (bet, matchup) =>
+              predictionService.scorePrediction(bet, matchup).map(matchup.id -> _)
+            }.toMap
+          } yield Ok(views.html.predictions.predictionsEvent(
+            request.identity, event, matchups, bets, leaderboard, pointsByMatchup
+          ))
         case None =>
           Future.successful(Redirect(routes.PredictionController.showPredictionHome())
-            .flashing("error" -> "Event not found"))
+            .flashing("error" -> messages("pred.eventNotFound")))
       }
     } yield result
   }
@@ -53,6 +59,7 @@ class PredictionController @Inject()(
   }
 
   def showAdminEventPage(eventId: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    implicit val messages: Messages = messagesApi.preferred(request)
     for {
       eventOpt <- predictionService.getEvent(eventId)
       result <- eventOpt match {
@@ -63,7 +70,7 @@ class PredictionController @Inject()(
           } yield Ok(views.html.predictions.adminEventDetail(request.identity, event, matchups, leaderboard))
         case None =>
           Future.successful(Redirect(routes.PredictionController.showAdminPredictions())
-            .flashing("error" -> "Event not found"))
+            .flashing("error" -> messages("pred.eventNotFound")))
       }
     } yield result
   }
@@ -130,28 +137,14 @@ class PredictionController @Inject()(
   def updateMatchup(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
     request.body.asJson match {
       case Some(json) =>
-        val parsed = parseMatchupFromJson(json)
-        parsed match {
+        parseMatchupFromJson(json) match {
           case Some(matchup) =>
             predictionService.updateMatchup(matchup.copy(id = id)).map {
               case Some(updated) => Ok(matchupToJson(updated))
               case None => NotFound(Json.obj("error" -> "Matchup not found"))
             }
           case None =>
-            (json \ "multipliers").asOpt[Map[String, Double]] match {
-              case Some(multipliers) =>
-                predictionService.getMatchup(id).flatMap {
-                  case Some(existing) =>
-                    predictionService.updateMatchup(existing.copy(multipliers = multipliers)).map {
-                      case Some(updated) => Ok(matchupToJson(updated))
-                      case None => NotFound(Json.obj("error" -> "Matchup not found"))
-                    }
-                  case None =>
-                    Future.successful(NotFound(Json.obj("error" -> "Matchup not found")))
-                }
-              case None =>
-                Future.successful(BadRequest(Json.obj("error" -> "Invalid matchup data")))
-            }
+            Future.successful(BadRequest(Json.obj("error" -> "Invalid matchup data")))
         }
       case None =>
         Future.successful(BadRequest(Json.obj("error" -> "Invalid matchup data")))
@@ -165,29 +158,19 @@ class PredictionController @Inject()(
     }
   }
 
-  def placeBet(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    request.body.asJson match {
-      case Some(json) =>
-        val matchupIdOpt = (json \ "matchupId").asOpt[Long]
-        val selectionOpt = (json \ "selection").asOpt[String]
-        val pointsOpt = (json \ "pointsBet").asOpt[Int]
-
-        (matchupIdOpt, selectionOpt, pointsOpt) match {
-          case (Some(matchupId), Some(selection), Some(pointsBet)) =>
-            predictionService.placeBet(request.identity.userId, matchupId, selection, pointsBet).map {
-              case Right(bet) => Created(Json.obj(
-                "id" -> bet.id,
-                "matchupId" -> bet.matchupId,
-                "selection" -> bet.selection,
-                "pointsBet" -> bet.pointsBet
-              ))
-              case Left(error) => BadRequest(Json.obj("error" -> error))
-            }
-          case _ =>
-            Future.successful(BadRequest(Json.obj("error" -> "matchupId, selection, and pointsBet are required")))
+  def savePrediction(): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    request.body.asJson.flatMap(_.asOpt[SavePredictionRequest]) match {
+      case Some(req) =>
+        predictionService.savePrediction(request.identity.userId, req.matchupId, req.ranking).map {
+          case Right(bet) => Created(Json.obj(
+            "id" -> bet.id,
+            "matchupId" -> bet.matchupId,
+            "ranking" -> bet.ranking
+          ))
+          case Left(error) => BadRequest(Json.obj("error" -> error))
         }
       case None =>
-        Future.successful(BadRequest(Json.obj("error" -> "JSON body required")))
+        Future.successful(BadRequest(Json.obj("error" -> "matchupId and ranking are required")))
     }
   }
 
@@ -197,8 +180,7 @@ class PredictionController @Inject()(
         Json.obj(
           "id" -> bet.id,
           "matchupId" -> bet.matchupId,
-          "selection" -> bet.selection,
-          "pointsBet" -> bet.pointsBet,
+          "ranking" -> bet.ranking,
           "matchLabel" -> matchup.matchLabel,
           "round" -> matchup.round
         )
@@ -206,9 +188,9 @@ class PredictionController @Inject()(
     }
   }
 
-  def deleteBets(matchupId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
-    predictionService.deleteBet(request.identity.userId, matchupId).map {
-      case Right(_) => Ok(Json.obj("message" -> "Bets deleted"))
+  def deletePrediction(matchupId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
+    predictionService.deletePrediction(request.identity.userId, matchupId).map {
+      case Right(_) => Ok(Json.obj("message" -> "Prediction deleted"))
       case Left(error) => BadRequest(Json.obj("error" -> error))
     }
   }
@@ -256,7 +238,6 @@ class PredictionController @Inject()(
     "player3Race" -> m.player3Race,
     "player4Name" -> m.player4Name,
     "player4Race" -> m.player4Race,
-    "multipliers" -> m.multipliers,
     "result" -> m.result,
     "status" -> m.status.toString
   )
@@ -268,7 +249,6 @@ class PredictionController @Inject()(
       matchLabel <- (json \ "matchLabel").asOpt[String]
       betTypeStr <- (json \ "betType").asOpt[String]
       betType <- PredictionBetType.fromStringOpt(betTypeStr)
-      multipliers <- (json \ "multipliers").asOpt[Map[String, Double]]
     } yield PredictionMatchup(
       eventId = eventId,
       round = round,
@@ -281,8 +261,7 @@ class PredictionController @Inject()(
       player3Name = (json \ "player3Name").asOpt[String],
       player3Race = (json \ "player3Race").asOpt[String],
       player4Name = (json \ "player4Name").asOpt[String],
-      player4Race = (json \ "player4Race").asOpt[String],
-      multipliers = multipliers
+      player4Race = (json \ "player4Race").asOpt[String]
     )
   }
 }

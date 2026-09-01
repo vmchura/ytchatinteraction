@@ -1,6 +1,166 @@
-@(user: models.User, event: models.PredictionEvent, matchups: Seq[models.PredictionMatchup], bets: Seq[(models.PredictionBet, models.PredictionMatchup)], leaderboard: Seq[models.PredictionUserScoreWithUsername])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
+@import models.{PredictionBet, PredictionMatchup}
+@import play.api.libs.json._
+@import services.PredictionScoring
+@(user: models.User, event: models.PredictionEvent, matchups: Seq[models.PredictionMatchup], bets: Seq[(models.PredictionBet, models.PredictionMatchup)], leaderboard: Seq[models.PredictionUserScoreWithUsername], pointsByMatchup: Map[Long, Int])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
 
-@main(event.name + " - Predictions", Some(user)) {
+@players(m: PredictionMatchup) = @{
+  Seq(
+    ("player1", m.player1Name.getOrElse("Player 1"), m.player1Race.getOrElse("")),
+    ("player2", m.player2Name.getOrElse("Player 2"), m.player2Race.getOrElse("")),
+    ("player3", m.player3Name.getOrElse("Player 3"), m.player3Race.getOrElse("")),
+    ("player4", m.player4Name.getOrElse("Player 4"), m.player4Race.getOrElse(""))
+  )
+}
+
+@playerName(m: PredictionMatchup, key: String) = @{
+  players(m).find(_._1 == key).map(_._2).getOrElse(key)
+}
+
+@orderedPlayers(m: PredictionMatchup, bet: Option[PredictionBet]) = @{
+  val all = players(m)
+  bet.map(_.ranking).getOrElse(Seq("player1", "player2", "player3", "player4"))
+    .flatMap(k => all.find(_._1 == k))
+}
+
+@resultPlayers(m: PredictionMatchup) = @{
+  m.result.flatMap(r => (r \ "positions").asOpt[Map[String, String]]).map { pos =>
+    val all = players(m)
+    (1 to 4).flatMap(i => pos.get(i.toString).flatMap(k => all.find(_._1 == k)))
+  }.getOrElse(Seq.empty[(String, String, String)])
+}
+
+@myGroupPoints(m: PredictionMatchup, bet: PredictionBet) = @{
+  m.result.flatMap(r => (r \ "positions").asOpt[Map[String, String]])
+    .map(positions => PredictionScoring.groupPlayerPoints(bet.ranking, positions).toMap)
+    .getOrElse(Map.empty[String, Int])
+}
+
+@winnerLabel(score: String) = @{
+  val parts = score.split("-")
+  if (parts.length == 2 && parts(0).toInt > parts(1).toInt) messages("pred.winner.p1") else messages("pred.winner.p2")
+}
+
+@statusBadge(m: PredictionMatchup) = {
+  @if(m.status.toString == "Open") {
+    <span class="badge success">@messages("pred.status.open")</span>
+  } else if (m.status.toString == "Locked") {
+    <span class="badge warning">@messages("pred.status.locked")</span>
+  } else {
+    <span class="badge secondary">@messages("pred.status.scored")</span>
+  }
+}
+
+@orderList(id: String, items: Seq[(String, String, String)], interactive: Boolean, pointsOf: Map[String, Int] = Map.empty) = {
+  <div class="order-list" id="@id">
+    @for(((key, name, race), idx) <- items.zipWithIndex) {
+      <div class="order-card" data-value="@key">
+        <div class="order-pos">@{idx + 1}</div>
+        <div class="order-name">
+          <strong>@name</strong>
+          @if(race.nonEmpty) { <small>@race</small> }
+          @pointsOf.get(key).filter(_ > 0).map { p =>
+            <span class="badge success points-badge">@messages("pred.points", p)</span>
+          }
+        </div>
+        @if(interactive) {
+          <div class="order-buttons">
+            <button type="button" class="secondary small" data-act="up" @if(idx == 0) { disabled }>▲</button>
+            <button type="button" class="secondary small" data-act="down" @if(idx == items.size - 1) { disabled }>▼</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+@groupContent(m: PredictionMatchup, mBet: Option[PredictionBet]) = {
+  @if(m.status.toString == "Open") {
+    <p><small>@messages("pred.group.hint")</small></p>
+    @orderList("group-order-" + m.id, orderedPlayers(m, mBet), true)
+    @mBet.map { bet =>
+      <p class="saved-note">@messages("pred.saved") @bet.ranking.map(k => playerName(m, k)).mkString(" → ")</p>
+    }.getOrElse {
+      <p class="saved-note">@messages("pred.noneSaved")</p>
+    }
+    <div class="order-actions">
+      <button type="button" onclick="saveGroupPrediction(@m.id)">@messages("pred.save")</button>
+      @if(mBet.nonEmpty) {
+        <button type="button" class="secondary" onclick="clearPrediction(@m.id)">@messages("pred.clear")</button>
+      }
+    </div>
+  } else if (m.status.toString == "Locked") {
+    @mBet.map { bet =>
+      <p><small>@messages("pred.lockedLabel")</small></p>
+      @orderList("group-locked-" + m.id, orderedPlayers(m, Some(bet)), false)
+    }.getOrElse {
+      <p>@messages("pred.noPrediction")</p>
+    }
+  } else {
+    @mBet.map { bet =>
+      <div class="grid pred-compare">
+        <div>
+          <h4>@messages("pred.yourPrediction")</h4>
+          @orderList("group-my-" + m.id, orderedPlayers(m, Some(bet)), false, myGroupPoints(m, bet))
+        </div>
+        <div>
+          <h4>@messages("pred.result")</h4>
+          @if(resultPlayers(m).nonEmpty) {
+            @orderList("group-result-" + m.id, resultPlayers(m), false)
+          } else {
+            <p>@messages("pred.noPrediction")</p>
+          }
+        </div>
+      </div>
+      <p><strong>@messages("pred.yourPoints")</strong> <span class="badge success">@pointsByMatchup.getOrElse(m.id, 0) @messages("pred.ptsUnit")</span></p>
+    }.getOrElse {
+      <p>@messages("pred.noPredictionGroup")</p>
+    }
+  }
+}
+
+@matchContent(m: PredictionMatchup, mBet: Option[PredictionBet]) = {
+  @if(m.status.toString == "Open") {
+    <p><small>@messages("pred.match.hint")</small></p>
+    <div class="grid score-grid">
+      @for(score <- PredictionScoring.matchScores) {
+        <label class="score-option @if(mBet.exists(_.ranking.contains(score))) { checked }">
+          <input type="radio" name="score-@m.id" value="@score" @if(mBet.exists(_.ranking.contains(score))) { checked }>
+          <strong>@score</strong>
+          <small>@winnerLabel(score)</small>
+        </label>
+      }
+    </div>
+    @mBet.map { bet =>
+      <p class="saved-note">@messages("pred.saved") @bet.ranking.mkString</p>
+    }.getOrElse {
+      <p class="saved-note">@messages("pred.noneSaved")</p>
+    }
+    <div class="order-actions">
+      <button type="button" onclick="saveMatchPrediction(@m.id)">@messages("pred.save")</button>
+      @if(mBet.nonEmpty) {
+        <button type="button" class="secondary" onclick="clearPrediction(@m.id)">@messages("pred.clear")</button>
+      }
+    </div>
+  } else if (m.status.toString == "Locked") {
+    @mBet.map { bet =>
+      <p><small>@messages("pred.lockedLabel")</small> <span class="badge">@bet.ranking.mkString</span></p>
+    }.getOrElse {
+      <p>@messages("pred.noPrediction")</p>
+    }
+  } else {
+    @m.result.map { r =>
+      <p><strong>@messages("pred.result")</strong> <span class="badge">@(r \ "score").asOpt[String].getOrElse("-")</span></p>
+    }
+    @mBet.map { bet =>
+      <p><strong>@messages("pred.yourPrediction")</strong> <span class="badge">@bet.ranking.mkString</span></p>
+      <p><strong>@messages("pred.yourPoints")</strong> <span class="badge success">@pointsByMatchup.getOrElse(m.id, 0) @messages("pred.ptsUnit")</span></p>
+    }.getOrElse {
+      <p>@messages("pred.noPrediction")</p>
+    }
+  }
+}
+
+@main(event.name + " - " + messages("pred.title"), Some(user)) {
 <h1>@event.name</h1>
 
 @flash.get("error").map { e => <article class="error">@e</article> }
@@ -11,7 +171,7 @@
     <div role="tablist">
       @for(round <- 1 to 4) {
         <button role="tab" class="secondary round-tab" data-round="@round"
-          onclick="showRound(@round)">R@round</button>
+          onclick="showRound(@round)">@messages("pred.roundTab", round)</button>
       }
     </div>
 
@@ -19,92 +179,24 @@
       @defining(matchups.filter(_.round == round)) { roundMatchups =>
       <div class="round-content" id="round-@round" style="display:@if(round == 1){block}else{none}">
         @if(roundMatchups.isEmpty) {
-          <p>No matchups for this round yet.</p>
+          <p>@messages("pred.noMatchupsRound")</p>
         } else {
           @for(m <- roundMatchups) {
-            @defining(bets.filter(_._2.id == m.id)) { mBets =>
-            @defining(mBets.map(_._1.pointsBet).sum) { totalUsed =>
-            <article>
-              <header>
+            @defining(bets.find(_._2.id == m.id).map(_._1)) { mBet =>
+            <details name="pred-accordion" @if(matchups.headOption.exists(_.id == m.id)) { open }>
+              <summary>
                 <strong>@m.matchLabel</strong>
-                @if(m.status.toString == "Open") {
-                  <span class="badge success">Open</span>
+                @statusBadge(m)
+              </summary>
+              <article>
+                @if(m.betType.toString == "GroupPosition") {
+                  @groupContent(m, mBet)
                 } else {
-                  <span class="badge secondary">@m.status</span>
+                  @matchContent(m, mBet)
                 }
-              </header>
-
-              @if(m.betType.toString == "GroupPosition") {
-                <p>@m.player1Name.getOrElse("P1") / @m.player2Name.getOrElse("P2") / @m.player3Name.getOrElse("P3") / @m.player4Name.getOrElse("P4")</p>
-
-                @if(m.status.toString == "Open") {
-                  <table>
-                    <thead><tr><th>Player</th><th>Position</th><th>Bet</th><th>Mult</th></tr></thead>
-                    <tbody>
-                    @for(pNum <- 1 to 4) {
-                      <tr>
-                        <td>@m.productElement(5 + (pNum-1)*2).asInstanceOf[Option[String]].getOrElse("P" + pNum)</td>
-                        <td>
-                          <select id="sel-@m.id-p@pNum" onchange="updateMult(@m.id, @pNum)">
-                            @for(pos <- 1 to 4) {
-                              <option value="player@{pNum}-position@{pos}">@pos</option>
-                            }
-                          </select>
-                        </td>
-                        <td><input type="number" id="pts-@m.id-p@{pNum}" min="0" max="100" value="0" style="width:5rem"></td>
-                        <td><small id="mult-@m.id-p@pNum">x@m.multipliers.getOrElse("player" + pNum + "-position1", 3.0).toString.take(4)</small></td>
-                      </tr>
-                    }
-                    </tbody>
-                  </table>
-                  <p>Budget: <span id="budget-@m.id">@{100 - totalUsed}</span>/100 used: @totalUsed</p>
-                  <button type="button" onclick="submitGroupBets(@m.id)">Place Bets</button>
-                }
-
-                @if(m.status.toString == "Scored") {
-                  @m.result.map { r =>
-                    <p><strong>Result:</strong> @r.toString</p>
-                  }
-                  @for((bet, _) <- mBets) {
-                    <span class="badge success">@bet.selection: @bet.pointsBet pts</span>
-                  }
-                }
-              } else {
-                <p>@m.player1Name.getOrElse("P1") vs @m.player2Name.getOrElse("P2") (Bo7)</p>
-
-                @if(m.status.toString == "Open") {
-                  <div class="grid">
-                    @for(score <- Seq("4-0","4-1","4-2","4-3","3-4","2-4","1-4","0-4")) {
-                      <div>
-                        <label>
-                          <input type="number" id="pts-@m.id-@score.replace("-","_")" min="0" max="100" value="0" style="width:4rem">
-                          <small>@score (x@m.multipliers.getOrElse(score, 3.0).toString.take(3))</small>
-                        </label>
-                      </div>
-                    }
-                  </div>
-                  <p>Budget: <span id="budget-@m.id">@{100 - totalUsed}</span>/100 used: @totalUsed</p>
-                  <button type="button" onclick="submitMatchBets(@m.id)">Place Bets</button>
-                }
-
-                @if(m.status.toString == "Scored") {
-                  @m.result.map { r =>
-                    <p><strong>Result:</strong> @r.toString</p>
-                  }
-                }
-              }
-
-              @if(mBets.nonEmpty && m.status.toString == "Open") {
-                <footer>
-                  <small>Your bets:</small>
-                  @for((bet, _) <- mBets) {
-                    <span class="badge">@bet.selection: @bet.pointsBet pts</span>
-                  }
-                  <button type="button" class="secondary small" onclick="clearBets(@m.id)">Clear</button>
-                </footer>
-              }
-            </article>
-            }}
+              </article>
+            </details>
+            }
           }
         }
       </div>
@@ -113,12 +205,12 @@
   </div>
 
   <aside>
-    <h2>Leaderboard</h2>
+    <h2>@messages("pred.leaderboard")</h2>
     @if(leaderboard.isEmpty) {
-      <p>No scores yet.</p>
+      <p>@messages("pred.noScores")</p>
     } else {
       <table>
-        <thead><tr><th>#</th><th>Player</th><th>Score</th></tr></thead>
+        <thead><tr><th>@messages("pred.rank")</th><th>@messages("pred.playerCol")</th><th>@messages("pred.scoreCol")</th></tr></thead>
         <tbody>
         @for((s, i) <- leaderboard.zipWithIndex) {
           <tr @if(s.userId == user.userId) { style="background:var(--primary-focus)" }>
@@ -136,15 +228,44 @@
 <style>
 .round-content { margin-top: 1rem; }
 [role="tablist"] { margin-bottom: 0.5rem; }
+.pred-compare { align-items: start; }
+.pred-compare h4 { margin: 0 0 0.5rem; }
+.order-list { margin: 0.75rem 0; }
+.order-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--secondary-border, #dcdcdc);
+  border-radius: 0.5rem;
+  margin-bottom: 0.4rem;
+  background: var(--card-background-color, #fff);
+}
+.order-pos {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+.order-name { flex: 1; }
+.order-name small { margin-left: 0.5rem; color: var(--muted-color, #777); }
+.points-badge { margin-left: 0.5rem; }
+.order-buttons { display: flex; gap: 0.25rem; }
+.order-buttons button { width: 2.5rem; padding: 0.15rem 0; }
+.order-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.saved-note { margin: 0.5rem 0 0; color: var(--muted-color, #777); }
+.score-grid label.score-option { border: 1px solid var(--secondary-border, #dcdcdc); border-radius: 0.5rem; padding: 0.5rem; cursor: pointer; }
+.score-grid label.score-option.checked { border-color: var(--primary); background: var(--primary-focus); }
+.score-grid label.score-option small { display: block; }
 </style>
 
 <script>
-var multipliersData = {
-  @for(m <- matchups.filter(m => m.betType.toString == "GroupPosition")) {
-    @m.id: { @for((k, v) <- m.multipliers) { "@k": @v, } },
-  }
-};
-
 function getCsrf() {
   const match = document.cookie.match(/(?:^|;\s*)Csrf-Token\s*=\s*([^;]*)/);
   return match ? decodeURIComponent(match[1]) : '';
@@ -156,15 +277,6 @@ async function api(method, url, body) {
   return fetch(url, opts);
 }
 
-function updateMult(matchupId, pNum) {
-  var sel = document.getElementById('sel-' + matchupId + '-p' + pNum);
-  var multEl = document.getElementById('mult-' + matchupId + '-p' + pNum);
-  if (sel && multEl && sel.value && multipliersData[matchupId]) {
-    var mult = multipliersData[matchupId][sel.value];
-    multEl.textContent = mult != null ? 'x' + String(mult).substring(0, 4) : 'x-';
-  }
-}
-
 function showRound(r) {
   document.querySelectorAll('.round-tab').forEach(t => t.classList.remove('primary'));
   document.querySelectorAll('.round-content').forEach(c => c.style.display = 'none');
@@ -172,50 +284,59 @@ function showRound(r) {
   document.querySelector('[data-round="' + r + '"]').classList.add('primary');
 }
 
-async function submitGroupBets(matchupId) {
-  const bets = [];
-  for (let p = 1; p <= 4; p++) {
-    const sel = document.getElementById('sel-' + matchupId + '-p' + p);
-    const pts = document.getElementById('pts-' + matchupId + '-p' + p);
-    if (sel && pts && sel.value && parseInt(pts.value) > 0) {
-      bets.push({ matchupId, selection: sel.value, pointsBet: parseInt(pts.value) });
-    }
-  }
-  if (bets.length === 0) { alert('Select at least one bet'); return; }
-  let total = bets.reduce((s, b) => s + b.pointsBet, 0);
-  if (total > 100) { alert('Total exceeds 100 points'); return; }
-  for (const bet of bets) {
-    const res = await api('POST', '/api/predictions/bets', bet);
-    if (!res.ok) { const err = await res.json(); alert(err.error || 'Error'); return; }
-  }
-  location.reload();
+function renumberOrderList(container) {
+  Array.from(container.querySelectorAll('.order-card')).forEach((c, i) => {
+    c.querySelector('.order-pos').textContent = i + 1;
+    const up = c.querySelector('[data-act=up]');
+    const down = c.querySelector('[data-act=down]');
+    if (up) up.disabled = i === 0;
+    if (down) down.disabled = i === container.children.length - 1;
+  });
 }
 
-async function submitMatchBets(matchupId) {
-  const scores = ['4-0','4-1','4-2','4-3','3-4','2-4','1-4','0-4'];
-  const bets = [];
-  for (const score of scores) {
-    const id = 'pts-' + matchupId + '-' + score.replace('-','_');
-    const pts = document.getElementById(id);
-    if (pts && parseInt(pts.value) > 0) {
-      bets.push({ matchupId, selection: score, pointsBet: parseInt(pts.value) });
-    }
-  }
-  if (bets.length === 0) { alert('Select at least one bet'); return; }
-  let total = bets.reduce((s, b) => s + b.pointsBet, 0);
-  if (total > 100) { alert('Total exceeds 100 points'); return; }
-  for (const bet of bets) {
-    const res = await api('POST', '/api/predictions/bets', bet);
-    if (!res.ok) { const err = await res.json(); alert(err.error || 'Error'); return; }
-  }
-  location.reload();
+function getOrder(container) {
+  return Array.from(container.querySelectorAll('.order-card')).map(c => c.dataset.value);
 }
 
-async function clearBets(matchupId) {
-  if (!confirm('Clear all your bets for this matchup?')) return;
+function bindAllOrderLists() {
+  document.querySelectorAll('.order-list').forEach(container => {
+    container.querySelectorAll('button[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.order-card');
+        const idx = Array.from(container.children).indexOf(card);
+        const act = btn.dataset.act;
+        const swapIdx = act === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= container.children.length) return;
+        const swapCard = container.children[swapIdx];
+        if (act === 'up') swapCard.before(card); else swapCard.after(card);
+        renumberOrderList(container);
+      });
+    });
+  });
+}
+
+async function saveGroupPrediction(id) {
+  const ranking = getOrder(document.getElementById('group-order-' + id));
+  const res = await api('POST', '/api/predictions/bets', { matchupId: id, ranking });
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
+}
+
+async function saveMatchPrediction(id) {
+  const checked = document.querySelector('input[name="score-' + id + '"]:checked');
+  if (!checked) { alert('@messages("pred.selectScore")'); return; }
+  const res = await api('POST', '/api/predictions/bets', { matchupId: id, ranking: [checked.value] });
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
+}
+
+async function clearPrediction(matchupId) {
+  if (!confirm('@messages("pred.confirmClear")')) return;
   const res = await api('DELETE', '/api/predictions/bets/' + matchupId);
   if (res.ok) { location.reload(); }
-  else { const err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 }
+
+bindAllOrderLists();
 </script>
 }

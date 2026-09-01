@@ -1,7 +1,7 @@
 package models.repository
 
 import models.PredictionBet
-import models.component.{PredictionBetComponent, PredictionMatchupComponent}
+import models.component.PredictionBetComponent
 import play.api.db.slick.DatabaseConfigProvider
 import slick.dbio.DBIO
 import slick.jdbc.JdbcProfile
@@ -11,27 +11,40 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
 class PredictionBetRepository @Inject()(dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext)
-  extends PredictionBetComponent with PredictionMatchupComponent {
+  extends PredictionBetComponent {
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
   override protected val profile = dbConfig.profile
   import dbConfig.*
   import profile.api.*
 
-  def create(bet: PredictionBet): Future[PredictionBet] = db.run {
-    createAction(bet)
+  /**
+   * Inserts or replaces the prediction for (user, matchup). A user has at most
+   * one prediction per matchup, so a second save overwrites the previous one.
+   * Delete-then-insert keeps the upsert portable across PostgreSQL and H2.
+   */
+  def upsert(userId: Long, matchupId: Long, ranking: Seq[String]): Future[PredictionBet] = db.run {
+    upsertAction(userId, matchupId, ranking).transactionally
   }
 
-  def createAction(bet: PredictionBet): DBIO[PredictionBet] = {
-    (predictionBetsTable returning predictionBetsTable.map(_.id) into ((b, id) => b.copy(id = id))) += bet
+  def upsertAction(userId: Long, matchupId: Long, ranking: Seq[String]): DBIO[PredictionBet] = {
+    for {
+      _ <- predictionBetsTable.filter(b => b.userId === userId && b.matchupId === matchupId).delete
+      created <- (predictionBetsTable returning predictionBetsTable.map(_.id) into ((b, id) => b.copy(id = id))) +=
+        PredictionBet(userId = userId, matchupId = matchupId, ranking = ranking)
+    } yield created
   }
 
   def findById(id: Long): Future[Option[PredictionBet]] = db.run {
     predictionBetsTable.filter(_.id === id).result.headOption
   }
 
-  def findByUserAndMatchup(userId: Long, matchupId: Long): Future[Seq[PredictionBet]] = db.run {
-    predictionBetsTable.filter(b => b.userId === userId && b.matchupId === matchupId).result
+  def findByUserAndMatchup(userId: Long, matchupId: Long): Future[Option[PredictionBet]] = db.run {
+    findByUserAndMatchupAction(userId, matchupId)
+  }
+
+  def findByUserAndMatchupAction(userId: Long, matchupId: Long): DBIO[Option[PredictionBet]] = {
+    predictionBetsTable.filter(b => b.userId === userId && b.matchupId === matchupId).result.headOption
   }
 
   def findByMatchup(matchupId: Long): Future[Seq[PredictionBet]] = db.run {
@@ -42,31 +55,10 @@ class PredictionBetRepository @Inject()(dbConfigProvider: DatabaseConfigProvider
     predictionBetsTable.filter(_.matchupId === matchupId).result
   }
 
-  def findByUserAndEvent(userId: Long, eventIds: Seq[Long]): Future[Seq[PredictionBet]] = db.run {
-    for {
-      matchupIds <- predictionMatchupsTable.filter(_.eventId.inSet(eventIds)).map(_.id).result
-      bets <- predictionBetsTable
-        .filter(b => b.userId === userId && b.matchupId.inSet(matchupIds))
-        .result
-    } yield bets
-  }
-
-  def findTotalBetByUserForMatchup(userId: Long, matchupId: Long): Future[Int] = db.run {
+  def findByUserAndMatchupIds(userId: Long, matchupIds: Seq[Long]): Future[Seq[PredictionBet]] = db.run {
     predictionBetsTable
-      .filter(b => b.userId === userId && b.matchupId === matchupId)
-      .map(_.pointsBet)
-      .sum
+      .filter(b => b.userId === userId && b.matchupId.inSet(matchupIds))
       .result
-      .map(_.getOrElse(0))
-  }
-
-  def findTotalBetByUserForMatchupAction(userId: Long, matchupId: Long): DBIO[Int] = {
-    predictionBetsTable
-      .filter(b => b.userId === userId && b.matchupId === matchupId)
-      .map(_.pointsBet)
-      .sum
-      .result
-      .map(_.getOrElse(0))
   }
 
   def deleteByUserAndMatchup(userId: Long, matchupId: Long): Future[Int] = db.run {
@@ -75,19 +67,5 @@ class PredictionBetRepository @Inject()(dbConfigProvider: DatabaseConfigProvider
 
   def deleteById(id: Long): Future[Boolean] = db.run {
     predictionBetsTable.filter(_.id === id).delete.map(_ > 0)
-  }
-
-  def findByUserAndMatchupIds(userId: Long, matchupIds: Seq[Long]): Future[Seq[PredictionBet]] = db.run {
-    predictionBetsTable
-      .filter(b => b.userId === userId && b.matchupId.inSet(matchupIds))
-      .result
-  }
-
-  def updatePoints(bet: PredictionBet): Future[PredictionBet] = db.run {
-    predictionBetsTable
-      .filter(b => b.userId === bet.userId && b.matchupId === bet.matchupId && b.selection === bet.selection)
-      .map(_.pointsBet)
-      .update(bet.pointsBet)
-      .map(_ => bet)
   }
 }

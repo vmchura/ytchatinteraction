@@ -2,21 +2,21 @@
 
 @(user: User, events: Seq[PredictionEvent])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
 
-@main("Predictions", Some(user)) {
-<h1>Tournament Predictions</h1>
+@main(messages("pred.title"), Some(user)) {
+<h1>@messages("pred.home.title")</h1>
 
 @if(events.isEmpty) {
-  <p>No prediction events available right now.</p>
+  <p>@messages("pred.noEvents")</p>
 } else {
   @for(event <- events) {
     <article>
       <div class="grid">
         <div>
           <h3>@event.name</h3>
-          <p>Status: <span class="badge @if(event.status.toString == "Open") {success} else {secondary}">@event.status</span></p>
+          <p>@messages("pred.status") <span class="badge @if(event.status.toString == "Open") {success} else {secondary}">@event.status</span></p>
         </div>
         <div>
-          <a href="/predictions/event/@event.id" role="button">View &amp; Bet</a>
+          <a href="/predictions/event/@event.id" role="button">@messages("pred.viewBet")</a>
         </div>
       </div>
     </article>

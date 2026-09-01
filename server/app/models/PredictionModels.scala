@@ -13,36 +13,17 @@ object PredictionUserScoreWithUsername {
   implicit val predictionUserScoreWithUsernameFormat: OFormat[PredictionUserScoreWithUsername] = Json.format[PredictionUserScoreWithUsername]
 }
 
-case class PlaceBetRequest(
+/**
+ * Body for saving a user's prediction for a matchup.
+ *
+ * `ranking` is the ordered list of player slot keys (GroupPosition) or a
+ * single-element list with the chosen score (MatchScore).
+ */
+case class SavePredictionRequest(
   matchupId: Long,
-  selection: String,
-  pointsBet: Int
+  ranking: Seq[String]
 )
 
-object PlaceBetRequest {
-  implicit val placeBetRequestFormat: OFormat[PlaceBetRequest] = Json.format[PlaceBetRequest]
-}
-
-case class PlaceBetsRequest(
-  bets: Seq[PlaceBetRequest]
-)
-
-object PlaceBetsRequest {
-  implicit val placeBetsRequestFormat: OFormat[PlaceBetsRequest] = Json.format[PlaceBetsRequest]
-}
-
-case class GroupResultRequest(
-  positions: Map[String, String]
-)
-
-object GroupResultRequest {
-  implicit val groupResultRequestFormat: OFormat[GroupResultRequest] = Json.format[GroupResultRequest]
-}
-
-case class MatchResultRequest(
-  score: String
-)
-
-object MatchResultRequest {
-  implicit val matchResultRequestFormat: OFormat[MatchResultRequest] = Json.format[MatchResultRequest]
+object SavePredictionRequest {
+  implicit val savePredictionRequestFormat: OFormat[SavePredictionRequest] = Json.format[SavePredictionRequest]
 }

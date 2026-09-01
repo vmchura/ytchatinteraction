@@ -142,9 +142,9 @@ GET     /api/predictions/events/:eventId/matchups/:round controllers.PredictionC
 POST    /api/predictions/matchups                      controllers.PredictionController.createMatchup()
 PUT     /api/predictions/matchups/:id                  controllers.PredictionController.updateMatchup(id: Long)
 POST    /api/predictions/matchups/:id/lock             controllers.PredictionController.lockMatchup(id: Long)
-POST    /api/predictions/bets                          controllers.PredictionController.placeBet()
+POST    /api/predictions/bets                          controllers.PredictionController.savePrediction()
 GET     /api/predictions/events/:eventId/bets          controllers.PredictionController.getUserBets(eventId: Long)
-DELETE  /api/predictions/bets/:matchupId               controllers.PredictionController.deleteBets(matchupId: Long)
+DELETE  /api/predictions/bets/:matchupId               controllers.PredictionController.deletePrediction(matchupId: Long)
 POST    /api/predictions/matchups/:id/score            controllers.PredictionController.scoreMatchup(id: Long)
 GET     /api/predictions/events/:eventId/leaderboard   controllers.PredictionController.getLeaderboard(eventId: Long)
 

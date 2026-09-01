@@ -40,12 +40,6 @@ trait PredictionMatchupComponent {
       }
     )
 
-  given BaseTypedType[Map[String, Double]] =
-    MappedColumnType.base[Map[String, Double], String](
-      map => Json.toJson(map).toString(),
-      str => Json.parse(str).as[Map[String, Double]]
-    )
-
   given BaseTypedType[JsValue] =
     MappedColumnType.base[JsValue, String](
       json => json.toString(),
@@ -67,7 +61,6 @@ trait PredictionMatchupComponent {
     def player3Race = column[Option[String]]("player3_race")
     def player4Name = column[Option[String]]("player4_name")
     def player4Race = column[Option[String]]("player4_race")
-    def multipliers = column[Map[String, Double]]("multipliers")
     def result = column[Option[JsValue]]("result")
     def status = column[PredictionMatchupStatus]("status")
     def resultScoredAt = column[Option[Instant]]("result_scored_at")
@@ -86,7 +79,6 @@ trait PredictionMatchupComponent {
       player3Race,
       player4Name,
       player4Race,
-      multipliers,
       result,
       status,
       resultScoredAt

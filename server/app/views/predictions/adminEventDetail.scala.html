@@ -1,70 +1,104 @@
-@import models.PredictionMatchupStatus
-@(user: models.User, event: models.PredictionEvent, matchups: Seq[models.PredictionMatchup], leaderboard: Seq[models.PredictionUserScoreWithUsername])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
+@import models.{PredictionMatchup, User}
+@import services.PredictionScoring
+@(user: User, event: models.PredictionEvent, matchups: Seq[PredictionMatchup], leaderboard: Seq[models.PredictionUserScoreWithUsername])(implicit request: play.api.mvc.RequestHeader, flash: play.api.mvc.Flash, messages: play.api.i18n.Messages)
 
-@main("Admin - " + event.name, Some(user)) {
-<h1>@event.name <small>(Admin)</small></h1>
+@players(m: PredictionMatchup) = @{
+  Seq(
+    ("player1", m.player1Name.getOrElse("Player 1"), m.player1Race.getOrElse("")),
+    ("player2", m.player2Name.getOrElse("Player 2"), m.player2Race.getOrElse("")),
+    ("player3", m.player3Name.getOrElse("Player 3"), m.player3Race.getOrElse("")),
+    ("player4", m.player4Name.getOrElse("Player 4"), m.player4Race.getOrElse(""))
+  )
+}
+
+@statusBadge(m: PredictionMatchup) = {
+  @if(m.status.toString == "Open") {
+    <span class="badge success">@messages("pred.status.open")</span>
+  } else if (m.status.toString == "Locked") {
+    <span class="badge warning">@messages("pred.status.locked")</span>
+  } else {
+    <span class="badge secondary">@messages("pred.status.scored")</span>
+  }
+}
+
+@orderList(id: String, items: Seq[(String, String, String)], interactive: Boolean) = {
+  <div class="order-list" id="@id">
+    @for(((key, name, race), idx) <- items.zipWithIndex) {
+      <div class="order-card" data-value="@key">
+        <div class="order-pos">@{idx + 1}</div>
+        <div class="order-name">
+          <strong>@name</strong>
+          @if(race.nonEmpty) { <small>@race</small> }
+        </div>
+        @if(interactive) {
+          <div class="order-buttons">
+            <button type="button" class="secondary small" data-act="up" @if(idx == 0) { disabled }>▲</button>
+            <button type="button" class="secondary small" data-act="down" @if(idx == items.size - 1) { disabled }>▼</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+
+@main(messages("pred.admin.title") + " - " + event.name, Some(user)) {
+<h1>@event.name <small>(@messages("pred.admin.title"))</small></h1>
 
 @flash.get("error").map { e => <article class="error">@e</article> }
 @flash.get("success").map { s => <article class="success">@s</article> }
 
 <div class="grid">
   <div>
-    <h2>Matchups</h2>
+    <h2>@messages("pred.admin.matchups")</h2>
 
     <details open>
-      <summary>Add Matchup</summary>
+      <summary>@messages("pred.admin.addMatchup")</summary>
       <form id="add-matchup-form">
         <div class="grid">
           <div>
-            <label>Round <select id="m-round" required>
-              <option value="1">1 - Groups</option>
-              <option value="2">2 - Quarterfinals</option>
-              <option value="3">3 - Semifinals</option>
-              <option value="4">4 - Final</option>
+            <label>@messages("pred.admin.round") <select id="m-round" required>
+              <option value="1">@messages("pred.admin.round1")</option>
+              <option value="2">@messages("pred.admin.round2")</option>
+              <option value="3">@messages("pred.admin.round3")</option>
+              <option value="4">@messages("pred.admin.round4")</option>
             </select></label>
           </div>
           <div>
-            <label>Label <input type="text" id="m-label" placeholder="Group A / QF1 / Final" required></label>
+            <label>@messages("pred.admin.label") <input type="text" id="m-label" placeholder="Group A / QF1 / Final" required></label>
           </div>
         </div>
-        <label>Type <select id="m-type">
-          <option value="GroupPosition">Group (4 players)</option>
-          <option value="MatchScore">Match (1v1 Bo7)</option>
+        <label>@messages("pred.admin.type") <select id="m-type">
+          <option value="GroupPosition">@messages("pred.admin.groupType")</option>
+          <option value="MatchScore">@messages("pred.admin.matchType")</option>
         </select></label>
 
         <div id="group-fields">
-          <div class="grid">
-            <div><label>P1 Name <input type="text" id="m-p1name"></label></div>
-            <div><label>P1 Race <select id="m-p1race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <div class="grid">
-            <div><label>P2 Name <input type="text" id="m-p2name"></label></div>
-            <div><label>P2 Race <select id="m-p2race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <div class="grid">
-            <div><label>P3 Name <input type="text" id="m-p3name"></label></div>
-            <div><label>P3 Race <select id="m-p3race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <div class="grid">
-            <div><label>P4 Name <input type="text" id="m-p4name"></label></div>
-            <div><label>P4 Race <select id="m-p4race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <p><small>Default multiplier 3.0 for all. Edit after creation.</small></p>
+          @for(pNum <- 1 to 4) {
+            <div class="grid">
+              <div><label>@messages("pred.admin.pName", pNum) <input type="text" id="m-p@{pNum}name"></label></div>
+              <div><label>@messages("pred.admin.pRace", pNum) <select id="m-p@{pNum}race">
+                <option>@messages("pred.admin.race.zerg")</option>
+                <option>@messages("pred.admin.race.terran")</option>
+                <option>@messages("pred.admin.race.protoss")</option>
+              </select></label></div>
+            </div>
+          }
         </div>
 
         <div id="match-fields" style="display:none">
-          <div class="grid">
-            <div><label>P1 Name <input type="text" id="m-mp1name"></label></div>
-            <div><label>P1 Race <select id="m-mp1race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <div class="grid">
-            <div><label>P2 Name <input type="text" id="m-mp2name"></label></div>
-            <div><label>P2 Race <select id="m-mp2race"><option>Zerg</option><option>Terran</option><option>Protoss</option></select></label></div>
-          </div>
-          <p><small>Default multiplier 3.0 for all scores. Edit after creation.</small></p>
+          @for(pNum <- 1 to 2) {
+            <div class="grid">
+              <div><label>@messages("pred.admin.pName", pNum) <input type="text" id="m-mp@{pNum}name"></label></div>
+              <div><label>@messages("pred.admin.pRace", pNum) <select id="m-mp@{pNum}race">
+                <option>@messages("pred.admin.race.zerg")</option>
+                <option>@messages("pred.admin.race.terran")</option>
+                <option>@messages("pred.admin.race.protoss")</option>
+              </select></label></div>
+            </div>
+          }
         </div>
 
-        <button type="submit">Create Matchup</button>
+        <button type="submit">@messages("pred.admin.createMatchup")</button>
       </form>
     </details>
 
@@ -73,94 +107,53 @@
     @for(round <- 1 to 4) {
       @defining(matchups.filter(_.round == round)) { roundMatchups =>
       @if(roundMatchups.nonEmpty) {
-        <h3>Round @round</h3>
+        <h3>@messages("pred.admin.roundX", round)</h3>
         @for(m <- roundMatchups) {
-        <article>
-          <header><strong>@m.matchLabel</strong>
-            @if(m.status.toString == "Open") {
-              <span class="badge success">Open</span>
-            } else if(m.status.toString == "Locked") {
-              <span class="badge warning">Locked</span>
-            } else {
-              <span class="badge secondary">Scored</span>
-            }
-          </header>
+        <details name="admin-accordion" @if(matchups.headOption.exists(_.id == m.id)) { open }>
+          <summary>
+            <strong>@m.matchLabel</strong>
+            @statusBadge(m)
+          </summary>
+          <article>
           @if(m.betType.toString == "GroupPosition") {
             <table>
-              <tr><th>Player</th><th>Race</th></tr>
-              <tr><td>@m.player1Name.getOrElse("-")</td><td>@m.player1Race.getOrElse("-")</td></tr>
-              <tr><td>@m.player2Name.getOrElse("-")</td><td>@m.player2Race.getOrElse("-")</td></tr>
-              <tr><td>@m.player3Name.getOrElse("-")</td><td>@m.player3Race.getOrElse("-")</td></tr>
-              <tr><td>@m.player4Name.getOrElse("-")</td><td>@m.player4Race.getOrElse("-")</td></tr>
+              <tr><th>@messages("pred.admin.playerCol")</th><th>@messages("pred.admin.raceCol")</th></tr>
+              @for((_, name, race) <- players(m)) {
+                <tr><td>@name</td><td>@race</td></tr>
+              }
             </table>
           } else {
-            <p>@m.player1Name.getOrElse("-") vs @m.player2Name.getOrElse("-")</p>
+            <p>@messages("pred.admin.bo7", m.player1Name.getOrElse("-"), m.player2Name.getOrElse("-"))</p>
           }
-          <details>
-            <summary>Multipliers</summary>
-            <div id="mult-@m.id">
-              @for((k, v) <- m.multipliers.toSeq.sortBy(_._1)) {
-                <div class="grid">
-                  <div><label>@k</label></div>
-                  <div><input type="number" step="0.5" value="@v" data-key="@k" class="mult-input"></div>
-                </div>
-              }
-              <button type="button" onclick="saveMultipliers(@m.id)" class="secondary small">Save Multipliers</button>
-            </div>
-          </details>
           <footer>
             @if(m.status.toString == "Open") {
-              <button type="button" onclick="lockMatchup(@m.id)" class="secondary">Lock</button>
+              <button type="button" onclick="lockMatchup(@m.id)" class="secondary">@messages("pred.admin.lock")</button>
             }
             @if(m.status.toString == "Locked") {
               <details>
-                <summary>Enter Result</summary>
+                <summary>@messages("pred.admin.enterResult")</summary>
                 @if(m.betType.toString == "GroupPosition") {
-                  <div>
-                    <select id="pos1-@m.id"><option value="">1st place</option>
-                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
-                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
-                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
-                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
-                    </select>
-                    <select id="pos2-@m.id"><option value="">2nd place</option>
-                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
-                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
-                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
-                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
-                    </select>
-                    <select id="pos3-@m.id"><option value="">3rd place</option>
-                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
-                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
-                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
-                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
-                    </select>
-                    <select id="pos4-@m.id"><option value="">4th place</option>
-                      <option value="player1">@m.player1Name.getOrElse("P1")</option>
-                      <option value="player2">@m.player2Name.getOrElse("P2")</option>
-                      <option value="player3">@m.player3Name.getOrElse("P3")</option>
-                      <option value="player4">@m.player4Name.getOrElse("P4")</option>
-                    </select>
-                    <button type="button" onclick="scoreGroup(@m.id)">Score</button>
-                  </div>
+                  <p><small>@messages("pred.admin.resultHint")</small></p>
+                  @orderList("result-order-" + m.id, players(m), true)
+                  <button type="button" onclick="scoreGroup(@m.id)">@messages("pred.admin.score")</button>
                 } else {
                   <div>
                     <select id="score-@m.id">
-                      <option value="4-0">4-0</option><option value="4-1">4-1</option>
-                      <option value="4-2">4-2</option><option value="4-3">4-3</option>
-                      <option value="3-4">3-4</option><option value="2-4">2-4</option>
-                      <option value="1-4">1-4</option><option value="0-4">0-4</option>
+                      @for(score <- PredictionScoring.matchScores) {
+                        <option value="@score">@score</option>
+                      }
                     </select>
-                    <button type="button" onclick="scoreMatch(@m.id)">Score</button>
+                    <button type="button" onclick="scoreMatch(@m.id)">@messages("pred.admin.score")</button>
                   </div>
                 }
               </details>
             }
             @if(m.status.toString == "Scored") {
-              <span class="badge secondary">Scored: @m.result.map(_.toString).getOrElse("-")</span>
+              <span class="badge secondary">@messages("pred.admin.scored", m.result.map(_.toString).getOrElse("-"))</span>
             }
           </footer>
-        </article>
+          </article>
+        </details>
         }
       }
       }
@@ -168,12 +161,12 @@
   </div>
 
   <div>
-    <h2>Leaderboard</h2>
+    <h2>@messages("pred.leaderboard")</h2>
     @if(leaderboard.isEmpty) {
-      <p>No scores yet.</p>
+      <p>@messages("pred.noScores")</p>
     } else {
       <table>
-        <thead><tr><th>#</th><th>Player</th><th>Score</th></tr></thead>
+        <thead><tr><th>@messages("pred.rank")</th><th>@messages("pred.playerCol")</th><th>@messages("pred.scoreCol")</th></tr></thead>
         <tbody>
         @for((s, i) <- leaderboard.zipWithIndex) {
           <tr><td>@{i+1}</td><td>@s.userName</td><td><strong>@s.totalScore</strong></td></tr>
@@ -183,6 +176,36 @@
     }
   </div>
 </div>
+
+<style>
+.order-list { margin: 0.75rem 0; }
+.order-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--secondary-border, #dcdcdc);
+  border-radius: 0.5rem;
+  margin-bottom: 0.4rem;
+  background: var(--card-background-color, #fff);
+}
+.order-pos {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+.order-name { flex: 1; }
+.order-name small { margin-left: 0.5rem; color: var(--muted-color, #777); }
+.order-buttons { display: flex; gap: 0.25rem; }
+.order-buttons button { width: 2.5rem; padding: 0.15rem 0; }
+</style>
 
 <script>
 const EVENT_ID = @event.id;
@@ -198,6 +221,37 @@ async function api(method, url, body) {
   return fetch(url, opts);
 }
 
+function renumberOrderList(container) {
+  Array.from(container.querySelectorAll('.order-card')).forEach((c, i) => {
+    c.querySelector('.order-pos').textContent = i + 1;
+    const up = c.querySelector('[data-act=up]');
+    const down = c.querySelector('[data-act=down]');
+    if (up) up.disabled = i === 0;
+    if (down) down.disabled = i === container.children.length - 1;
+  });
+}
+
+function getOrder(container) {
+  return Array.from(container.querySelectorAll('.order-card')).map(c => c.dataset.value);
+}
+
+function bindAllOrderLists() {
+  document.querySelectorAll('.order-list').forEach(container => {
+    container.querySelectorAll('button[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.order-card');
+        const idx = Array.from(container.children).indexOf(card);
+        const act = btn.dataset.act;
+        const swapIdx = act === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= container.children.length) return;
+        const swapCard = container.children[swapIdx];
+        if (act === 'up') swapCard.before(card); else swapCard.after(card);
+        renumberOrderList(container);
+      });
+    });
+  });
+}
+
 document.getElementById('m-type').addEventListener('change', function() {
   document.getElementById('group-fields').style.display = this.value === 'GroupPosition' ? 'block' : 'none';
   document.getElementById('match-fields').style.display = this.value === 'MatchScore' ? 'block' : 'none';
@@ -206,78 +260,52 @@ document.getElementById('m-type').addEventListener('change', function() {
 document.getElementById('add-matchup-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   const type = document.getElementById('m-type').value;
-  const mult = {};
-  if (type === 'GroupPosition') {
-    ['player1','player2','player3','player4'].forEach(function(p) {
-      ['1','2','3','4'].forEach(function(pos) { mult[p+'-position'+pos] = 3.0; });
-    });
-  } else {
-    ['4-0','4-1','4-2','4-3','3-4','2-4','1-4','0-4'].forEach(function(s) { mult[s] = 3.0; });
-  }
   const body = {
     eventId: EVENT_ID,
     round: parseInt(document.getElementById('m-round').value),
     matchLabel: document.getElementById('m-label').value,
-    betType: type,
-    multipliers: mult
+    betType: type
   };
   if (type === 'GroupPosition') {
-    body.player1Name = document.getElementById('m-p1name').value || null;
-    body.player1Race = document.getElementById('m-p1race').value;
-    body.player2Name = document.getElementById('m-p2name').value || null;
-    body.player2Race = document.getElementById('m-p2race').value;
-    body.player3Name = document.getElementById('m-p3name').value || null;
-    body.player3Race = document.getElementById('m-p3race').value;
-    body.player4Name = document.getElementById('m-p4name').value || null;
-    body.player4Race = document.getElementById('m-p4race').value;
+    for (let p = 1; p <= 4; p++) {
+      body['player' + p + 'Name'] = document.getElementById('m-p' + p + 'name').value || null;
+      body['player' + p + 'Race'] = document.getElementById('m-p' + p + 'race').value;
+    }
   } else {
-    body.player1Name = document.getElementById('m-mp1name').value || null;
-    body.player1Race = document.getElementById('m-mp1race').value;
-    body.player2Name = document.getElementById('m-mp2name').value || null;
-    body.player2Race = document.getElementById('m-mp2race').value;
+    for (let p = 1; p <= 2; p++) {
+      body['player' + p + 'Name'] = document.getElementById('m-mp' + p + 'name').value || null;
+      body['player' + p + 'Race'] = document.getElementById('m-mp' + p + 'race').value;
+    }
   }
   const res = await api('POST', '/api/predictions/matchups', body);
   if (res.ok) { location.reload(); }
-  else { const err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 });
 
-async function saveMultipliers(id) {
-  const container = document.getElementById('mult-' + id);
-  const inputs = container.querySelectorAll('.mult-input');
-  const mult = {};
-  inputs.forEach(function(inp) { mult[inp.dataset.key] = parseFloat(inp.value); });
-  const res = await api('PUT', '/api/predictions/matchups/' + id, { multipliers: mult });
-  if (res.ok) { alert('Multipliers saved'); }
-  else { const err = await res.json(); alert(err.error || 'Error'); }
-}
-
 async function lockMatchup(id) {
-  if (!confirm('Lock this matchup? No more bets can be placed.')) return;
+  if (!confirm('@messages("pred.admin.confirmLock")')) return;
   const res = await api('POST', '/api/predictions/matchups/' + id + '/lock');
   if (res.ok) { location.reload(); }
-  else { const err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 }
 
 async function scoreGroup(id) {
-  var p1 = document.getElementById('pos1-'+id).value;
-  var p2 = document.getElementById('pos2-'+id).value;
-  var p3 = document.getElementById('pos3-'+id).value;
-  var p4 = document.getElementById('pos4-'+id).value;
-  if (!p1 || !p2 || !p3 || !p4) { alert('Select all positions'); return; }
-  var vals = [p1,p2,p3,p4];
-  if (new Set(vals).size !== 4) { alert('Each position must have a different player'); return; }
-  var result = { positions: { "1": p1, "2": p2, "3": p3, "4": p4 } };
-  var res = await api('POST', '/api/predictions/matchups/' + id + '/score', result);
+  const order = getOrder(document.getElementById('result-order-' + id));
+  if (new Set(order).size !== order.length) { alert('@messages("pred.admin.invalidPlayers")'); return; }
+  const positions = {};
+  order.forEach(function(p, i) { positions[String(i + 1)] = p; });
+  const res = await api('POST', '/api/predictions/matchups/' + id + '/score', { positions: positions });
   if (res.ok) { location.reload(); }
-  else { var err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 }
 
 async function scoreMatch(id) {
-  var score = document.getElementById('score-'+id).value;
-  var result = { score: score };
-  var res = await api('POST', '/api/predictions/matchups/' + id + '/score', result);
+  const score = document.getElementById('score-' + id).value;
+  const res = await api('POST', '/api/predictions/matchups/' + id + '/score', { score: score });
   if (res.ok) { location.reload(); }
-  else { var err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 }
+
+bindAllOrderLists();
 </script>
 }

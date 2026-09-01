@@ -17,7 +17,6 @@ case class PredictionMatchup(
   player3Race: Option[String] = None,
   player4Name: Option[String] = None,
   player4Race: Option[String] = None,
-  multipliers: Map[String, Double] = Map.empty,
   result: Option[JsValue] = None,
   status: PredictionMatchupStatus = PredictionMatchupStatus.Open,
   resultScoredAt: Option[Instant] = None

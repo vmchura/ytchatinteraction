@@ -56,11 +56,12 @@ class PredictionUserScoreRepository @Inject()(dbConfigProvider: DatabaseConfigPr
   }
 
   def addScoreAction(userId: Long, eventId: Long, points: Int): DBIO[Int] = {
-    sqlu"""
-      INSERT INTO prediction_user_scores (user_id, event_id, total_score)
-      VALUES ($userId, $eventId, $points)
-      ON CONFLICT (user_id, event_id)
-      DO UPDATE SET total_score = prediction_user_scores.total_score + $points
-    """
+    // Read-modify-write keeps the increment portable across PostgreSQL and H2
+    // (insertOrUpdate keys on the composite primary key (user_id, event_id)).
+    for {
+      existingOpt <- findByUserAndEventAction(userId, eventId)
+      newTotal = existingOpt.map(_.totalScore).getOrElse(0) + points
+      _ <- predictionUserScoresTable.insertOrUpdate(PredictionUserScore(userId, eventId, newTotal))
+    } yield 1
   }
 }

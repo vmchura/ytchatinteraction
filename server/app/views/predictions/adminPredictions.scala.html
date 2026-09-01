@@ -1,18 +1,18 @@
 @import models.{PredictionEvent, User}
 @(user: User, events: Seq[PredictionEvent])(implicit request: RequestHeader, flash: Flash, messages: Messages)
 
-@main("Admin - Predictions", Some(user)) {
-<h1>Prediction Events (Admin)</h1>
+@main(messages("pred.admin.title"), Some(user)) {
+<h1>@messages("pred.admin.eventsTitle")</h1>
 
 @flash.get("error").map { e => <article class="error">@e</article> }
 @flash.get("success").map { s => <article class="success">@s</article> }
 
 <details>
-  <summary>Create New Event</summary>
+  <summary>@messages("pred.admin.createEvent")</summary>
   <form id="create-event-form">
     <div class="grid">
-      <div><label>Event Name <input type="text" id="event-name" required></label></div>
-      <div><button type="submit" style="margin-top:1.5rem">Create</button></div>
+      <div><label>@messages("pred.admin.eventName") <input type="text" id="event-name" required></label></div>
+      <div><button type="submit" style="margin-top:1.5rem">@messages("pred.admin.create")</button></div>
     </div>
   </form>
 </details>
@@ -20,17 +20,17 @@
 <hr>
 
 @if(events.isEmpty) {
-  <p>No prediction events yet.</p>
+  <p>@messages("pred.admin.noEvents")</p>
 } else {
   <table>
-    <thead><tr><th>Name</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+    <thead><tr><th>@messages("pred.admin.nameCol")</th><th>@messages("pred.admin.statusCol")</th><th>@messages("pred.admin.createdCol")</th><th>@messages("pred.admin.actionsCol")</th></tr></thead>
     <tbody>
     @for(event <- events) {
       <tr>
         <td><a href="/admin/predictions/event/@event.id">@event.name</a></td>
         <td><span class="badge">@event.status</span></td>
         <td>@event.createdAt.toString.take(10)</td>
-        <td><a href="/admin/predictions/event/@event.id" role="button" class="secondary small">Manage</a></td>
+        <td><a href="/admin/predictions/event/@event.id" role="button" class="secondary small">@messages("pred.admin.manage")</a></td>
       </tr>
     }
     </tbody>
@@ -52,7 +52,7 @@ document.getElementById('create-event-form')?.addEventListener('submit', async f
     body: JSON.stringify({ name: name })
   });
   if (res.ok) { location.reload(); }
-  else { const err = await res.json(); alert(err.error || 'Error'); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 });
 </script>
 }
