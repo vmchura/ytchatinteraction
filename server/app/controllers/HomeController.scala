@@ -37,9 +37,9 @@ class HomeController @Inject()(val scc: SilhouetteControllerComponents,
   def index(): Action[AnyContent] = silhouette.UserAwareAction { implicit request =>
     val webSocketUrl = routes.HomeController.streamerevents().webSocketURL()
     request.identity match {
-      case Some(user) =>
-        // User is logged in, show dashboard with user information
-        Redirect(routes.UserEventsController.userEvents())
+      case Some(_) =>
+        // User is logged in (identified by cookie): predictions are the default landing page
+        Redirect(routes.PredictionController.showPredictionHome())
       case None =>
         // User is not logged in, show welcome/landing page
         Ok(views.html.index(None))
