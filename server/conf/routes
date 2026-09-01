@@ -137,6 +137,7 @@ GET     /admin/predictions/event/:eventId              controllers.PredictionCon
 GET     /api/predictions/events                        controllers.PredictionController.listEvents()
 GET     /api/predictions/events/:id                    controllers.PredictionController.getEvent(id: Long)
 POST    /api/predictions/events                        controllers.PredictionController.createEvent()
+PUT     /api/predictions/events/:id/rounds             controllers.PredictionController.updateRoundNames(id: Long)
 GET     /api/predictions/events/:eventId/matchups      controllers.PredictionController.getMatchups(eventId: Long)
 GET     /api/predictions/events/:eventId/matchups/:round controllers.PredictionController.getMatchupsByRound(eventId: Long, round: Int)
 POST    /api/predictions/matchups                      controllers.PredictionController.createMatchup()

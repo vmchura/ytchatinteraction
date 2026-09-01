@@ -99,6 +99,25 @@ class PredictionController @Inject()(
     }
   }
 
+  def updateRoundNames(id: Long): Action[AnyContent] = silhouette.SecuredAction(WithAdmin()).async { implicit request =>
+    request.body.asJson.flatMap(json => (json \ "roundNames").asOpt[Map[String, String]]) match {
+      case Some(names) =>
+        val parsed = names.flatMap { case (k, v) =>
+          k.toIntOption.filter(n => n >= 1 && n <= 4).map(_ -> v.trim)
+        }
+        if (parsed.isEmpty && names.nonEmpty) {
+          Future.successful(BadRequest(Json.obj("error" -> "Round numbers must be between 1 and 4")))
+        } else {
+          predictionService.updateRoundNames(id, parsed).map {
+            case Some(event) => Ok(eventToJson(event))
+            case None => NotFound(Json.obj("error" -> "Event not found"))
+          }
+        }
+      case None =>
+        Future.successful(BadRequest(Json.obj("error" -> "roundNames is required")))
+    }
+  }
+
   def getMatchups(eventId: Long): Action[AnyContent] = silhouette.SecuredAction.async { implicit request =>
     predictionService.getMatchupsByEvent(eventId).map { matchups =>
       Ok(Json.toJson(matchups.map(m => matchupToJson(m))))
@@ -221,6 +240,7 @@ class PredictionController @Inject()(
     "id" -> e.id,
     "name" -> e.name,
     "status" -> e.status.toString,
+    "roundNames" -> e.roundNames.map { case (k, v) => k.toString -> v },
     "createdAt" -> e.createdAt.toString
   )
 

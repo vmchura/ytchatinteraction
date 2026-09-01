@@ -40,6 +40,8 @@
   if (parts.length == 2 && parts(0).toInt > parts(1).toInt) messages("pred.winner.p1") else messages("pred.winner.p2")
 }
 
+@roundLabel(round: Int) = @{ event.roundNames.getOrElse(round, messages("pred.roundTab", round)) }
+
 @statusBadge(m: PredictionMatchup) = {
   @if(m.status.toString == "Open") {
     <span class="badge success">@messages("pred.status.open")</span>
@@ -171,7 +173,7 @@
     <div role="tablist">
       @for(round <- 1 to 4) {
         <button role="tab" class="secondary round-tab" data-round="@round"
-          onclick="showRound(@round)">@messages("pred.roundTab", round)</button>
+          onclick="showRound(@round)">@roundLabel(round)</button>
       }
     </div>
 

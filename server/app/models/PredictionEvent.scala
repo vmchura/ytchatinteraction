@@ -7,6 +7,7 @@ case class PredictionEvent(
   id: Long = 0L,
   name: String,
   status: PredictionEventStatus = PredictionEventStatus.Open,
+  roundNames: Map[Int, String] = Map.empty,
   createdAt: Instant = Instant.now()
 )
 

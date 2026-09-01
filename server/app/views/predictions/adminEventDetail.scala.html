@@ -11,6 +11,8 @@
   )
 }
 
+@roundLabel(round: Int) = @{ event.roundNames.getOrElse(round, messages("pred.roundTab", round)) }
+
 @statusBadge(m: PredictionMatchup) = {
   @if(m.status.toString == "Open") {
     <span class="badge success">@messages("pred.status.open")</span>
@@ -57,10 +59,9 @@
         <div class="grid">
           <div>
             <label>@messages("pred.admin.round") <select id="m-round" required>
-              <option value="1">@messages("pred.admin.round1")</option>
-              <option value="2">@messages("pred.admin.round2")</option>
-              <option value="3">@messages("pred.admin.round3")</option>
-              <option value="4">@messages("pred.admin.round4")</option>
+              @for(round <- 1 to 4) {
+                <option value="@round">@round - @roundLabel(round)</option>
+              }
             </select></label>
           </div>
           <div>
@@ -102,12 +103,26 @@
       </form>
     </details>
 
+    <details>
+      <summary>@messages("pred.admin.roundsTitle")</summary>
+      <div class="grid">
+        @for(round <- 1 to 4) {
+          <div>
+            <label>@messages("pred.admin.roundName", round)
+              <input type="text" id="round-name-@round" value="@event.roundNames.getOrElse(round, "")" placeholder="@messages("pred.roundTab", round)">
+            </label>
+          </div>
+        }
+      </div>
+      <button type="button" onclick="saveRoundNames()">@messages("pred.admin.saveRounds")</button>
+    </details>
+
     <hr>
 
     @for(round <- 1 to 4) {
       @defining(matchups.filter(_.round == round)) { roundMatchups =>
       @if(roundMatchups.nonEmpty) {
-        <h3>@messages("pred.admin.roundX", round)</h3>
+        <h3>@roundLabel(round)</h3>
         @for(m <- roundMatchups) {
         <details name="admin-accordion" @if(matchups.headOption.exists(_.id == m.id)) { open }>
           <summary>
@@ -281,6 +296,19 @@ document.getElementById('add-matchup-form').addEventListener('submit', async fun
   if (res.ok) { location.reload(); }
   else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
 });
+
+async function saveRoundNames() {
+  const roundNames = {};
+  for (let r = 1; r <= 4; r++) {
+    const input = document.getElementById('round-name-' + r);
+    if (input && input.value.trim() !== '') {
+      roundNames[String(r)] = input.value.trim();
+    }
+  }
+  const res = await api('PUT', '/api/predictions/events/' + EVENT_ID + '/rounds', { roundNames: roundNames });
+  if (res.ok) { location.reload(); }
+  else { const err = await res.json(); alert(err.error || '@messages("pred.error")'); }
+}
 
 async function lockMatchup(id) {
   if (!confirm('@messages("pred.admin.confirmLock")')) return;

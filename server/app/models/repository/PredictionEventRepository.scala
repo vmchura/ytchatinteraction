@@ -56,6 +56,17 @@ class PredictionEventRepository @Inject()(dbConfigProvider: DatabaseConfigProvid
     } yield result
   }
 
+  def updateRoundNames(id: Long, roundNames: Map[Int, String]): Future[Option[PredictionEvent]] = db.run {
+    updateRoundNamesAction(id, roundNames)
+  }
+
+  def updateRoundNamesAction(id: Long, roundNames: Map[Int, String]): DBIO[Option[PredictionEvent]] = {
+    for {
+      rowsUpdated <- predictionEventsTable.filter(_.id === id).map(_.roundNames).update(roundNames)
+      result <- if (rowsUpdated > 0) findByIdAction(id) else DBIO.successful(None)
+    } yield result
+  }
+
   def delete(id: Long): Future[Boolean] = db.run {
     predictionEventsTable.filter(_.id === id).delete.map(_ > 0)
   }

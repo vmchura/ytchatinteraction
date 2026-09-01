@@ -136,6 +136,36 @@ class PredictionServiceSpec
     }
   }
 
+  "PredictionService.updateRoundNames" should {
+    "persist custom names for each round and fall back to default when unset" in {
+      val eventId = createEvent("Event")
+
+      val updated = Await.result(
+        service.updateRoundNames(eventId, Map(1 -> "Round of 16", 2 -> "Round of 8", 3 -> "Semifinals", 4 -> "Finals")),
+        5.seconds
+      )
+      updated must not be empty
+      updated.get.roundNames mustBe Map(1 -> "Round of 16", 2 -> "Round of 8", 3 -> "Semifinals", 4 -> "Finals")
+
+      val reloaded = Await.result(service.getEvent(eventId), 5.seconds).get
+      reloaded.roundNames mustBe Map(1 -> "Round of 16", 2 -> "Round of 8", 3 -> "Semifinals", 4 -> "Finals")
+    }
+
+    "clear round names when an empty map is saved" in {
+      val eventId = createEvent("Event")
+      Await.result(service.updateRoundNames(eventId, Map(1 -> "Round of 16")), 5.seconds)
+      Await.result(service.updateRoundNames(eventId, Map.empty), 5.seconds)
+
+      val reloaded = Await.result(service.getEvent(eventId), 5.seconds).get
+      reloaded.roundNames mustBe Map.empty
+    }
+
+    "return None for a non-existent event" in {
+      val updated = Await.result(service.updateRoundNames(99999L, Map(1 -> "Round of 16")), 5.seconds)
+      updated mustBe None
+    }
+  }
+
   "PredictionService.scoreMatchup" should {
     "score a group using exact position (2), advance (1) and eliminated (1) rules" in {
       val userA = createUser("User A")

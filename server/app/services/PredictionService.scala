@@ -51,6 +51,10 @@ class PredictionService @Inject()(
     eventRepository.findAll()
   }
 
+  def updateRoundNames(eventId: Long, roundNames: Map[Int, String]): Future[Option[PredictionEvent]] = {
+    eventRepository.updateRoundNames(eventId, roundNames)
+  }
+
   def createMatchup(matchup: PredictionMatchup): Future[PredictionMatchup] = {
     matchupRepository.create(matchup)
   }
