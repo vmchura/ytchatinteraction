@@ -101,7 +101,7 @@ partials.matches.upload.replay = Upload Replay
 partials.event.balance = Balance
 partials.event.points = points
 partials.event.choose.option = Choose your option:
-partials.event.confidence = Confidence (Points to bet):
+partials.event.confidence = Confidence (Points):
 partials.event.submit.vote = Submit Vote
 
 # Partials - Available Events
@@ -231,7 +231,7 @@ pred.title=Predictions
 pred.home.title=Tournament Predictions
 pred.noEvents=No prediction events available right now.
 pred.status=Status:
-pred.viewBet=View & Bet
+pred.viewBet=View & Predict
 pred.roundTab=Round {0}
 pred.noMatchupsRound=No matchups for this round yet.
 pred.status.open=Open
