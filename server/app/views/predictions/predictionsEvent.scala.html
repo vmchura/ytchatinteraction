@@ -42,6 +42,18 @@
 
 @roundLabel(round: Int) = @{ event.roundNames.getOrElse(round, messages("pred.roundTab", round)) }
 
+@userBetIds = @{ bets.map(_._2.id).toSet }
+
+@defaultOpenId = @{
+  // 1) If any group still needs a prediction, open the first one of those.
+  // 2) Otherwise (all groups predicted) open the first matchup that is still Open.
+  matchups.find(m => m.betType.toString == "GroupPosition" && m.status.toString == "Open" && !userBetIds.contains(m.id))
+    .orElse(matchups.find(_.status.toString == "Open"))
+    .map(_.id)
+}
+
+@defaultRound = @{ defaultOpenId.flatMap(id => matchups.find(_.id == id)).map(_.round).getOrElse(1) }
+
 @statusBadge(m: PredictionMatchup) = {
   @if(m.status.toString == "Open") {
     <span class="badge success">@messages("pred.status.open")</span>
@@ -172,20 +184,20 @@
   <div>
     <div role="tablist">
       @for(round <- 1 to 4) {
-        <button role="tab" class="secondary round-tab" data-round="@round"
+        <button role="tab" class="secondary round-tab @if(round == defaultRound) { primary }" data-round="@round"
           onclick="showRound(@round)">@roundLabel(round)</button>
       }
     </div>
 
     @for(round <- 1 to 4) {
       @defining(matchups.filter(_.round == round)) { roundMatchups =>
-      <div class="round-content" id="round-@round" style="display:@if(round == 1){block}else{none}">
+      <div class="round-content" id="round-@round" style="display:@if(round == defaultRound){block}else{none}">
         @if(roundMatchups.isEmpty) {
           <p>@messages("pred.noMatchupsRound")</p>
         } else {
           @for(m <- roundMatchups) {
             @defining(bets.find(_._2.id == m.id).map(_._1)) { mBet =>
-            <details name="pred-accordion" @if(matchups.headOption.exists(_.id == m.id)) { open }>
+            <details name="pred-accordion" @if(defaultOpenId.contains(m.id)) { open }>
               <summary>
                 <strong>@m.matchLabel</strong>
                 @statusBadge(m)
