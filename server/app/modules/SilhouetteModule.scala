@@ -257,7 +257,8 @@ class SilhouetteModule extends AbstractModule with ScalaModule {
       redirectURL = Some(config.get[String]("redirectURL")),
       clientID = config.get[String]("clientID"),
       clientSecret = config.get[String]("clientSecret"),
-      scope = Some(config.get[String]("scope")))
+      scope = Some(config.get[String]("scope")),
+      authorizationParams = Map("prompt" -> "none"))
     new DiscordProvider(httpLayer, socialStateHandler, settings)
   }
 
